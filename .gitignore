@@ -2,3 +2,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 *.zip
+_work/
+.claude/settings.local.json
+node_modules/

@@ -110,3 +110,37 @@ robots.txt · .nojekyll          ห้ามเสิร์ชเอนจิ�
   «กดปุ่มไหน» ไม่ใช่คำสั่งให้พิมพ์ และการควบคุมหน้าจอใช้ไม่ได้ในเครื่องนี้
 - ไฟล์ในโฟลเดอร์นี้เขียนทับได้โดยตรงผ่านเครื่องมือ remote-devices (commit ไฟล์ลงเครื่อง)
   แล้วให้เจ้าของงานกด Commit + Push เอง
+
+## 7. การมอบหมายงานใน Claude Code (เพิ่ม 9 ก.ย. 2026)
+
+session หลักรันด้วย **fable** ทำหน้าที่ควบคุมงาน ไม่ลงมือทำทุกขั้นเอง งานที่ทำซ้ำได้
+ส่งให้ subagent ใน `.claude/agents/` ซึ่งกำหนดโมเดลไว้แล้วตามความยากของงาน
+**ระบุชื่อ subagent ในคำสั่งเสมอ** («use the notes subagent to …») เพราะการให้เลือกเอง
+ไม่แน่นอน · **ห้ามตั้ง `CLAUDE_CODE_SUBAGENT_MODEL`** ไม่งั้นโมเดลที่กำหนดต่อตัวจะถูกเพิกเฉย
+
+| ขั้นตอน | subagent | โมเดล |
+|---|---|---|
+| สกัดบันทึกจากสไลด์/PDF ทีละช่วง → `_work/notes/` | `notes` (หลายตัวขนาน คนละไฟล์) | sonnet |
+| ตัดรูปจาก pptx → `figs/` | สั่ง `builder` รันสคริปต์ หรือทำเองถ้าต้องดูรูปด้วยตา | haiku |
+| เขียน/เติมหัวข้อ → `data/t/` | `topic-writer` | sonnet |
+| แบบจำลองโต้ตอบ → `app.js` + `app.css` | `demo-writer` | sonnet |
+| ตรวจภาษา (4 กติกา) | `lang-reviewer` | haiku |
+| ตรวจสูตร/ตัวเลข/แบบจำลอง | `tech-reviewer` | opus |
+| build_data · Playwright · git | `builder` | haiku |
+
+**Fable ทำเองเท่านั้น:** วางโครงหัวข้อของวิชา (แผนที่ topics/summary กับไฟล์ต้นทาง) ·
+ตรวจซ้ำทุกรายการ «เอกสารภาควิชาน่าจะผิด» จาก tech-reviewer ก่อนแสดงในเว็บ ·
+ตัดสินเมื่อ reviewer สองตัวขัดกัน · รวบรวมคำถามที่ต้องถามอาจารย์ · สรุปผลให้เจ้าของงาน
+
+**ลำดับต่อวิชา:** โครง (Fable) → `notes` ขนาน ≤6 → `topic-writer` + `demo-writer` ขนาน ≤6
+→ `lang-reviewer` และ `tech-reviewer` **แยกกัน ไม่เห็นรายงานของอีกฝ่าย** → Fable ตัดสิน
+→ `topic-writer` แก้ตามรายการ → `builder` → เจ้าของงาน Commit + Push
+
+- `_work/` (บันทึก รายงานตรวจ สคริปต์ชั่วคราว) อยู่ใน .gitignore — เก็บบนเครื่องเท่านั้น
+  ต้นฉบับของภาควิชาใน `Russian lesson` ห้ามคัดลอกเข้า repo (repo เป็น public)
+- เอกสารกำกับฉบับเต็มอยู่ใน `claude/` (ดู README ที่นั่น) ถ้ามีไฟล์ ให้อ่านก่อนเริ่มวิชาใหม่
+- skill แปล RU↔TH อยู่ที่ `.claude/skills/russian-thai-translate/` — subagent ไม่ได้รับ
+  skill ต่อจาก session หลัก จึงระบุ `skills:` ไว้ในไฟล์ของ `topic-writer` และ `lang-reviewer` แล้ว
+  ตารางคำตัดสินศัพท์อยู่ท้าย `references/glossary.md` ของ skill นั้น — เพิ่มคำตัดสินใหม่ที่นั่นที่เดียว
+- เครื่องเจ้าของงานเป็น Windows: ใช้ `python` ไม่ใช่ `python3`; ครั้งแรกให้ติดตั้ง
+  `pip install -r requirements.txt` และ `python -m playwright install chromium` (ขออนุมัติก่อน)
