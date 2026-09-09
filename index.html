@@ -1,0 +1,50 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><link rel="stylesheet" href="app.css">
+</head><body>
+
+<title>Study Program</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark">ВКА · СУЛА</div>
+      <div class="brand-name">Study Program</div>
+      <div class="brand-sub">คลังความรู้รวมทุกวิชา · เล่ม 1</div>
+    </div>
+    <div class="volsw" id="volsw"></div>
+    <nav id="nav"></nav>
+  </aside>
+
+  <main class="stage">
+    <div class="topbar">
+      <div class="searchbox">
+        <input type="search" id="search" placeholder="ค้นหาทุกวิชา: устойчивость, มุมปะทะ, Kalman …" autocomplete="off" spellcheck="false">
+        <span class="kbd">/</span>
+      </div>
+      <button id="quizBtn">ควิซ</button>
+      <div class="progress-chip">
+        <span class="track"><span id="allBar" style="width:0%"></span></span>
+        <span id="allTxt">0%</span>
+      </div>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<button id="topBtn" aria-label="กลับขึ้นบนสุด">↑</button>
+<nav id="bbar" aria-label="เมนูหลัก">
+  <button data-bb="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/></svg>ภาพรวม</button>
+  <button data-bb="find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>ค้นหา</button>
+  <button data-bb="glossary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11.5a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 17.5A2.5 2.5 0 0 1 7.5 15h11"/></svg>ศัพท์</button>
+  <button data-bb="flash"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="7" width="13.5" height="13" rx="2"/><path d="M8 4h10.5a2 2 0 0 1 2 2v11"/></svg>การ์ด</button>
+  <button data-bb="quiz"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.7 9.6a2.3 2.3 0 1 1 3.2 2.1c-.75.33-.9.9-.9 1.7"/><path d="M12 16.4v.2"/></svg>ควิซ</button>
+</nav>
+
+
+
+
+
+
+</body></html>
+<script src="app.js" defer></script>
