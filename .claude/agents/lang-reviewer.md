@@ -2,7 +2,7 @@
 name: lang-reviewer
 description: ตรวจเฉพาะกติกาภาษาของหัวข้อใน data/t — ห้ามสลับไทย/รัสเซียกลางประโยค ห้ามทับศัพท์เมื่อมีคำไทย ศัพท์ตรงตารางคำตัดสิน มีบรรทัดที่มาและป้าย «ผู้เรียบเรียง» — ใช้กับทุกหัวข้อก่อนส่ง (language review)
 model: haiku
-tools: Read, Grep, Glob, Edit
+tools: Read, Grep, Glob, Edit, Write
 skills:
   - russian-thai-translate
 maxTurns: 25

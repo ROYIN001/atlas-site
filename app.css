@@ -1386,6 +1386,134 @@
   .nas .card table { width: 100%; }  .nas .demo .ctl label b { float: right; margin-left: 10px; }
   .nas .demo-head .spacer { flex: 1 1 0; }
 
+  /* ================= ТАУ — Теория автоматического управления (модуль дисциплины 28, namespace .tau) ================= */
+  .tau .ru, .tau .ru-cell { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  .tau code, .tau .eq, .tau .mono, .tau .eq-cell { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .tau .sec-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+  .tau h3 { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 18px; font-weight: 600; margin: 34px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .tau h4 { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 15px; font-weight: 600; margin: 22px 0 8px; color: var(--accent); }
+  .tau p { margin: 0 0 12px; max-width: 74ch; }
+  .tau ul, .tau ol { margin: 0 0 14px; padding-left: 22px; max-width: 74ch; }
+  .tau li { margin-bottom: 5px; }
+  .tau a { color: var(--accent); }
+  .tau .eq { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 14px 0; font-size: 14px; line-height: 1.9; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; overflow-x: auto; }
+  .tau .eq .n { font-size: 11px; color: var(--ink-3); flex-shrink: 0; padding-top: 3px; }
+  .tau .eq .body { min-width: 0; }
+  .tau .eq .note { display:block; font-family: "IBM Plex Sans Thai", sans-serif; font-size: 13px; color: var(--ink-3); margin-top: 6px; line-height: 1.6; }
+  .tau .call { background: var(--wash); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; margin: 16px 0; font-size: 14.5px; }
+  .tau .call.warn { background: var(--wash-2); }
+  .tau .call .lbl { display: block; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; font-weight: 600; }
+  .tau .call.warn .lbl { color: var(--accent-2); }
+  .tau .call p:last-child { margin-bottom: 0; }
+  .tau .tw { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+  .tau table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 520px; }
+  .tau th, .tau td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tau thead th { background: var(--panel-2); font-family: "IBM Plex Sans", sans-serif; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+  .tau tbody tr:last-child td { border-bottom: none; }
+  .tau td.ru-cell { font-family: "IBM Plex Sans", sans-serif; }
+  .tau td.eq-cell { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .tau .lecs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 18px; }
+  .tau .lec { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px; color: var(--ink-2); }
+  .tau .lec b { color: var(--accent); font-weight: 600; }
+  .tau .lec.off { opacity: .55; }
+  .tau details.qa { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 7px; overflow: hidden; }
+  .tau details.qa summary { cursor: pointer; padding: 10px 14px; list-style: none; font-family: "IBM Plex Sans", sans-serif; font-size: 14px; font-weight: 500; }
+  .tau details.qa summary::-webkit-details-marker { display: none; }
+  .tau details.qa summary::before { content: "?"; color: var(--accent-2); font-family: "IBM Plex Mono", monospace; margin-right: 9px; font-weight: 600; }
+  .tau details.qa[open] summary { border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .tau details.qa .ans { padding: 11px 14px 13px 34px; font-family: "IBM Plex Sans", sans-serif; font-size: 14px; color: var(--ink-2); }
+  .tau details.qa .ans .m { font-family: "IBM Plex Mono", monospace; font-size: 13px; display: block; margin: 6px 0; color: var(--ink); overflow-x: auto; }
+  .tau details.qa:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tau .qa-group { margin-bottom: 26px; }
+  .tau .qa-group > .gh { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 22px 0 9px; }
+  .tau .prob { border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--panel); margin: 18px 0; overflow: hidden; }
+  .tau .prob > .ph { background: var(--panel-2); padding: 11px 16px; border-bottom: 1px solid var(--line); }
+  .tau .prob > .ph .pn { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); font-weight: 600; }
+  .tau .prob > .ph .pt { font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 15px; }
+  .tau .prob .pbody { padding: 14px 16px; }
+  .tau .prob .given { font-family: "IBM Plex Sans", sans-serif; font-size: 14px; color: var(--ink-2); margin-bottom: 10px; }
+  .tau .step { display: grid; grid-template-columns: 26px 1fr; gap: 12px; margin-bottom: 12px; }
+  .tau .step .sn { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--panel); background: var(--accent); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  .tau .step .sc { font-size: 14px; }
+  .tau .step .sc .m { font-family: "IBM Plex Mono", monospace; font-size: 13px; display: block; margin: 5px 0; color: var(--ink); overflow-x: auto; }
+  .tau .ansline { background: var(--wash); border-top: 1px solid var(--line); padding: 10px 16px; font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  .tau .gl { font-size: 13px; }
+  .tau .gl td:first-child { font-family: "IBM Plex Sans", sans-serif; font-weight: 500; white-space: nowrap; }
+  .tau .lit { display: grid; gap: 12px; margin-top: 14px; }
+  .tau .litem { display: grid; grid-template-columns: 30px 1fr; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; }
+  .tau .litem .ln { font-family: "IBM Plex Mono", monospace; color: var(--accent); font-size: 15px; font-weight: 600; }
+  .tau .litem .lt { font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 14.5px; }
+  .tau .litem .lm { font-size: 12.5px; color: var(--ink-3); margin: 2px 0 6px; font-family: "IBM Plex Sans", sans-serif; }
+  .tau .litem .ld { font-size: 13.5px; color: var(--ink-2); }
+  .tau .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) {
+  .tau .cols2 { grid-template-columns: 1fr; }
+}
+  .tau .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .tau .card h5 { margin: 0 0 8px; font-family: "IBM Plex Sans", sans-serif; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+  .tau .card ul { padding-left: 18px; margin: 0; font-size: 13.5px; }
+  /* ---------- ТАУ: рисунки, вырезанные из слайдов кафедры ---------- */
+  .tau .fignote { font-size: 13px; color: var(--ink-2); max-width: 74ch; margin: 16px 0 8px; }
+  .tau .ifigs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(224px, 1fr));
+    gap: 14px; margin: 14px 0 20px; align-items: start;
+  }
+  .tau .ifigs:has(> .ifig:only-child) { grid-template-columns: minmax(0, 460px); }
+  .tau .ifig {
+    margin: 0; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden; cursor: zoom-in;
+    transition: border-color .15s, transform .15s;
+  }
+  .tau .ifig:hover, .tau .ifig:focus-visible { border-color: var(--accent); transform: translateY(-1px); outline: none; }
+  .tau .ifig .fw {
+    background: #fff; min-height: 90px; display: flex; align-items: center; justify-content: center;
+    padding: 8px; border-bottom: 1px solid var(--line);
+  }
+  .tau .ifig img { width: 100%; height: auto; display: block; }
+  .tau .ifig figcaption {
+    padding: 8px 11px 10px; font-size: 12.3px; line-height: 1.5; color: var(--ink-2); background: var(--panel-2);
+  }
+  .tau .ifig figcaption b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .04em;
+    color: var(--accent-2); margin-right: 6px; text-transform: uppercase;
+  }
+  .tau .ifig figcaption span {
+    display: block; margin-top: 5px; font-family: "IBM Plex Sans Thai", sans-serif;
+    font-size: 12px; color: var(--ink-3);
+  }
+
+  /* сброс наследия базового .eq атласа внутри модуля ТАУ */
+  .tau .eq, .tau .eq .body, .tau .eq .note, .tau .eq .n { white-space: normal; }
+  .tau .eq .body { min-width: 0; flex: 1 1 auto; }
+
+  /* показания демонстраций ТАУ — обычный текстовый поток, а не флекс-элементы */
+  .tau .demo .readout { display: block; line-height: 1.9; }
+  .tau .demo .readout sub, .tau .demo .readout sup { font-size: 80%; }
+
+
+  /* шапка демонстраций ТАУ: у части моделей много кнопок — на узком экране переносим */
+  .tau .demo-head { flex-wrap: wrap; }
+  .tau .demo-head h4 { flex: 1 1 200px; min-width: 0; }
+  .tau .demo-head .spacer { flex: 1 1 0; }
+  .tau .demo-head button {
+    font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; font-weight: 500;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-2);
+  }
+  .tau .demo-head button:hover { border-color: var(--accent); color: var(--ink); }
+  .tau .demo-head button.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  /* показания моделей ТАУ идут текстовым потоком — разделяем позиции полем справа */
+  .tau .demo .readout > span { margin-right: 20px; }
+  .tau .demo .readout > span:last-child { margin-right: 0; }
+  /* в подписях ползунков ТАУ встречаются нижние индексы — они не должны рвать строку флексом */
+  .tau .demo .ctl label { display: block; }
+  /* ТАУ: карточки .cols2 с таблицами внутри — не дают grid-элементу растянуть страницу */
+  .tau .cols2 > .card { min-width: 0; }
+  .tau .card .tw { max-width: 100%; overflow-x: auto; }
+  .tau .card table { width: 100%; }  .tau .demo .ctl label b { float: right; margin-left: 10px; }
+  .tau .demo-head .spacer { flex: 1 1 0; }
+
+  /* ================= /ТАУ ================= */
   /* ленивая отрисовка тем: заглушка держит высоту, чтобы наблюдатель не открыл всё сразу */
   .tbody[data-lazy] { min-height: 72vh; }
   .tload {

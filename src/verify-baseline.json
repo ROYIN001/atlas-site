@@ -1,0 +1,56 @@
+{
+ "asu": {
+  "boxes": 21,
+  "demos": 25,
+  "figs": 53,
+  "sum_boxes": 4
+ },
+ "elob": {
+  "boxes": 32,
+  "demos": 86,
+  "figs": 241,
+  "sum_boxes": 4
+ },
+ "nadezh": {
+  "boxes": 24,
+  "demos": 76,
+  "figs": 118,
+  "sum_boxes": 4
+ },
+ "nav": {
+  "boxes": 18,
+  "demos": 20,
+  "figs": 0,
+  "sum_boxes": 4
+ },
+ "ppo": {
+  "boxes": 30,
+  "demos": 40,
+  "figs": 74,
+  "sum_boxes": 4
+ },
+ "suka": {
+  "boxes": 13,
+  "demos": 19,
+  "figs": 77,
+  "sum_boxes": 4
+ },
+ "surn": {
+  "boxes": 17,
+  "demos": 16,
+  "figs": 0,
+  "sum_boxes": 4
+ },
+ "teh_el": {
+  "boxes": 23,
+  "demos": 35,
+  "figs": 80,
+  "sum_boxes": 4
+ },
+ "toe": {
+  "boxes": 7,
+  "demos": 1,
+  "figs": 0,
+  "sum_boxes": 4
+ }
+}

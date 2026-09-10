@@ -6,11 +6,14 @@
 
 ต้องผ่านทุกข้อ: ทุกวิชาเปิดได้ · ไม่มี .tfail · canvas = [data-demo] · รูปทุกใบ
 naturalWidth > 0 · ค้นหาคำรัสเซียเจอ · ไม่มี page error
+· กล่อง/ช่องรูปในหน้า ต้องเท่ากับไฟล์ใน data/t (ของหายต้องรู้) · โครง figure มี .fw+img ครบ
+· จำนวนต่อวิชาต้องไม่ลดลงจาก src/verify-baseline.json — ตั้งใจเปลี่ยนจำนวน ให้รัน --update-baseline
 พึ่งแค่ playwright กับ stdlib · ห้ามเปิดด้วย file:// จึงเปิดเซิร์ฟเวอร์เองใน thread
 """
 import argparse
 import http.server
 import json
+import re
 import socket
 import sys
 import threading
@@ -22,6 +25,7 @@ sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)   # ให้เ�
 
 ROOT = Path(__file__).resolve().parent.parent
 QUERY = "Передаточная функция"   # คำค้นทดสอบ ควรเจอในหลายวิชา
+BASELINE = ROOT / "src" / "verify-baseline.json"
 BLOCKED_HOSTS = ("fonts.googleapis.com", "fonts.gstatic.com")
 
 
@@ -78,6 +82,7 @@ COUNTS = """() => {
     figs: v.querySelectorAll('figure.ifig[data-fig]').length,
     imgs_ok: imgs.filter(i => i.naturalWidth > 0).length,
     imgs_nosrc: imgs.filter(i => !i.getAttribute('src')).length,
+    fw_bad: [...v.querySelectorAll('figure.ifig[data-fig]')].filter(f => !f.querySelector('.fw img')).length,
   };
 }"""
 
@@ -178,7 +183,8 @@ def check_subject(page, base, sid, errors, timeout_ms):
         res["sum_tfail"] = cs["tfail"]
         res["tfail"] += cs["tfail"]
         sum_ok = (cs["boxes"] > 0 and cs["pending"] == 0 and cs["tfail"] == 0
-                  and cs["demos"] == cs["canvas"] and cs["figs"] == cs["imgs_ok"])
+                  and cs["demos"] == cs["canvas"] and cs["figs"] == cs["imgs_ok"]
+                  and cs.get("fw_bad", 0) == 0)
         set_mode(page, "full")   # คืนค่า localStorage เป็นฉบับเต็ม
 
     res["errors"] = len(errors) - n0
@@ -186,7 +192,7 @@ def check_subject(page, base, sid, errors, timeout_ms):
     res["ok"] = (
         res["boxes"] > 0 and res["pending"] == 0 and res["tfail"] == 0
         and res["demos"] == res["canvas"] and res["figs"] == res["imgs_ok"]
-        and res["errors"] == 0 and sum_ok
+        and res.get("fw_bad", 0) == 0 and res["errors"] == 0 and sum_ok
     )
     return res
 
@@ -220,6 +226,8 @@ def main():
     ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--timeout", type=int, default=90, help="วินาทีต่อการรอแต่ละขั้น")
     ap.add_argument("--verbose", action="store_true", help="พิมพ์เวลาแต่ละช่วงของทุกวิชา")
+    ap.add_argument("--update-baseline", action="store_true",
+                    help="บันทึกจำนวนของรอบนี้ลง src/verify-baseline.json — ใช้เมื่อตั้งใจเพิ่ม/ลดเนื้อหา")
     args = ap.parse_args()
     global VERBOSE
     VERBOSE = args.verbose
@@ -302,6 +310,8 @@ def main():
                     extra += f" pending={r['pending']}"
                 if r["imgs_nosrc"]:
                     extra += f" nosrc={r['imgs_nosrc']}"
+                if r.get("fw_bad"):
+                    extra += f" fw_bad={r['fw_bad']}"
                 print(f"{r['id']:8} {r['boxes']:>5} {sb:>12} {r['demos']:>3}/{r['canvas']:<4} "
                       f"{r['figs']:>3}/{r['imgs_ok']:<4} {r['tfail']:>5} {r['errors']:>3} {r['secs']:>6.1f}  {flag}{extra}")
 
@@ -316,15 +326,69 @@ def main():
     for e in errors:
         print("  ! " + e[:300])
 
+    # ---------- data/t ↔ DOM — ของหายต้องรู้ (กฎ «จำนวนต้องไม่ลดลง» ครึ่งแรก) ----------
+    def expected_from_files(sid):
+        full = summ = figs_full = figs_sum = 0
+        for f in (ROOT / "data" / "t").glob(f"{sid}__*.json"):
+            tid = f.stem.split("__", 1)[1]
+            n_fig = f.read_text(encoding="utf-8").count("data-fig=")
+            if re.fullmatch(r".+-s[1-4]", tid):
+                summ += 1; figs_sum += n_fig
+            else:
+                full += 1; figs_full += n_fig
+        return full, summ, figs_full, figs_sum
+
+    xfail = []
+    for r in results:
+        ef, es, gf, gs = expected_from_files(r["id"])
+        if ef + es == 0:
+            xfail.append(f"{r['id']}: ไม่มีไฟล์ใน data/t เลย"); continue
+        if r["boxes"] != ef:
+            xfail.append(f"{r['id']}: กล่องฉบับเต็ม {r['boxes']} ≠ ไฟล์หัวข้อ {ef} (หัวข้อไม่ได้ลงทะเบียนใน DEEP หรือหายจากหน้า)")
+        if r.get("sum_boxes") is not None and es and r["sum_boxes"] != es:
+            xfail.append(f"{r['id']}: กล่องโหมดสรุป {r['sum_boxes']} ≠ ไฟล์ summary {es}")
+        if r["figs"] != gf:
+            xfail.append(f"{r['id']}: ช่องรูปฉบับเต็ม {r['figs']} ≠ data-fig ในไฟล์หัวข้อ {gf}")
+        srm = r.get("sum")
+        if srm and srm["figs"] != gs:
+            xfail.append(f"{r['id']}: ช่องรูปโหมดสรุป {srm['figs']} ≠ data-fig ในไฟล์ summary {gs}")
+
+    # ---------- baseline — จำนวนต้องไม่ลดลงระหว่าง commit (ครึ่งหลัง) ----------
+    base, bfail = {}, []
+    if BASELINE.exists():
+        try:
+            base = json.loads(BASELINE.read_text(encoding="utf-8"))
+        except Exception as e:
+            bfail.append(f"baseline: อ่าน {BASELINE.name} ไม่ได้: {e}")
+    if not args.update_baseline:      # --update-baseline = ตั้งใจเปลี่ยนจำนวน จึงไม่เทียบ
+        for r in results:
+            b = base.get(r["id"]) or {}
+            for k in ("boxes", "demos", "figs", "sum_boxes"):
+                v, bv = r.get(k), b.get(k)
+                if v is not None and bv is not None and v < bv:
+                    bfail.append(f"{r['id']}: {k} ลดลงจาก baseline {bv} → {v} (ตั้งใจ? รันด้วย --update-baseline)")
+    for m in xfail + bfail:
+        print("  ✗ " + m)
+
     tot = lambda k: sum(r[k] for r in results)
     ok = (
         len(results) == len(subjects) and all(r["ok"] for r in results)
-        and hits > 0 and len(errors) == 0
+        and hits > 0 and len(errors) == 0 and not xfail and not bfail
     )
     print(f"SUMMARY subjects={len(results)} boxes={tot('boxes')} tfail={tot('tfail')} "
           f"demos={tot('demos')} canvas={tot('canvas')} figs={tot('figs')} imgs_ok={tot('imgs_ok')} "
           f"errors={len(errors)} search_hits={hits} home_ready_s={home_ready:.2f} {'PASS' if ok else 'FAIL'}")
     print(f"total {time.perf_counter() - t_all:.1f}s")
+    bad_ids = {m.split(":", 1)[0] for m in xfail}
+    if args.update_baseline:
+        for r in results:
+            if r["ok"] and r["id"] not in bad_ids:
+                base[r["id"]] = {"boxes": r["boxes"], "demos": r["demos"],
+                                 "figs": r["figs"], "sum_boxes": r.get("sum_boxes")}
+        BASELINE.write_text(json.dumps(base, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"baseline บันทึกแล้ว → src/{BASELINE.name} ({len(base)} วิชา)")
+    elif not BASELINE.exists():
+        print("หมายเหตุ: ยังไม่มี src/verify-baseline.json — รันครั้งแรกด้วย --update-baseline เพื่อเปิดเกราะ «จำนวนต้องไม่ลดลง»")
     return 0 if ok else 1
 
 

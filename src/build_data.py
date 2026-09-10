@@ -29,8 +29,9 @@ for f in sorted(glob.glob(str(DATA / "t" / "*.json"))):
     html = json.load(open(f, encoding="utf-8")).get("html", "")
     bysubj[sid].append({"id": tid, "hay": plain(html).lower()})
 
-shutil.rmtree(DATA / "ix", ignore_errors=True)
-(DATA / "ix").mkdir(parents=True)
+(DATA / "ix").mkdir(parents=True, exist_ok=True)
+for _f in (DATA / "ix").glob("*.json"):
+    _f.unlink()
 
 manifest = {}
 for sid, rows in sorted(bysubj.items()):
