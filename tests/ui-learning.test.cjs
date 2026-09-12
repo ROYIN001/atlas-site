@@ -62,6 +62,7 @@ test('late full-text index completion refreshes only an active search and invali
       renderSearch: () => { refreshed++; }
     };
     const load = vm.runInNewContext(
+      section('const DATA_VERSION =', 'const DBCACHE =') +
       section('async function loadIndex(', 'window.addEventListener("load"') + '\nloadIndex;', sandbox
     );
     await load();

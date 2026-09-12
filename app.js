@@ -928,13 +928,15 @@ function FIGS_LOAD() {
    เนื้อหาของแต่ละหัวข้ออยู่ในไฟล์ JSON ข้าง ๆ หน้านี้ และโหลดเมื่อผู้อ่าน
    เลื่อนไปถึงหัวข้อนั้นจริง ๆ ส่วนรูปเป็นไฟล์ .webp แยกที่เบราว์เซอร์
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
+// Keep lesson and search data aligned with this application release.
+const DATA_VERSION = "20260912-audit1";
 const DBCACHE = new Map();
 let DB_FAILED = false;
 
 function dbGet(coll, name) {
   const key = coll + "/" + name;
   if (DBCACHE.has(key)) return DBCACHE.get(key);
-  const p = fetch("data/" + coll + "/" + name + ".json")
+  const p = fetch("data/" + coll + "/" + name + ".json?v=" + DATA_VERSION)
     .then(r => r.ok ? r.json() : null)
     .catch(() => { DB_FAILED = true; return null; });
   DBCACHE.set(key, p);
@@ -49353,7 +49355,7 @@ let IX_LOADED = false;
 async function loadIndex() {
   if (IX_LOADED) return;
   IX_LOADED = true;
-  const man = await fetch("data/manifest.json").then(r => r.ok ? r.json() : null).catch(() => null);
+  const man = await fetch("data/manifest.json?v=" + DATA_VERSION).then(r => r.ok ? r.json() : null).catch(() => null);
   const subs = (man && man.subjects) || {};
   await Promise.all(Object.keys(subs).map(async sid => {
     const d = await dbGet("ix", sid);
