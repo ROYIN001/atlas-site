@@ -629,7 +629,13 @@
   .opt.right { background: var(--wash); border-color: var(--ok); color: var(--ink); }
   .opt.wrong { border-color: var(--crit); color: var(--crit); }
   .opt:disabled { cursor: default; }
-  .quiz-foot { margin-top: 18px; display: flex; align-items: center; gap: 12px; min-height: 34px; }
+  .quiz-foot { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 34px; }
+  .quiz-explanation { color: var(--ink-2); line-height: 1.7; overflow-wrap: anywhere; }
+  .demo-description { margin: 12px 16px; color: var(--ink-2); line-height: 1.7; }
+  .demo-description summary { cursor: pointer; font-weight: 600; }
+  .demo-description > div { overflow-x: auto; }
+  .demo-description table { width: 100%; border-collapse: collapse; }
+  .demo-description th, .demo-description td { padding: 6px; text-align: start; border-bottom: 1px solid var(--line); }
   .verdict { font-size: 14px; }
   .verdict.ok { color: var(--ok); }
   .verdict.no { color: var(--crit); }
@@ -642,12 +648,15 @@
     padding: 11px 14px; cursor: pointer;
   }
   .res-item:hover { border-color: var(--accent); }
+  .res-item > .k, .res-item > .t, .res-item > .s {
+    display: block; overflow-wrap: anywhere;
+  }
   .res-item .k {
     font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
     letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
   }
   .res-item .t { font-weight: 600; margin-top: 2px; }
-  .res-item .s { color: var(--ink-2); font-size: 13px; }
+  .res-item .s { color: var(--ink-2); font-size: 13px; margin-top: 4px; line-height: 1.5; }
   .empty { color: var(--ink-3); padding: 30px 0; }
   .hidden { display: none !important; }
   .tload { color: var(--ink-3); font-size: 13px; padding: 18px 0; }
@@ -2032,4 +2041,3 @@
   .eola .card .tw { max-width: 100%; overflow-x: auto; }
   .eola .card table { width: 100%; }  .eola .demo .ctl label b { float: right; margin-left: 10px; }
   .eola .demo-head .spacer { flex: 1 1 0; }
-
