@@ -1079,6 +1079,7 @@ class Plot {
 const ticks = (a, b, n) => { const out = []; for (let i = 0; i <= n; i++) out.push(a + (b - a) * i / n); return out; };
 
 /* ---- demo scaffold ---- */
+let DEMO_DESCRIPTION_ID = 0;
 function buildDemo(host, spec) {
   const box = document.createElement("div");
   box.className = "demo";
@@ -1093,6 +1094,17 @@ function buildDemo(host, spec) {
   const cv = box.querySelector("canvas");
   cv.setAttribute("role", "img");
   cv.setAttribute("aria-label", (spec.label ? spec.label + " — " : "") + spec.title);
+  let descriptionBody = null;
+  if (spec.describe) {
+    const description = document.createElement("details");
+    description.className = "demo-description";
+    description.id = "demo-description-" + (++DEMO_DESCRIPTION_ID);
+    description.innerHTML = '<summary>คำอธิบายกราฟและตารางค่า (ผู้เรียบเรียง)</summary><div></div>';
+    descriptionBody = description.querySelector("div");
+    box.appendChild(description);
+    cv.setAttribute("aria-describedby", description.id);
+    cv.textContent = "อ่านคำอธิบายและตารางค่าของกราฟได้ในส่วนคำอธิบายด้านล่างแบบจำลอง";
+  }
   const ctlBox = box.querySelector(".demo-ctl");
   const readout = box.querySelector(".readout");
   const state = {};
@@ -1127,6 +1139,7 @@ function buildDemo(host, spec) {
   function draw() {
     const { ctx, w, h } = fitCanvas(cv, spec.ratio || 0.52);
     spec.draw(ctx, w, h, state, readout, rec.t || 0);
+    if (descriptionBody) descriptionBody.innerHTML = spec.describe(state);
   }
   rec.draw = draw;
   rec.ro = new ResizeObserver(() => draw());
@@ -1148,33 +1161,77 @@ function buildDemo(host, spec) {
 }
 
 /* ---- 1. переходный процесс ---- */
+function stepResponseData(T, xi, maxTime = Infinity) {
+  if (!Number.isFinite(T) || T <= 0 || !Number.isFinite(xi) || xi < 0 || !(maxTime > 0)) {
+    throw new RangeError("Step response requires T > 0, xi >= 0 and maxTime > 0");
+  }
+  // Unit-step response of 1/(T²p² + 2ξTp + 1), with zero initial conditions.
+  // Solve in u = t/T: the graph sampling interval must not determine the metrics.
+  const beta = xi < 1 ? Math.sqrt((1 - xi) * (1 + xi)) : 0;
+  const slow = xi > 1 ? 1 / (xi + Math.sqrt((xi - 1) * (xi + 1))) : 1;
+  const gap = xi > 1 ? 1 / slow - slow : 0;
+  function error(u) {
+    if (xi < 1) return Math.exp(-xi * u) * (Math.cos(beta * u) + xi * Math.sin(beta * u) / beta);
+    if (xi === 1) return (1 + u) * Math.exp(-u);
+    // expm1 avoids subtracting nearly equal exponentials near critical damping.
+    return Math.exp(-slow * u) * (1 + slow * -Math.expm1(-gap * u) / gap);
+  }
+  function bisect(fn, lo, hi) {
+    if (!(fn(lo) >= 0 && fn(hi) <= 0)) return null;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (fn(mid) > 0) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+  const band = 0.05;
+  const peakU = xi < 1 ? Math.PI / beta : null;
+  const over = xi < 1 ? 100 * Math.exp(-xi * peakU) : 0;
+  let settledU = null;
+  if (xi > 0 && xi < 1) {
+    // Error extrema are at nπ/β, with magnitude exp(-ξnπ/β). Find the
+    // last extremum strictly outside the band, then its final band crossing.
+    // This rules out a later excursion even when it lies beyond the graph.
+    let n = Math.floor(Math.log(1 / band) * beta / (xi * Math.PI));
+    if (n > 0 && Math.exp(-xi * n * peakU) <= band) n--;
+    const lo = n * peakU;
+    const hi = (n * Math.PI + Math.PI - Math.acos(xi)) / beta;
+    settledU = bisect(u => Math.abs(error(u)) - band, lo, hi);
+  } else if (xi >= 1) {
+    let hi = 6;
+    while (error(hi) > band) hi *= 2;
+    settledU = bisect(u => error(u) - band, 0, hi);
+  }
+  // No fixed 40-second ceiling: the slow overdamped pole and light damping
+  // can both require a much longer horizon. ξ = 0 never settles.
+  const naturalHorizon = settledU === null ? 6 * Math.PI : Math.max(6, 1.2 * settledU);
+  const horizon = Math.min(maxTime / T, Math.max(naturalHorizon, over > 0.5 ? 1.05 * peakU : 0));
+  const firstRiseEnd = peakU === null ? horizon : Math.min(horizon, peakU);
+  const u10 = bisect(u => error(u) - 0.9, 0, firstRiseEnd);
+  const u90 = bisect(u => error(u) - 0.1, 0, firstRiseEnd);
+  const t10 = u10 === null ? null : u10 * T;
+  const t90 = u90 === null ? null : u90 * T;
+  const ts = settledU !== null && settledU <= horizon ? settledU * T : null;
+  const pts = Array.from({ length: 901 }, (_, i) => {
+    const u = horizon * i / 900;
+    return [u * T, 1 - error(u)];
+  });
+  return { pts, tmax: horizon * T, peak: 1 + over / 100, tp: peakU === null ? null : peakU * T,
+    ts, t10, t90, rise: t10 === null || t90 === null ? null : t90 - t10, over };
+}
+
 function demoStep(host) {
   buildDemo(host, {
     label: "Переходный процесс",
     title: "ผลตอบสนองต่อสัญญาณขั้นบันได — ผลของ ξ และ T",
-    legend: '<span><i style="background:var(--accent)"></i>h(t)</span><span><i style="background:var(--accent-2)"></i>ค่าที่สั่ง</span><span><i style="background:var(--line-2)"></i>แถบ ±5%</span>',
+    legend: '<span><i style="background:var(--accent)"></i>h(t)</span><span><i style="background:var(--accent-2)"></i>ค่าที่สั่ง</span><span><i style="background:var(--line-2)"></i>แถบ ±5%</span><span>แบบจำลองผู้เรียบเรียง: W(p) = 1/(T²p² + 2ξTp + 1) · เงื่อนไขต้นเป็นศูนย์</span>',
     controls: [
       { id: "xi", label: "ξ — อัตราส่วนการหน่วง", min: 0.05, max: 2, step: 0.01, value: 0.3, fmt: v => v.toFixed(2) },
       { id: "T", label: "T — ค่าคงตัวเวลา, s", min: 0.1, max: 2, step: 0.05, value: 0.6, fmt: v => v.toFixed(2) }
     ],
     draw(ctx, w, h, s, readout) {
       const T = s.T, xi = s.xi;
-      const tmax = Math.min(40, Math.max(6 * T, 4.2 * T / Math.max(xi, .08)));
-      const N = 900, dt = tmax / N;
-      let y = 0, v = 0; const pts = [[0, 0]];
-      for (let i = 1; i <= N; i++) {
-        const f = (y, v) => [v, (1 - y - 2 * xi * T * v) / (T * T)];
-        const k1 = f(y, v), k2 = f(y + dt / 2 * k1[0], v + dt / 2 * k1[1]),
-              k3 = f(y + dt / 2 * k2[0], v + dt / 2 * k2[1]), k4 = f(y + dt * k3[0], v + dt * k3[1]);
-        y += dt / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
-        v += dt / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
-        pts.push([i * dt, y]);
-      }
-      let peak = 0, tp = 0, ts = 0, t10 = 0, t90 = 0;
-      pts.forEach(([t, val]) => { if (val > peak) { peak = val; tp = t; } });
-      for (let i = pts.length - 1; i >= 0; i--) { if (Math.abs(pts[i][1] - 1) > 0.05) { ts = pts[Math.min(i + 1, pts.length - 1)][0]; break; } }
-      for (const [t, val] of pts) { if (!t10 && val >= 0.1) t10 = t; if (!t90 && val >= 0.9) { t90 = t; break; } }
-      const over = Math.max(0, (peak - 1) * 100);
+      const { pts, tmax, peak, tp, ts, rise, over } = stepResponseData(T, xi);
       const ymax = Math.max(1.6, peak * 1.15);
 
       const p = new Plot(ctx, 46, 14, w - 62, h - 46, 0, tmax, 0, ymax);
@@ -1185,21 +1242,24 @@ function demoStep(host) {
       ctx.restore();
       p.line([[0, 1], [tmax, 1]], CV("--accent-2"), 1.2, [4, 4]);
       p.clip(() => p.line(pts, CV("--accent"), 2));
-      if (over > 0.5) {
+      if (over > 0.5 && tp !== null && tp <= tmax) {
         ctx.save(); ctx.strokeStyle = CV("--accent-2"); ctx.setLineDash([2, 3]);
         ctx.beginPath(); ctx.moveTo(p.X(tp), p.Y(peak)); ctx.lineTo(p.X(tp), p.Y(0)); ctx.stroke();
         ctx.fillStyle = CV("--accent-2"); ctx.beginPath(); ctx.arc(p.X(tp), p.Y(peak), 3.2, 0, 7); ctx.fill();
         ctx.restore();
       }
-      ctx.save(); ctx.strokeStyle = CV("--ink-3"); ctx.setLineDash([2, 3]);
-      ctx.beginPath(); ctx.moveTo(p.X(ts), p.y); ctx.lineTo(p.X(ts), p.y + p.h); ctx.stroke(); ctx.restore();
+      if (ts !== null) {
+        ctx.save(); ctx.strokeStyle = CV("--ink-3"); ctx.setLineDash([2, 3]);
+        ctx.beginPath(); ctx.moveTo(p.X(ts), p.y); ctx.lineTo(p.X(ts), p.y + p.h); ctx.stroke(); ctx.restore();
+      }
 
       readout.innerHTML =
         'σ = <b class="' + (over > 25 ? "bad" : over < 8 ? "good" : "") + '">' + over.toFixed(1) + ' %</b>' +
-        '<span>t_р = <b>' + ts.toFixed(2) + ' s</b></span>' +
-        '<span>t_нар = <b>' + (t90 - t10).toFixed(2) + ' s</b></span>' +
+        '<span>t_р (±5%) = <b>' + (ts === null ? (xi === 0 ? 'ไม่เข้าสู่ภาวะคงตัว' : 'ยังไม่ถึงในช่วงกราฟ') : ts.toFixed(2) + ' s') + '</b></span>' +
+        '<span>t_нар (10–90%) = <b>' + (rise === null ? 'ยังไม่ถึงในช่วงกราฟ' : rise.toFixed(2) + ' s') + '</b></span>' +
         '<span>ω₀ = <b>' + (1 / T).toFixed(2) + ' rad/s</b></span>' +
-        '<span>' + (xi < 1 ? "колебательный" : xi === 1 ? "критический" : "апериодический") + '</span>';
+        '<span>' + (xi === 0 ? "สั่นโดยไม่มีการหน่วง" : xi < 1 ? "สั่นแบบมีการหน่วง (колебательный)" : xi === 1 ? "หน่วงวิกฤต (критический)" : "ไม่สั่น (апериодический)") + '</span>' +
+        '<span>t_р: เข้าสู่และคงอยู่ในแถบ ±5% · t_нар: เวลาจากการผ่าน 10% ถึง 90% ครั้งแรก</span>';
     }
   });
 }
@@ -1570,9 +1630,36 @@ function demoGeo(host) {
 
 
 /* ---- 7. ТОЭ: последовательный RLC-контур ---- */
+function rlcDescription(s) {
+  const U = 100, R = s.R, L = s.L / 1000, C = s.C / 1e6;
+  const f0 = 1 / (2 * Math.PI * Math.sqrt(L * C));
+  const at = f => {
+    const omega = 2 * Math.PI * f;
+    const x = omega * L - 1 / (omega * C);
+    const z = Math.hypot(R, x), i = U / z;
+    return { x, z, i, phase: Math.atan2(x, R) * 180 / Math.PI,
+      ur: i * R, ul: i * omega * L, uc: i / (omega * C) };
+  };
+  const current = at(s.f);
+  const phaseText = Math.abs(current.x) < 1e-9 ? "กระแสกับแรงดันรวมมีเฟสตรงกัน" :
+    current.x > 0 ? "กระแสล้าหลังแรงดันรวม เพราะรีแอกแตนซ์สุทธิเป็นแบบเหนี่ยวนำ" :
+      "กระแสนำหน้าแรงดันรวม เพราะรีแอกแตนซ์สุทธิเป็นแบบเก็บประจุ";
+  const rows = [["ขอบกราฟซ้าย", 20], ["ค่าที่เลือก", s.f], ["เรโซแนนซ์", f0], ["ขอบกราฟขวา", 900]];
+  return '<p>แบบจำลองวงจร RLC อนุกรมอุดมคติในสภาวะไซน์คงตัว แรงดัน 100 V และค่ากระแส/แรงดันในตารางเป็นค่า RMS</p>' +
+    '<p>กราฟขวาแสดงกระแสเทียบความถี่: กระแสเพิ่มจนสูงสุดที่ f₀ = ' + f0.toFixed(2) +
+    ' Hz โดย I สูงสุด = U/R = ' + (U / R).toFixed(3) + ' A แล้วลดลงเมื่อความถี่เพิ่มต่อไป ' +
+    (f0 < 20 || f0 > 900 ? 'ยอดเรโซแนนซ์อยู่นอกช่วงกราฟ 20–900 Hz ที่แสดงอยู่' : 'ยอดเรโซแนนซ์อยู่ในช่วงกราฟ 20–900 Hz') + '</p>' +
+    '<p>แผนภาพเฟสเซอร์ซ้ายใช้กระแสเป็นแกนอ้างอิง: U_R อยู่ในเฟสเดียวกับกระแส, U_L นำ 90° และ U_C ล้าหลัง 90° ' +
+    'แรงดันรวมเป็นผลบวกเวกเตอร์ U_R + j(U_L − U_C) ที่ความถี่ที่เลือก ' + phaseText + '</p>' +
+    '<table><caption>ค่าคำนวณจากพารามิเตอร์ปัจจุบัน</caption><thead><tr><th scope="col">จุด</th><th scope="col">f (Hz)</th><th scope="col">Z (Ω)</th><th scope="col">I (A)</th><th scope="col">φ (°)</th></tr></thead><tbody>' +
+    rows.map(([label, f]) => { const v = at(f); return '<tr><th scope="row">' + label + '</th><td>' + f.toFixed(2) + '</td><td>' + v.z.toFixed(3) + '</td><td>' + v.i.toFixed(3) + '</td><td>' + v.phase.toFixed(2) + '</td></tr>'; }).join("") +
+    '</tbody></table><p>ที่ความถี่ที่เลือก: U_R = ' + current.ur.toFixed(3) + ' V, U_L = ' + current.ul.toFixed(3) +
+    ' V, U_C = ' + current.uc.toFixed(3) + ' V; φ คือมุมแรงดันรวมเทียบกับกระแส</p>';
+}
 function demoRlc(host) {
   buildDemo(host, {
     label: "ТОЭ · резонанс напряжений",
+    describe: rlcDescription,
     title: "วงจร RLC อนุกรม — เวกเตอร์ไดอะแกรมและเส้นโค้งเรโซแนนซ์",
     ratio: 0.5,
     legend: '<span><i style="background:var(--accent)"></i>İ แกนอ้างอิง</span><span><i style="background:var(--ink)"></i>Ù_R</span><span><i style="background:var(--ok)"></i>Ù_L, Ù_C</span><span><i style="background:var(--accent-2)"></i>Ù รวม</span><span>U = 100 V คงที่</span>',
@@ -48725,7 +48812,7 @@ const statusOf = s => {
   if (a.includes(PROGRAM.current)) return PROGRAM.onBreak ? "next" : "now";
   return "next";
 };
-const STATUS_TH = { done: "เรียนผ่านแล้ว", now: "กำลังเรียน", next: "ภาคเรียนหน้า" };
+const STATUS_TH = { done: "ภาคเรียนที่ผ่านมา (ตามแผน)", now: "ภาคเรียนปัจจุบัน (ตามแผน)", next: "ภาคเรียนที่ยังไม่ถึง (ตามแผน)" };
 const yearOf = s => YEARS.find(y => y.sems.includes(semFirst(s))) || YEARS[YEARS.length - 1];
 const runningIn = n => SUBJECTS.filter(s => semsOf(s).includes(n));
 const semZe = n => runningIn(n).reduce((a, s) => a + s.ze / Math.max(1, semsOf(s).length), 0);
@@ -48949,7 +49036,8 @@ function renderSubject() {
     '<h1 class="page-title">' + (ICONS[s.id] ? '<span class="ticon">' + ICONS[s.id] + '</span>' : '') + s.ru + '</h1>' +
     '<div class="page-title-th">' + s.th + ' · <span class="m">' + fmtZe(s.ze) + ' з.е. ≈ ' + Math.round(s.ze * PROGRAM.zeHour) + ' ак. ч.</span></div>' +
     '<p class="lede">' + (deep ? deep.lede : s.desc) + '</p>' +
-    '<div style="margin-top:16px"><span class="track" style="width:180px;display:inline-block;vertical-align:middle"><span class="subj-bar-active" style="width:' + pct(subjKeys(s)) + '%"></span></span> <span class="m" style="font-size:11px;color:var(--ink-3)">ทบทวนแล้ว ' + pct(subjKeys(s)) + '%</span></div>' +
+    '<div style="margin-top:16px"><span class="track" style="width:180px;display:inline-block;vertical-align:middle"><span class="subj-bar-active" style="width:' + pct(subjKeys(s)) + '%"></span></span> <span class="m" style="font-size:11px;color:var(--ink-3)">ทำเครื่องหมายทบทวนแล้ว ' + pct(subjKeys(s)) + '%</span></div>' +
+    '<p class="m">สถานะภาคเรียนอิงแผนการเรียน ส่วนเปอร์เซ็นต์อิงการทำเครื่องหมายของคุณในเครื่องนี้ ไม่ใช่ผลสอบหรือการประเมินความเข้าใจ</p>' +
     '</div>';
 
   if (deep) {
@@ -49272,6 +49360,8 @@ async function loadIndex() {
     (d && d.rows || []).forEach(r => { IXHAY[sid + "__" + r.id] = r.hay; });
   }));
   INDEX.length = 0; INDEX_BUILT = false;
+  // Refresh an early search once full-text content is available.
+  if (state.v === "search") renderSearch();
 }
 window.addEventListener("load", () => setTimeout(loadIndex, 1200));
 function buildIndex() {
@@ -49288,12 +49378,22 @@ function buildIndex() {
     INDEX.push({ kind: "ศัพท์ · " + m.th, title: t.ru, sub: t.th + " — " + t.note, hay: (t.ru + " " + (t.abbr || "") + " " + t.th + " " + t.note).toLowerCase(), go: { v: "glossary" } });
   }));
 }
+function searchAliases(query) {
+  const q = query.trim().toLowerCase();
+  const aliases = ["kalman", "калман", "кальман", "คาลมาน"];
+  const found = aliases.find(a => q.includes(a));
+  return found ? [...new Set(aliases.map(a => q.replaceAll(found, a)))] : [q];
+}
+function escapeText(value) {
+  return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 function renderSearch() {
   buildIndex();
   const q = state.q;
-  const hits = INDEX.filter(x => x.hay.includes(q)).slice(0, 60);
+  const queries = searchAliases(q);
+  const hits = INDEX.filter(x => queries.some(term => x.hay.includes(term))).slice(0, 60);
   let h = '<div class="wrap"><div class="page-head"><p class="eyebrow">Поиск</p>' +
-    '<h1 class="page-title">ผลการค้นหา “' + q + '”</h1>' +
+    '<h1 class="page-title">ผลการค้นหา “' + escapeText(q) + '”</h1>' +
     '<div class="page-title-th">พบ ' + hits.length + ' รายการ' + (hits.length === 60 ? "+ (แสดง 60 แรก)" : "") + '</div></div><div class="res">';
   if (!hits.length) h += '<p class="empty">ไม่พบ ลองพิมพ์บางส่วนของคำรัสเซีย เช่น «устойч» หรือคำไทย เช่น «เสถียร»</p>';
   hits.forEach((x, i) => {
@@ -49373,7 +49473,7 @@ function renderFlash() {
 }
 
 /* ---- quiz ---- */
-const POOL = () => MODULES.flatMap(m => m.terms.map(t => ({ ru: t.ru, th: t.th, mod: m.th })));
+const POOL = () => MODULES.flatMap(m => m.terms.map(t => ({ ru: t.ru, th: t.th, mod: m.th, note: t.note || "" })));
 function renderQuiz() {
   const pool = POOL();
   let round = [], idx = 0, score = 0, streak = 0, best = 0;
@@ -49426,6 +49526,24 @@ function renderQuiz() {
       if (ok) { score++; streak++; best = Math.max(best, streak); } else streak = 0;
       const foot = box.querySelector(".quiz-foot");
       foot.innerHTML = '<span class="verdict ' + (ok ? "ok" : "no") + '">' + (ok ? "ถูกต้อง" : "คำตอบคือ: " + it.q.th) + '</span>';
+      const explanation = document.createElement("div");
+      explanation.className = "quiz-explanation";
+      const meaning = document.createElement("p");
+      meaning.textContent = it.q.ru + " — " + it.q.th + (it.q.note ? ": " + it.q.note : "");
+      explanation.appendChild(meaning);
+      if (!ok) {
+        const contrast = document.createElement("p");
+        contrast.textContent = "ตัวเลือกที่คุณตอบ «" + chosen.th + "» ตรงกับ «" + chosen.ru + "»" + (chosen.note ? ": " + chosen.note : "") + " — ไม่ใช่ความหมายของคำที่ถาม";
+        explanation.appendChild(contrast);
+      }
+      box.insertBefore(explanation, foot);
+      const review = document.createElement("button");
+      review.textContent = "ค้นคำนี้ในบทเรียน (ออกจากควิซ)";
+      review.addEventListener("click", () => {
+        searchEl.value = it.q.ru;
+        go({ v: "search", q: it.q.ru.toLowerCase() });
+      });
+      foot.appendChild(review);
       const nxt = document.createElement("button");
       nxt.textContent = idx === round.length - 1 ? "ดูผล" : "ข้อถัดไป";
       nxt.addEventListener("click", () => { idx++; draw(); });
@@ -49495,4 +49613,3 @@ window.addEventListener("hashchange", () => {
   const sub = m && ALL_SUBJ.find(x => x.id === m[1]);
   if (sub && !inOtherVol(sub.id)) go({ v: "subject", id: sub.id });
 });
-
