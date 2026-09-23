@@ -19,8 +19,8 @@
  },
  "nav": {
   "boxes": 18,
-  "demos": 20,
-  "figs": 0,
+  "demos": 25,
+  "figs": 10,
   "sum_boxes": 4
  },
  "ppo": {
@@ -51,6 +51,18 @@
   "boxes": 7,
   "demos": 1,
   "figs": 0,
+  "sum_boxes": 4
+ },
+ "tau": {
+  "boxes": 13,
+  "demos": 33,
+  "figs": 95,
+  "sum_boxes": 4
+ },
+ "vhist": {
+  "boxes": 19,
+  "demos": 76,
+  "figs": 90,
   "sum_boxes": 4
  }
 }

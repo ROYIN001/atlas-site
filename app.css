@@ -2041,3 +2041,1207 @@
   .eola .card .tw { max-width: 100%; overflow-x: auto; }
   .eola .card table { width: 100%; }  .eola .demo .ctl label b { float: right; margin-left: 10px; }
   .eola .demo-head .spacer { flex: 1 1 0; }
+/* ===== ВИ CSS BEGIN (namespace .vhist + .vhm + .vhq/.vhx/.vhr) ===== */
+  /* ================= ВИ — Военная история (модуль дисциплины 9, namespace .vhist) · база скопирована с .eola ================= */
+  .vhist .ru, .vhist .ru-cell { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  .vhist code, .vhist .eq, .vhist .mono, .vhist .eq-cell { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .vhist .sec-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+  .vhist h3 { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 18px; font-weight: 600; margin: 34px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .vhist h4 { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 15px; font-weight: 600; margin: 22px 0 8px; color: var(--accent); }
+  .vhist p { margin: 0 0 12px; max-width: 74ch; }
+  .vhist ul, .vhist ol { margin: 0 0 14px; padding-left: 22px; max-width: 74ch; }
+  .vhist li { margin-bottom: 5px; }
+  .vhist a { color: var(--accent); }
+  .vhist .eq { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 14px 0; font-size: 14px; line-height: 1.9; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; overflow-x: auto; }
+  .vhist .eq .n { font-size: 11px; color: var(--ink-3); flex-shrink: 0; padding-top: 3px; }
+  .vhist .eq .body { min-width: 0; }
+  .vhist .eq .note { display:block; font-family: "IBM Plex Sans Thai", sans-serif; font-size: 13px; color: var(--ink-3); margin-top: 6px; line-height: 1.6; }
+  .vhist .call { background: var(--wash); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; margin: 16px 0; font-size: 14.5px; }
+  .vhist .call.warn { background: var(--wash-2); }
+  .vhist .call .lbl { display: block; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; font-weight: 600; }
+  .vhist .call.warn .lbl { color: var(--accent-2); }
+  .vhist .call p:last-child { margin-bottom: 0; }
+  .vhist .tw { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+  .vhist table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 520px; }
+  .vhist th, .vhist td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .vhist thead th { background: var(--panel-2); font-family: "IBM Plex Sans", sans-serif; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+  .vhist tbody tr:last-child td { border-bottom: none; }
+  .vhist td.ru-cell { font-family: "IBM Plex Sans", sans-serif; }
+  .vhist td.eq-cell { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .vhist .lecs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 18px; }
+  .vhist .lec { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px; color: var(--ink-2); }
+  .vhist .lec b { color: var(--accent); font-weight: 600; }
+  .vhist .lec.off { opacity: .55; }
+  .vhist details.qa { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-bottom: 7px; overflow: hidden; }
+  .vhist details.qa summary { cursor: pointer; padding: 10px 14px; list-style: none; font-family: "IBM Plex Sans", sans-serif; font-size: 14px; font-weight: 500; }
+  .vhist details.qa summary::-webkit-details-marker { display: none; }
+  .vhist details.qa summary::before { content: "?"; color: var(--accent-2); font-family: "IBM Plex Mono", monospace; margin-right: 9px; font-weight: 600; }
+  .vhist details.qa[open] summary { border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .vhist details.qa .ans { padding: 11px 14px 13px 34px; font-family: "IBM Plex Sans", sans-serif; font-size: 14px; color: var(--ink-2); }
+  .vhist details.qa .ans .m { font-family: "IBM Plex Mono", monospace; font-size: 13px; display: block; margin: 6px 0; color: var(--ink); overflow-x: auto; }
+  .vhist details.qa:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .vhist .qa-group { margin-bottom: 26px; }
+  .vhist .qa-group > .gh { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 22px 0 9px; }
+  .vhist .prob { border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--panel); margin: 18px 0; overflow: hidden; }
+  .vhist .prob > .ph { background: var(--panel-2); padding: 11px 16px; border-bottom: 1px solid var(--line); }
+  .vhist .prob > .ph .pn { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); font-weight: 600; }
+  .vhist .prob > .ph .pt { font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 15px; }
+  .vhist .prob .pbody { padding: 14px 16px; }
+  .vhist .prob .given { font-family: "IBM Plex Sans", sans-serif; font-size: 14px; color: var(--ink-2); margin-bottom: 10px; }
+  .vhist .step { display: grid; grid-template-columns: 26px 1fr; gap: 12px; margin-bottom: 12px; }
+  .vhist .step .sn { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--panel); background: var(--accent); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  .vhist .step .sc { font-size: 14px; }
+  .vhist .step .sc .m { font-family: "IBM Plex Mono", monospace; font-size: 13px; display: block; margin: 5px 0; color: var(--ink); overflow-x: auto; }
+  .vhist .ansline { background: var(--wash); border-top: 1px solid var(--line); padding: 10px 16px; font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  .vhist .gl { font-size: 13px; }
+  .vhist .gl td:first-child { font-family: "IBM Plex Sans", sans-serif; font-weight: 500; white-space: nowrap; }
+  .vhist .lit { display: grid; gap: 12px; margin-top: 14px; }
+  .vhist .litem { display: grid; grid-template-columns: 30px 1fr; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; }
+  .vhist .litem .ln { font-family: "IBM Plex Mono", monospace; color: var(--accent); font-size: 15px; font-weight: 600; }
+  .vhist .litem .lt { font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 14.5px; }
+  .vhist .litem .lm { font-size: 12.5px; color: var(--ink-3); margin: 2px 0 6px; font-family: "IBM Plex Sans", sans-serif; }
+  .vhist .litem .ld { font-size: 13.5px; color: var(--ink-2); }
+  .vhist .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) {
+  .vhist .cols2 { grid-template-columns: 1fr; }
+}
+  .vhist .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .vhist .card h5 { margin: 0 0 8px; font-family: "IBM Plex Sans", sans-serif; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+  .vhist .card ul { padding-left: 18px; margin: 0; font-size: 13.5px; }
+  /* ---------- ЭОЛА: рисунки, вырезанные из слайдов кафедры ---------- */
+  .vhist .fignote { font-size: 13px; color: var(--ink-2); max-width: 74ch; margin: 16px 0 8px; }
+  .vhist .ifigs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(224px, 1fr));
+    gap: 14px; margin: 14px 0 20px; align-items: start;
+  }
+  .vhist .ifigs:has(> .ifig:only-child) { grid-template-columns: minmax(0, 460px); }
+  .vhist .ifig {
+    margin: 0; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden; cursor: zoom-in;
+    transition: border-color .15s, transform .15s;
+  }
+  .vhist .ifig:hover, .vhist .ifig:focus-visible { border-color: var(--accent); transform: translateY(-1px); outline: none; }
+  .vhist .ifig .fw {
+    background: #fff; min-height: 90px; display: flex; align-items: center; justify-content: center;
+    padding: 8px; border-bottom: 1px solid var(--line);
+  }
+  .vhist .ifig img { width: 100%; height: auto; display: block; }
+  .vhist .ifig figcaption {
+    padding: 8px 11px 10px; font-size: 12.3px; line-height: 1.5; color: var(--ink-2); background: var(--panel-2);
+  }
+  .vhist .ifig figcaption b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .04em;
+    color: var(--accent-2); margin-right: 6px; text-transform: uppercase;
+  }
+  .vhist .ifig figcaption span {
+    display: block; margin-top: 5px; font-family: "IBM Plex Sans Thai", sans-serif;
+    font-size: 12px; color: var(--ink-3);
+  }
+
+  /* сброс наследия базового .eq атласа внутри модуля НАС */
+  .vhist .eq, .vhist .eq .body, .vhist .eq .note, .vhist .eq .n { white-space: normal; }
+  .vhist .eq .body { min-width: 0; flex: 1 1 auto; }
+
+  /* показания демонстраций НАС — обычный текстовый поток, а не флекс-элементы */
+  .vhist .demo .readout { display: block; line-height: 1.9; }
+  .vhist .demo .readout sub, .vhist .demo .readout sup { font-size: 80%; }
+
+
+  /* шапка демонстраций ЭОЛА: у части моделей много кнопок — на узком экране переносим */
+  .vhist .demo-head { flex-wrap: wrap; }
+  .vhist .demo-head h4 { flex: 1 1 200px; min-width: 0; }
+  .vhist .demo-head .spacer { flex: 1 1 0; }
+  .vhist .demo-head button {
+    font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; font-weight: 500;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-2);
+  }
+  .vhist .demo-head button:hover { border-color: var(--accent); color: var(--ink); }
+  .vhist .demo-head button.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  /* показания моделей НАС идут текстовым потоком — разделяем позиции полем справа */
+  .vhist .demo .readout > span { margin-right: 20px; }
+  .vhist .demo .readout > span:last-child { margin-right: 0; }
+  /* в подписях ползунков ЭОЛА встречаются нижние индексы — они не должны рвать строку флексом */
+  .vhist .demo .ctl label { display: block; }
+  /* ЭОЛА: карточки .cols2 с таблицами внутри — не дают grid-элементу растянуть страницу */
+  .vhist .cols2 > .card { min-width: 0; }
+  .vhist .card .tw { max-width: 100%; overflow-x: auto; }
+  .vhist .card table { width: 100%; }  .vhist .demo .ctl label b { float: right; margin-left: 10px; }
+  .vhist .demo-head .spacer { flex: 1 1 0; }
+
+  /* ---- ВИ: компоненты текста ---- */
+  .vhist { --vh-red: #C62828; --vh-blue: #1D56A6; --vh-gold: #A8650A; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .vhist { --vh-red: #FF6F61; --vh-blue: #7FA8F0; --vh-gold: #E7B04F; } }
+  :root[data-theme="dark"] .vhist { --vh-red: #FF6F61; --vh-blue: #7FA8F0; --vh-gold: #E7B04F; }
+  .vhist [lang="ru"], .vhist .ru { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  .vhist .call.story { background: var(--panel); border-left: 4px solid var(--accent); font-size: 15px; line-height: 1.75; }
+  .vhist .call.fun { background: var(--panel); border-left: 4px solid var(--vh-gold); }
+  .vhist .call.fun .lbl { color: var(--vh-gold); }
+  .vhist .call.fun .lbl::before { content: "★ "; }
+  .vhist .call.intl { background: var(--panel); border: 1px dashed var(--line-2); }
+  .vhist .call.intl .lbl { color: var(--ink-2); }
+  .vhist .call.alt { background: var(--panel-2); border-left: 4px solid var(--ink-3); }
+  .vhist .call.alt .lbl { color: var(--ink-2); }
+  .vhist .vh-chain { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 16px 0 22px; counter-reset: ch; }
+  .vhist .vh-chain > div { position: relative; background: var(--panel); border: 1px solid var(--line); padding: 10px 12px 11px 12px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+  .vhist .vh-chain > div + div { border-left: none; }
+  .vhist .vh-chain > div:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .vhist .vh-chain > div:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+  .vhist .vh-chain > div:not(:last-child)::after { content: ""; position: absolute; right: -9px; top: 50%; width: 16px; height: 16px; margin-top: -8px; background: var(--panel); border-top: 1px solid var(--line); border-right: 1px solid var(--line); transform: rotate(45deg); z-index: 1; }
+  .vhist .vh-chain > div > span:first-child { display: block; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  .vhist .vh-chain > div:last-child > span:first-child { color: var(--accent-2); }
+  @media (max-width: 700px) {
+    .vhist .vh-chain { grid-template-columns: 1fr; }
+    .vhist .vh-chain > div + div { border-left: 1px solid var(--line); border-top: none; }
+    .vhist .vh-chain > div:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .vhist .vh-chain > div:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+    .vhist .vh-chain > div:not(:last-child)::after { right: auto; left: 22px; top: auto; bottom: -9px; margin-top: 0; transform: rotate(135deg); }
+  }
+  .vhist .vh-person { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin: 12px 0; }
+  .vhist .vh-av { width: 56px; height: 56px; border-radius: 50%; background: var(--wash); color: var(--accent); display: flex; align-items: center; justify-content: center; font: 600 17px "IBM Plex Sans", sans-serif; letter-spacing: .02em; border: 2px solid var(--line); }
+  .vhist .vh-person p { margin: 4px 0 6px; font-size: 14px; color: var(--ink-2); }
+  .vhist .vh-person .ru { color: var(--accent-2); }
+  .vhist .tag { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-2); margin: 2px 4px 0 0; }
+  .vhist .vh-say { border: 1px solid var(--accent); border-radius: var(--radius); margin: 16px 0; overflow: hidden; background: var(--panel); }
+  .vhist .vh-say .lbl { display: block; background: var(--accent); color: #fff; font: 600 11px "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; padding: 5px 12px; }
+  .vhist .vh-say p { margin: 0; padding: 10px 14px 0; }
+  .vhist .vh-say p[lang="ru"] { font-size: 15.5px; line-height: 1.7; color: var(--ink); }
+  .vhist .vh-say p.th { font-size: 13.5px; color: var(--ink-2); padding-bottom: 11px; }
+  .vhist .vh-say p:last-child { padding-bottom: 12px; }
+  .vhist .vh-tl { border-left: 2px solid var(--line-2); margin: 14px 0 18px 8px; padding-left: 0; }
+  .vhist .vh-tl > div { position: relative; padding: 4px 0 8px 18px; font-size: 14px; color: var(--ink-2); }
+  .vhist .vh-tl > div::before { content: ""; position: absolute; left: -7px; top: 10px; width: 12px; height: 12px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
+  .vhist .vh-tl > div > b { display: inline-block; min-width: 108px; font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--ink); margin-right: 8px; }
+  .vhist .vh-cmp, .vhist .tw { max-width: 100%; overflow-x: auto; margin: 14px 0; }
+  .vhist .vh-cmp table, .vhist table.vh-voc { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 460px; }
+  .vhist .vh-cmp th, .vhist .vh-cmp td, .vhist .vh-voc th, .vhist .vh-voc td { border: 1px solid var(--line); padding: 7px 9px; vertical-align: top; text-align: left; }
+  .vhist .vh-cmp th, .vhist .vh-voc th { background: var(--panel-2); font-weight: 600; color: var(--ink); }
+  .vhist .vh-cmp td, .vhist .vh-voc td { background: var(--panel); }
+  .vhist .vh-voc td:first-child { font-family: "IBM Plex Sans", sans-serif; color: var(--accent-2); white-space: nowrap; }
+  .vhist figure.dia { margin: 18px 0; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); }
+  .vhist figure.dia svg { max-width: 100%; }
+  .vhist figure.dia figcaption { font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+  .vhist p.src { font-size: 12.5px; color: var(--ink-3); border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 26px; }
+  .vhist [data-demo] { margin: 18px 0; }
+
+.vhm{--vh-bg:var(--panel,#fff);--vh-bd:var(--line,#D0D9D6);--vh-ink:var(--ink,#101A18);--vh-ink2:var(--ink-2,#465652);--vh-ink3:var(--ink-3,#788884);--vh-acc:var(--accent,#0B6B61);--vh-su:#C62828;--vh-ax:#1D56A6;--vh-al:#6A4BA6;--vh-nt:#7D6A2A;--vh-gold:#A8650A;
+  background:var(--vh-bg);border:1px solid var(--vh-bd);border-radius:10px;overflow:hidden;margin:18px 0;box-shadow:0 1px 1px rgba(16,26,24,.04),0 14px 30px -22px rgba(16,26,24,.45)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .vhm{--vh-su:#FF6F61;--vh-ax:#7FA8F0;--vh-al:#B59BEA;--vh-nt:#C9B26B;--vh-gold:#E7B04F}}
+:root[data-theme="dark"] .vhm{--vh-su:#FF6F61;--vh-ax:#7FA8F0;--vh-al:#B59BEA;--vh-nt:#C9B26B;--vh-gold:#E7B04F}
+.vhm-head{padding:12px 16px 10px;border-bottom:1px solid var(--vh-bd)}
+.vhm-lbl{display:block;font:600 11.5px/1.3 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;color:var(--vh-acc);margin-bottom:3px}
+.vhm-head h4{margin:0;font-size:16px;line-height:1.45;color:var(--vh-ink)}
+.vhm-cw{position:relative;line-height:0}
+.vhm canvas{width:100%;display:block;touch-action:pan-y}
+.vhm-tl{padding:14px 18px 2px;position:relative}
+.vhm-bar{position:relative;height:30px;cursor:pointer;outline:none;touch-action:none}
+.vhm-bar::before{content:"";position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:var(--vh-bd)}
+.vhm-fill{position:absolute;left:0;top:13px;height:4px;border-radius:2px;background:var(--vh-acc);width:0}
+.vhm-knob{position:absolute;top:6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--vh-bg);border:3px solid var(--vh-acc);box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}
+.vhm-bar:focus-visible .vhm-knob{outline:3px solid var(--vh-gold);outline-offset:2px}
+.vhm-ticks{position:absolute;inset:0}
+.vhm-tick{position:absolute;top:8px;width:14px;height:14px;margin-left:-7px;border-radius:50%;border:2px solid var(--vh-bg);background:var(--vh-ink3);padding:0;cursor:pointer;z-index:1;transition:transform .15s}
+.vhm-tick.key{background:var(--vh-su)}.vhm-tick.fun{background:var(--vh-gold)}
+.vhm-tick:hover,.vhm-tick.on{transform:scale(1.35)}
+.vhm-tick.on{box-shadow:0 0 0 2px var(--vh-ink)}
+.vhm-scale{position:relative;height:16px;font:11px/1 "IBM Plex Sans",sans-serif;color:var(--vh-ink3)}
+.vhm-scale span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.vhm-scale span:first-child{transform:none}.vhm-scale span:last-child{transform:translateX(-100%)}
+.vhm-ctl{display:flex;align-items:center;gap:8px;padding:8px 16px 10px;flex-wrap:wrap}
+.vhm-ctl button{font:600 14px/1 "IBM Plex Sans",sans-serif;min-width:38px;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--vh-bd);background:var(--panel-2,#F0F4F2);color:var(--vh-ink);cursor:pointer}
+.vhm-ctl .vhm-play{background:var(--vh-acc);border-color:var(--vh-acc);color:#fff;min-width:46px}
+.vhm-ctl button:hover{filter:brightness(1.06)}
+.vhm-date{font:700 18px/1 "IBM Plex Sans",sans-serif;color:var(--vh-ink);margin-left:6px;font-variant-numeric:tabular-nums}
+.vhm-sp{flex:1}
+.vhm-card{margin:0 16px 12px;padding:12px 14px;border-radius:8px;background:var(--wash,#DCECE9);color:var(--vh-ink);font-size:14.5px;line-height:1.65;min-height:120px}
+.vhm-card p{margin:4px 0 0}
+.vhm-ch{display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
+.vhm-cd{font:700 12.5px/1.2 "IBM Plex Mono",ui-monospace,monospace;color:var(--vh-ink2);margin-right:4px}
+.vhm-tag{font:600 11.5px/1 "IBM Plex Sans Thai",sans-serif;padding:3px 8px;border-radius:10px;color:#fff}
+.vhm-tag.key{background:var(--vh-su)}.vhm-tag.fun{background:var(--vh-gold)}
+.vhm-ru{color:var(--vh-gold);font-family:"IBM Plex Sans",sans-serif}
+.vhm-more{margin-top:8px;padding-left:10px;border-left:3px solid var(--vh-acc);color:var(--vh-ink2)}
+.vhm-intl{margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--vh-bg);border:1px dashed var(--vh-bd);font-size:13.5px;color:var(--vh-ink2)}
+.vhm-intl b{color:var(--vh-ink)}
+.vhm-srcl{margin-top:8px;font-size:12px;color:var(--vh-ink3)}
+.vhm-leg{display:flex;flex-wrap:wrap;gap:6px 16px;padding:0 16px 14px;font-size:12.5px;color:var(--vh-ink2)}
+.vhm-leg span{display:inline-flex;align-items:center;gap:6px}
+.vhm-sw{display:inline-block;width:18px;height:10px;border-radius:2px}
+.vhm-sw.su{background:var(--vh-su)}.vhm-sw.ax{background:var(--vh-ax)}.vhm-sw.al{background:var(--vh-al)}.vhm-sw.nt{background:var(--vh-nt)}
+.vhm-sw.key{background:var(--vh-su);border-radius:50%;width:10px}.vhm-sw.fun{background:var(--vh-gold);border-radius:50%;width:10px}
+.vhm-leg .vhm-src{flex-basis:100%;color:var(--vh-ink3);font-size:11.5px}
+@media (max-width:560px){.vhm-head{padding:10px 12px}.vhm-tl{padding:12px 14px 2px}.vhm-ctl{padding:8px 12px}.vhm-card{margin:0 12px 10px;font-size:14px}.vhm-leg{padding:0 12px 12px}.vhm-date{font-size:16px}.vhm-scale span:nth-child(2),.vhm-scale span:nth-child(3){font-size:10px}}
+@media (max-width:560px){.vhm-tick{width:11px;height:11px;margin-left:-5.5px;top:9.5px}.vhm-scale span.mid{display:none}}
+.vhm-wait .vhm-cw{min-height:260px;background:var(--panel-2,#F0F4F2);display:flex;align-items:center;justify-content:center}
+.vhm-wait canvas{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.vhm-msg{font-size:14px;color:var(--vh-ink3);line-height:1.4}
+.vhm-fail .vhm-msg{color:var(--vh-su)}
+.vhm-extra:empty{display:none}
+.vhm-extra{padding:0 16px 10px}
+.vhm-forces{border:1px solid var(--vh-bd);border-radius:8px;margin:0 0 8px;background:var(--vh-bg)}
+.vhm-forces summary{cursor:pointer;padding:8px 12px;font-weight:600;font-size:14px;color:var(--vh-ink)}
+.vhm-tw{overflow-x:auto;padding:0 12px 4px}
+.vhm-forces table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:320px}
+.vhm-forces th,.vhm-forces td{padding:5px 8px;border-bottom:1px solid var(--vh-bd);text-align:left;vertical-align:top}
+.vhm-forces th{font-size:12.5px;color:var(--vh-ink2);font-weight:600}
+.vhm-forces .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vhm-tn{margin:4px 12px 10px;font-size:12px;color:var(--vh-ink3)}
+.vhm-warn{margin-top:8px;padding:8px 10px;border-radius:6px;border-left:3px solid var(--vh-gold);background:var(--vh-bg);font-size:13.5px;color:var(--vh-ink2)}
+.vhm-warn b{color:var(--vh-gold)}
+@media (max-width:560px){.vhm-extra{padding:0 12px 8px}}
+
+.vhm-forces th,.vhm-forces td{text-transform:none;letter-spacing:normal;font-family:"IBM Plex Sans","IBM Plex Sans Thai",sans-serif}
+.vhm h4{margin:0;border:0;padding:0}
+
+  /* ---- ВИ: виджеты тренировки ---- */
+  .vhq, .vhx { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 18px 0; overflow: hidden; }
+  .vhx { border-color: var(--accent-2); }
+  .vhq-head { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .vhq-head canvas { flex: 0 0 64px; }
+  .vhq-lbl { display: block; font: 600 11px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .vhx .vhq-lbl { color: var(--accent-2); }
+  .vhq-head h4 { margin: 3px 0 0; font-size: 15.5px; }
+  .vhq-body, .vhx-body { padding: 14px 16px 16px; }
+  .vhq-n { font: 12px "IBM Plex Mono", monospace; color: var(--ink-3); margin-bottom: 6px; }
+  .vhq-q { font-size: 15.5px; font-weight: 600; line-height: 1.6; margin-bottom: 10px; }
+  .vhq-opts button { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; font: inherit; font-size: 14.5px; line-height: 1.5; padding: 9px 12px; margin: 6px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--ink); cursor: pointer; }
+  .vhq-opts button > span { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line-2); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--ink-2); }
+  .vhq-opts:not(.done) button:hover { border-color: var(--accent); }
+  .vhq-opts button.ok { border-color: #2C7A56; background: rgba(44,122,86,.14); }
+  .vhq-opts button.bad { border-color: #A9382C; background: rgba(169,56,44,.14); }
+  .vhq-opts.done button:not(.ok):not(.bad) { opacity: .6; }
+  .vhq-ex { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--wash); font-size: 14px; line-height: 1.6; }
+  .vhq-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .vhq-btns button { font: 600 14px "IBM Plex Sans Thai", "IBM Plex Sans", sans-serif; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  .vhq-btns button + button { background: var(--panel); color: var(--accent); }
+  .vhq-end b { font-size: 16px; }
+  .vhx-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--panel-2); }
+  .vhx-ru { font: 600 16.5px/1.55 "IBM Plex Sans", sans-serif; color: var(--ink); }
+  .vhx-th { font-size: 14px; color: var(--ink-2); margin-top: 6px; }
+  .vhx-hint { font-size: 13px; color: var(--ink-3); margin: 10px 0 0; }
+  .vhx-ans { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+  .vhx-l { display: block; font: 600 11px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-2); margin-bottom: 4px; }
+  .vhx-ans ol { margin: 4px 0 10px; padding-left: 22px; font: 15px/1.7 "IBM Plex Sans", sans-serif; }
+  .vhx-tip { font-size: 14px; color: var(--ink-2); background: var(--wash); border-radius: 8px; padding: 9px 12px; }
+  .vhr { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 18px 0; }
+  .vhr .vhm-head { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); }
+  .vhr .vhm-lbl { display: block; font: 600 11.5px/1.3 "IBM Plex Mono", monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+  .vhr .vhm-head h4 { margin: 0; font-size: 16px; }
+  .vhr-cw { line-height: 0; }
+  .vhr canvas { width: 100%; display: block; cursor: pointer; touch-action: pan-y; }
+  .vhr-ctl { padding: 10px 16px 4px; }
+  .vhr-ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+  .vhr-eras { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .vhr-eras button { font: 600 12.5px "IBM Plex Sans Thai", sans-serif; padding: 5px 10px; border-radius: 14px; border: 1px solid var(--c); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .vhr-eras button::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 6px; }
+  .vhr-card { margin: 10px 16px 16px; padding: 12px 14px; border-radius: 8px; background: var(--wash); font-size: 14.5px; line-height: 1.65; min-height: 96px; }
+  .vhr-card p { margin: 4px 0 0; }
+  .vhr-l { font: 600 11.5px "IBM Plex Mono", monospace; color: var(--accent); }
+  .vhr-lec { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+
+/* ===== ВИ CSS END ===== */
+/* ===== STD2 CSS BEGIN (มาตรฐานกลาง v2 · namespace .std2 · ต้นฉบับ _work/std2/std2.css — แก้ที่นั่นแล้วรัน _work/std2/tools/integrate.py) ===== */
+/* =====================================================================
+   มาตรฐานกลาง v2 (STD2) · namespace .std2 · แบบ 4 «ผสม» — ใช้ร่วมกันทุกวิชา (อนุมัติ 23 ก.ย. 2026 · เริ่มจาก СН ЛА nav-7, nav-12)
+   (โครงการ์ดความรู้จากแบบ 2 + รายละเอียดแผงวิศวกรรมจากแบบ 3)
+   ต้นฉบับ: _work/std2/std2.css · สเปกชิ้นส่วน: _work/std2/COMPONENTS.md · ประกอบเข้า app.css ด้วย _work/std2/tools/integrate.py
+   ต้องวาง «ต่อท้าย» app.css (กฎพื้นฐานบางข้อชนะกันด้วยลำดับ เช่น .topic p)
+   ทุกกฎอยู่ใต้ .std2 · ไม่มี #figlb / #bbar / #topBtn / main.stage
+   ===================================================================== */
+
+/* ---------- 0. โทเคน (สีประเภทกำหนดทั้งสองธีมภายใน namespace) ---------- */
+.std2 {
+  --s2-sans: "IBM Plex Sans", "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --s2-thai: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
+  --s2-mono: "IBM Plex Mono", "IBM Plex Sans Thai", ui-monospace, monospace;
+  --s2-math: "Cambria Math", "STIX Two Math", "Latin Modern Math", "Noto Sans Math", math;
+  --s2-sum: var(--accent);      --s2-sum-bg: var(--wash);
+  --s2-exp: #2E62A8;            --s2-exp-bg: #E7EEF8;
+  --s2-deep: #6A4CA8;           --s2-deep-bg: #F1EDF9;
+  --s2-prac: var(--accent-2);   --s2-prac-bg: var(--wash-2);
+  --s2-trap: var(--crit);       --s2-trap-bg: #F9E7E3;
+  --s2-ok-bg: #E2F2E8;
+  --s2-ru-bg: #F3F6F8;
+  --s2-new: #B8325A;             /* ผลลัพธ์ใหม่ในแอนิเมชัน/ตัวเลขเด่น */
+  --s2-mark: #FBE2A4;
+  --s2-on: #FFFFFF;             /* ตัวอักษรบนพื้นสีทึบของประเภท */
+  --s2-card: var(--panel);
+  --s2-sunk: var(--panel-2);    /* พื้นกล่องย่อยในการ์ด */
+  --s2-shadow: 0 1px 2px rgba(16,26,24,.05), 0 12px 28px -22px rgba(16,26,24,.45);
+  --s2-brk: color-mix(in srgb, var(--accent) 62%, transparent);
+  --s2-grid: color-mix(in srgb, var(--line) 62%, transparent);
+  --s2-glow: none;
+  --s2-g: 84px;                 /* คอลัมน์ป้ายด้านซ้ายของการ์ด (จอกว้าง) */
+  --s2-i-sum: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='13.5' r='7.5'/%3E%3Cpath d='M12 13.5V9.5M12 13.5l3 2M10 3h4M12 3v3M18.5 6.5l1.5-1.5'/%3E%3C/svg%3E");
+  --s2-i-trap: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5L21.5 20H2.5z'/%3E%3Cpath d='M12 9.5v5M12 17.3v.2'/%3E%3C/svg%3E");
+  --s2-i-prac: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Ccircle cx='12' cy='12' r='4.8'/%3E%3Ccircle cx='12' cy='12' r='1.3'/%3E%3C/svg%3E");
+  --s2-i-oral: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5.5h16v10H10l-5 4v-4H4z'/%3E%3Cpath d='M8 9.5h8M8 12.5h5'/%3E%3C/svg%3E");
+  --s2-i-play: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M10 8.3l5.6 3.7-5.6 3.7z'/%3E%3C/svg%3E");
+  --s2-i-map: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6.5L9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5-5.5 2.5z'/%3E%3Cpath d='M9 4v13.5M15 6.5V20'/%3E%3C/svg%3E");
+  --s2-i-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E");
+  --s2-i-deep: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.2'/%3E%3Cpath d='M15.2 15.2L20.5 20.5M8 10.5h5M10.5 8v5'/%3E%3C/svg%3E");
+  --s2-i-book: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4h11.5a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z'/%3E%3Cpath d='M5 17.5A2.5 2.5 0 0 1 7.5 15h11'/%3E%3C/svg%3E");
+  --s2-i-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3Cpath d='M13.5 6.5l4 4'/%3E%3C/svg%3E");
+  --s2-i-quiz: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='3'/%3E%3Cpath d='M8.2 12.3l2.6 2.6 5-5.6'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .std2 {
+    --s2-exp: #8BB2EC;  --s2-exp-bg: #152338;
+    --s2-deep: #B9A5F0; --s2-deep-bg: #1F1A33;
+    --s2-trap-bg: #37181A;
+    --s2-ok-bg: #11301F;
+    --s2-ru-bg: #17221F;
+    --s2-new: #F2769B;
+    --s2-mark: #5E4715;
+    --s2-on: #0C1413;
+    --s2-sunk: #18231F;
+    --s2-shadow: 0 1px 0 rgba(255,255,255,.025) inset, 0 16px 34px -26px rgba(0,0,0,.95);
+    --s2-brk: color-mix(in srgb, var(--accent) 80%, transparent);
+    --s2-grid: color-mix(in srgb, var(--accent) 13%, transparent);
+    --s2-glow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+}
+:root[data-theme="dark"] .std2 {
+  --s2-exp: #8BB2EC;  --s2-exp-bg: #152338;
+  --s2-deep: #B9A5F0; --s2-deep-bg: #1F1A33;
+  --s2-trap-bg: #37181A;
+  --s2-ok-bg: #11301F;
+  --s2-ru-bg: #17221F;
+  --s2-new: #F2769B;
+  --s2-mark: #5E4715;
+  --s2-on: #0C1413;
+  --s2-sunk: #18231F;
+  --s2-shadow: 0 1px 0 rgba(255,255,255,.025) inset, 0 16px 34px -26px rgba(0,0,0,.95);
+  --s2-brk: color-mix(in srgb, var(--accent) 80%, transparent);
+  --s2-grid: color-mix(in srgb, var(--accent) 13%, transparent);
+  --s2-glow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ---------- 1. ฐาน + ล้างกฎส่วนกลางที่รั่วเข้ามา ---------- */
+.std2 {
+  container: std2 / inline-size;
+  color: var(--ink); font-family: var(--s2-sans); font-size: 16px; line-height: 1.75;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+.std2 p { margin: 0 0 14px; max-width: none; color: inherit; }
+.std2 ul, .std2 ol { margin: 0 0 14px; padding-left: 1.45em; max-width: none; color: inherit; }
+.std2 li { margin: 0 0 7px; }
+.std2 li::marker { color: var(--ink-3); }
+.std2 b, .std2 strong { font-weight: 600; color: var(--ink); }
+.std2 a { color: var(--accent); text-underline-offset: 2px; }
+.std2 [lang="ru"] { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", system-ui, sans-serif; }
+.std2 h5 {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 26px 0 10px; font: 600 16px/1.45 var(--s2-sans); color: var(--ink);
+}
+.std2 h5::before {
+  content: ""; width: 7px; height: 7px; border-radius: 2px; flex: none;
+  background: var(--s2-deep); transform: translateY(-1px);
+}
+.std2 .muted { color: var(--ink-3); font-size: 14.5px; line-height: 1.7; }
+.std2 .tight { margin: 4px 0 16px; padding-left: 1.4em; }
+.std2 .tight li { margin-bottom: 5px; }
+.std2 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.std2 .ic { display: none; }   /* ไอคอน SVG sprite ของต้นแบบเดิม — แบบ 4 วาดไอคอนด้วย CSS */
+.std2 mark {
+  background: var(--s2-mark); color: inherit; border-radius: 3px; padding: 0 .16em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.std2 del { color: var(--crit); text-decoration-thickness: 1.5px; }
+.std2 ins { color: var(--ok); text-decoration: none; font-weight: 600; }
+.std2 [id] { scroll-margin-top: 124px; }   /* แถบบน + แถบหัวข้อของเว็บเป็น sticky */
+
+/* ---------- 2. MathML ---------- */
+.std2 math { font-family: var(--s2-math); font-size: 1.1em; color: inherit; font-style: normal; }
+.std2 math[display="block"] {
+  display: block math; margin: .45em 0; padding: 3px 0;
+  overflow-x: auto; overflow-y: hidden; max-width: 100%;
+}
+.std2 math[display="block"] mtable { math-style: normal; }
+.std2 mtd { padding: .26em .5em; }
+.std2 .mono math, .std2 .nv math { font-size: 1.04em; }
+
+/* ---------- 3. ป้ายเล็กตัวพิมพ์ Mono (ใช้ร่วม) ---------- */
+.std2 .ed {
+  display: inline-block; font: 600 11px/1.65 var(--s2-thai); letter-spacing: 0;
+  padding: 0 8px; border-radius: 999px; white-space: nowrap; vertical-align: .08em;
+  background: var(--s2-prac-bg); color: var(--s2-prac);
+}
+
+/* ---------- 4. หัวส่วน (учебный вопрос) ---------- */
+.std2 .sec-h {
+  position: relative; isolation: isolate; overflow: hidden;
+  margin: 6px 0 18px; padding: 28px 32px 24px;
+  background:
+    linear-gradient(var(--s2-brk), var(--s2-brk)) left 11px top 11px / 16px 2px no-repeat,
+    linear-gradient(var(--s2-brk), var(--s2-brk)) left 11px top 11px / 2px 16px no-repeat,
+    linear-gradient(var(--s2-brk), var(--s2-brk)) right 11px bottom 11px / 16px 2px no-repeat,
+    linear-gradient(var(--s2-brk), var(--s2-brk)) right 11px bottom 11px / 2px 16px no-repeat,
+    var(--s2-card);
+  border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--s2-shadow);
+}
+.std2 .sec-h::before {        /* กริดจางแบบแผงวิศวกรรม จางหายไปทางซ้าย */
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    linear-gradient(var(--s2-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--s2-grid) 1px, transparent 1px);
+  background-size: 24px 24px; background-position: -1px -1px;
+  -webkit-mask-image: linear-gradient(105deg, transparent 30%, #000 92%);
+  mask-image: linear-gradient(105deg, transparent 30%, #000 92%);
+}
+.std2 .sec-kick { font: 500 13px/1.5 var(--s2-sans); color: var(--accent-2); }
+.std2 .sec-kick::before {
+  content: "SEC //"; content: "SEC //" / ""; margin-right: 8px;
+  font: 600 10.5px/1 var(--s2-mono); letter-spacing: .14em; color: var(--accent);
+}
+.std2 .sec-t {
+  margin: 8px 0 6px; font: 600 clamp(26px, 5.4cqi, 34px)/1.18 var(--s2-sans);
+  letter-spacing: -.012em; color: var(--ink); border: 0; padding: 0;
+}
+.std2 .sec-no { font-family: var(--s2-mono); font-weight: 500; color: var(--accent); margin-right: .12em; text-shadow: var(--s2-glow); }
+.std2 .sec-th { margin: 0 0 16px; font-size: 17px; line-height: 1.6; color: var(--ink-2); max-width: 60ch; }
+.std2 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.std2 .chip {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0;
+  font: 500 12.5px/1.45 var(--s2-sans); font-variant-numeric: tabular-nums; white-space: nowrap;
+  padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 7px;
+  background: color-mix(in srgb, var(--s2-card) 70%, transparent); color: var(--ink-2);
+}
+
+/* ---------- 5. บล็อกระดับหน้า: สรุป 1 นาที · กับดัก (แถบสีบนบอกประเภท) ---------- */
+.std2 .blk { margin: 18px 0; }
+.std2 .blk-l {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 14px;
+  font: 600 17px/1.4 var(--s2-sans); color: var(--ink);
+}
+.std2 .blk-l::before {
+  content: ""; width: 22px; height: 22px; flex: none; background: currentColor;
+  -webkit-mask: var(--s2-i-sum) center / contain no-repeat; mask: var(--s2-i-sum) center / contain no-repeat;
+}
+.std2 .blk-l::after {
+  margin-left: auto; flex: none; padding: 4px 7px 3px; border-radius: 6px;
+  font: 600 10.5px/1 var(--s2-mono); letter-spacing: .14em;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+.std2 .k-sum, .std2 .k-trap {
+  position: relative; overflow: hidden; padding: 22px 28px 22px;
+  background: var(--s2-card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--s2-shadow);
+}
+.std2 .k-sum::before, .std2 .k-trap::before, .std2 .sub.prac::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--s2-sum);
+}
+.std2 .k-sum > .blk-l { color: var(--s2-sum); }
+.std2 .k-sum > .blk-l::after { content: "SUM · 60 s"; content: "SUM · 60 s" / ""; }
+.std2 .sum-list { list-style: none; padding: 0; margin: 0; counter-reset: s2s; display: grid; gap: 10px; }
+.std2 .sum-list > li { counter-increment: s2s; position: relative; margin: 0; padding: 1px 0 0 42px; }
+.std2 .sum-list > li::before {
+  content: counter(s2s); position: absolute; left: 0; top: 2px; width: 28px; height: 28px;
+  display: grid; place-items: center; border-radius: 8px;
+  background: var(--s2-sum-bg); color: var(--s2-sum); font: 600 13px/1 var(--s2-mono);
+}
+.std2 .chain {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 12px;
+  margin: 18px 0 0; padding: 10px 16px; border-radius: 12px; border: 0;
+  background: var(--s2-sum-bg); font-size: 1.02em;
+}
+.std2 .ch-i { white-space: nowrap; }
+.std2 .ch-a { color: var(--s2-sum); font: 600 14px/1 var(--s2-mono); opacity: .8; }
+
+.std2 .k-trap { border-color: color-mix(in srgb, var(--s2-trap) 30%, var(--line)); }
+.std2 .k-trap::before { background: var(--s2-trap); }
+.std2 .k-trap > .blk-l { color: var(--s2-trap); }
+.std2 .k-trap > .blk-l::before { -webkit-mask-image: var(--s2-i-trap); mask-image: var(--s2-i-trap); }
+.std2 .k-trap > .blk-l::after { content: "TRAP"; content: "TRAP" / ""; }
+.std2 .traps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.std2 .traps > li {
+  display: grid; grid-template-columns: 50px minmax(0, 1fr); gap: 14px; align-items: start;
+  margin: 0; padding: 12px 0; border-top: 1px dashed var(--line-2);
+}
+.std2 .traps > li:first-child { border-top: 0; padding-top: 2px; }
+.std2 .traps p { margin: 0; font-size: 15.5px; line-height: 1.7; }
+.std2 .tg {
+  display: block; text-align: center; padding: 3px 0; border-radius: 7px; margin-top: 2px;
+  font: 600 12px/1.5 var(--s2-mono); background: var(--s2-trap-bg); color: var(--s2-trap);
+}
+
+/* ---------- 6. แผนที่ย่อของหัวข้อ (ปุ่ม data-jump2 · ไม่มี href="#…") ---------- */
+.std2 .tmap { margin: 18px 0 22px; }
+.std2 .tmap-h {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 9px;
+  font: 600 13px/1.4 var(--s2-sans); color: var(--ink-3);
+}
+.std2 .tmap-h::before {
+  content: ""; width: 16px; height: 16px; background: currentColor;
+  -webkit-mask: var(--s2-i-map) center / contain no-repeat; mask: var(--s2-i-map) center / contain no-repeat;
+}
+.std2 .tmap ol {
+  list-style: none; margin: 0; padding: 0; counter-reset: none;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+}
+.std2 .tmap li { margin: 0; min-width: 0; }
+.std2 .tmap button {
+  appearance: none; -webkit-appearance: none; width: 100%; height: 100%; min-height: 48px; margin: 0;
+  display: flex; align-items: center; gap: 9px; text-align: left; cursor: pointer;
+  padding: 8px 11px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--s2-card); color: var(--ink-2); box-shadow: none;
+  font: 500 13.5px/1.3 var(--s2-sans); transition: border-color .15s, background .15s;
+}
+.std2 .tmap button:hover { border-color: var(--accent); color: var(--ink); background: var(--s2-card); }
+.std2 .tmap .tm-n {
+  flex: none; min-width: 34px; padding: 3px 0; border-radius: 7px; text-align: center;
+  font: 600 12px/1.3 var(--s2-mono); background: var(--s2-sunk); color: var(--accent);
+}
+.std2 .tmap .tm-t { min-width: 0; }
+.std2 .tmap .is-prac .tm-n { background: var(--s2-prac-bg); color: var(--s2-prac); }
+.std2 .tmap .is-trap .tm-n { background: var(--s2-trap-bg); color: var(--s2-trap); }
+
+/* ---------- 7. การ์ดหัวข้อย่อย ---------- */
+.std2 .sub {
+  container: s2sub / inline-size;
+  position: relative; margin: 18px 0; padding: 26px 30px 22px;
+  background:
+    linear-gradient(var(--s2-brk), var(--s2-brk)) left 11px top 11px / 14px 2px no-repeat,
+    linear-gradient(var(--s2-brk), var(--s2-brk)) left 11px top 11px / 2px 14px no-repeat,
+    linear-gradient(var(--s2-brk), var(--s2-brk)) right 11px bottom 11px / 14px 2px no-repeat,
+    linear-gradient(var(--s2-brk), var(--s2-brk)) right 11px bottom 11px / 2px 14px no-repeat,
+    var(--s2-card);
+  border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--s2-shadow);
+}
+.std2 .sub-h { display: flex; align-items: center; gap: 18px; margin: 0 0 20px; }
+.std2 .sub-no {
+  flex: none; width: 64px; height: 62px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--s2-sunk); border: 1px solid var(--line);
+  font: 600 21px/1 var(--s2-mono); letter-spacing: -.03em; color: var(--accent); text-shadow: var(--s2-glow);
+}
+.std2 .sub-no::before {
+  content: "SEC"; content: "SEC" / ""; margin: 0 0 6px; text-shadow: none;
+  font: 600 8.5px/1 var(--s2-mono); letter-spacing: .2em; color: var(--ink-3);
+}
+.std2 .sub-tt { min-width: 0; }
+.std2 .sub-t { margin: 0; padding: 0; border: 0; font: 600 21px/1.35 var(--s2-sans); letter-spacing: -.005em; color: var(--ink); }
+.std2 .sub-ru { margin: 4px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-3); }
+
+/* ใจความ */
+.std2 .lead {
+  position: relative; margin: 0 0 20px; padding: 12px 18px 13px;
+  background: var(--s2-sum-bg); border-left: 3px solid var(--s2-sum); border-radius: 4px 12px 12px 4px;
+  font-size: 17px; line-height: 1.65; font-weight: 600; color: var(--ink);
+}
+.std2 .lead::before {
+  content: "ใจความ"; content: "ใจความ" / ""; display: block; margin: 0 0 2px;
+  font: 600 12px/1.5 var(--s2-thai); color: var(--s2-sum);
+}
+/* อธิบาย */
+.std2 .k-exp { position: relative; margin: 0 0 18px; }
+.std2 .k-exp > p { margin: 0 0 14px; }
+
+/* ป้ายประเภทในคอลัมน์ซ้าย — เฉพาะการ์ดที่กว้างพอ (container query) */
+@container s2sub (min-width: 600px) {
+  .std2 .sub:not(.prac) > :not(.sub-h) { margin-left: var(--s2-g); }
+  .std2 .sub:not(.prac) > .lead::before,
+  .std2 .sub:not(.prac) > .k-exp::before,
+  .std2 .sub:not(.prac) > details.deep::before {
+    position: absolute; left: calc(-1 * var(--s2-g)); top: 3px; width: 64px; margin: 0;
+    display: block; text-align: center; padding: 4px 0 3px; border-radius: 7px;
+    font: 600 10px/1 var(--s2-mono); letter-spacing: .16em;
+  }
+  .std2 .sub:not(.prac) > .lead::after,
+  .std2 .sub:not(.prac) > .k-exp::after,
+  .std2 .sub:not(.prac) > details.deep::after {
+    position: absolute; left: calc(-1 * var(--s2-g)); top: 25px; width: 64px; text-align: center;
+    font: 500 12px/1.3 var(--s2-thai); color: var(--ink-3);
+  }
+  .std2 .sub:not(.prac) > .lead::before { content: "KEY"; content: "KEY" / ""; background: var(--s2-sum-bg); color: var(--s2-sum); }
+  .std2 .sub:not(.prac) > .lead::after { content: "ใจความ"; content: "ใจความ" / ""; }
+  .std2 .sub:not(.prac) > .lead { border-radius: 4px 12px 12px 4px; }
+  .std2 .sub:not(.prac) > .k-exp::before { content: "EXP"; content: "EXP" / ""; background: var(--s2-exp-bg); color: var(--s2-exp); }
+  .std2 .sub:not(.prac) > .k-exp::after { content: "อธิบาย"; content: "อธิบาย" / ""; }
+  .std2 .sub:not(.prac) > details.deep::before { content: "DEEP"; content: "DEEP" / ""; top: 12px; background: var(--s2-deep-bg); color: var(--s2-deep); }
+  .std2 .sub:not(.prac) > details.deep::after { content: "เจาะลึก"; content: "เจาะลึก" / ""; top: 34px; }
+  .std2 .sub:not(.prac) > details.deep > summary .deep-l { display: none; }
+  /* แบบจำลอง/แอนิเมชัน/ตารางกว้างยื่นเข้าคอลัมน์ป้าย ให้ได้พื้นที่เต็มการ์ด */
+  .std2 .sub:not(.prac) > .k-exp > :is(.anim, [data-demo], .demo, .ifigs, .tw.wide) { margin-left: calc(-1 * var(--s2-g)); }
+}
+
+/* ---------- 8. นิยามรัสเซีย ---------- */
+.std2 .ru-box {
+  margin: 18px 0; padding: 14px 18px 14px; border-radius: 12px;
+  background: var(--s2-ru-bg); border: 1px solid color-mix(in srgb, var(--s2-exp) 16%, var(--line));
+  border-left: 3px solid var(--s2-exp);
+}
+.std2 .ru-l {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0 0 8px;
+  font: 500 12.5px/1.5 var(--s2-thai); color: var(--ink-3);
+}
+.std2 .ru-l::before {
+  content: "RU"; content: "RU" / ""; padding: 3px 6px 2px; border-radius: 5px; transform: translateY(-1px);
+  font: 600 10px/1 var(--s2-mono); letter-spacing: .12em; background: var(--s2-exp); color: var(--s2-on);
+}
+.std2 .ru-box p[lang="ru"] { margin: 0 0 10px; font-size: 15.5px; line-height: 1.68; color: var(--ink); }
+.std2 .ru-box > :last-child { margin-bottom: 0; }
+.std2 .ru-th {
+  margin: 10px 0 0; padding: 9px 0 0; border-top: 1px dashed color-mix(in srgb, var(--s2-exp) 28%, var(--line));
+  font-size: 14.5px; line-height: 1.7; color: var(--ink-2);
+}
+.std2 .ru-ol { margin: 4px 0 10px; padding-left: 1.5em; font-size: 15px; line-height: 1.65; }
+.std2 .ru-ol li { margin-bottom: 6px; }
+
+/* ---------- 9. สูตร: .eq (override .eq ส่วนกลางที่เป็น mono + white-space:pre) ---------- */
+.std2 .eq {
+  display: flex; align-items: center; gap: 14px; margin: 16px 0; padding: 8px 16px;
+  background: var(--s2-sunk); border: 0; border-radius: 12px;
+  font-family: var(--s2-sans); font-size: 16px; line-height: 1.5; color: var(--ink);
+  white-space: normal; overflow: visible;
+}
+.std2 .eq-m { flex: 1 1 auto; min-width: 0; text-align: center; overflow-x: auto; overflow-y: hidden; }
+.std2 .eq-m > math[display="block"] { margin: .3em 0; }
+.std2 .eq-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: .75em; min-width: 0; }
+.std2 .eq-wrap > math[display="block"] { margin: .2em 0; }
+.std2 .eq-n {
+  flex: none; align-self: center; white-space: nowrap;
+  font: 500 12px/1 var(--s2-mono); color: var(--ink-2);
+  padding: 6px 8px 5px; border-radius: 7px; border: 1px solid var(--line); background: var(--s2-card);
+}
+.std2 .eq-n::before { content: "EQ "; content: "EQ " / ""; color: var(--accent); font-weight: 600; letter-spacing: .08em; }
+.std2 .eq-note { margin: -6px 0 16px; font-size: 14px; line-height: 1.7; color: var(--ink-3); }
+.std2 .eq-vars {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px;
+  margin: -4px 0 18px; padding: 10px 16px; border-left: 2px solid var(--line-2);
+  font-size: 14.5px; line-height: 1.6; color: var(--ink-2);
+}
+.std2 .eq-vars dt { margin: 0; text-align: right; color: var(--ink); white-space: nowrap; }
+.std2 .eq-vars dd { margin: 0; }
+.std2 .iter { display: grid; gap: 6px; margin: 12px 0 16px; }
+.std2 .iter > div {
+  display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 4px 18px; align-items: center;
+  padding: 4px 14px; background: var(--s2-sunk); border-radius: 10px;
+}
+.std2 .iter > div > math[display="block"] { margin: .25em 0; }
+.std2 .iter span { font-size: 14px; line-height: 1.55; color: var(--ink-3); }
+
+/* ---------- 10. เจาะลึก (details พับเก็บ) ---------- */
+.std2 details.deep {
+  position: relative; margin: 18px 0 2px; border-radius: 12px;
+  background: var(--s2-deep-bg); border: 1px solid color-mix(in srgb, var(--s2-deep) 24%, var(--line));
+}
+.std2 details.deep > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+  min-height: 50px; padding: 10px 44px 10px 14px; position: relative;
+}
+.std2 details.deep > summary::-webkit-details-marker { display: none; }
+.std2 details.deep > summary::before {
+  content: "[+]"; content: "[+]" / ""; flex: none; font: 600 13.5px/1 var(--s2-mono); color: var(--s2-deep); letter-spacing: .02em;
+}
+.std2 details.deep[open] > summary::before { content: "[−]"; content: "[−]" / ""; }
+.std2 details.deep > summary::after {
+  content: ""; position: absolute; right: 14px; top: 50%; width: 18px; height: 18px; margin-top: -9px;
+  background: var(--s2-deep); transition: transform .2s;
+  -webkit-mask: var(--s2-i-chev) center / contain no-repeat; mask: var(--s2-i-chev) center / contain no-repeat;
+}
+.std2 details.deep[open] > summary::after { transform: rotate(180deg); }
+.std2 details.deep > summary:hover .deep-t { color: var(--ink); }
+.std2 .deep-l {
+  flex: none; padding: 1px 10px; border-radius: 999px;
+  font: 600 12.5px/1.6 var(--s2-thai); background: var(--s2-deep); color: var(--s2-on);
+}
+.std2 .deep-t { flex: 1 1 240px; min-width: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.std2 .deep-b {
+  margin: 0 6px 6px; padding: 18px 20px 8px; border-radius: 9px;
+  background: var(--s2-card); border: 1px solid var(--line);
+}
+.std2 .deep-b > p { margin: 0 0 14px; }
+.std2 .deep-b > :first-child { margin-top: 0; }
+
+/* ---------- 11. ขั้นพิสูจน์ / ขั้นเฉลย (ol.steps) ---------- */
+.std2 ol.steps { list-style: none; margin: 10px 0 18px; padding: 0; counter-reset: s2st; }
+.std2 ol.steps > li { counter-increment: s2st; position: relative; margin: 0; padding: 0 0 16px 42px; }
+.std2 ol.steps > li::before {
+  content: counter(s2st); position: absolute; left: 0; top: 1px; width: 28px; height: 28px;
+  display: grid; place-items: center; border-radius: 50%;
+  border: 1.5px solid var(--accent); background: var(--s2-card); color: var(--accent);
+  font: 600 12.5px/1 var(--s2-mono);
+}
+.std2 ol.steps > li::after {
+  content: ""; position: absolute; left: 14px; top: 32px; bottom: 4px; width: 0;
+  border-left: 1.5px dashed var(--line-2);
+}
+.std2 ol.steps > li:last-child { padding-bottom: 4px; }
+.std2 ol.steps > li:last-child::after { display: none; }
+.std2 ol.steps .eq-wrap { margin: 8px 0; padding: 6px 12px; background: var(--s2-sunk); border-radius: 10px; }
+
+/* ---------- 12. กล่องเสริม: สูตรช่วย · ผู้เรียบเรียงเสริม · หมายเหตุต้นฉบับ · กับดักในเนื้อหา ---------- */
+.std2 .tip {
+  margin: 18px 0; padding: 12px 16px 12px; border: 1px dashed var(--line-2); border-radius: 12px; background: transparent;
+}
+.std2 .tip-l, .std2 .add-l, .std2 .srcnote-l, .std2 .trap-l, .std2 .ans-l {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 6px;
+  font: 600 12.5px/1.5 var(--s2-thai); color: var(--ink-3);
+}
+.std2 .tip p { margin: 6px 0 0; font-size: 14.5px; color: var(--ink-2); }
+.std2 .add {
+  margin: 18px 0; padding: 12px 18px 12px; border-radius: 4px 12px 12px 4px;
+  background: var(--s2-prac-bg); border-left: 3px solid var(--s2-prac);
+}
+.std2 .add-l { color: var(--s2-prac); }
+.std2 .add-l::before {
+  content: ""; width: 15px; height: 15px; background: currentColor;
+  -webkit-mask: var(--s2-i-pen) center / contain no-repeat; mask: var(--s2-i-pen) center / contain no-repeat;
+}
+.std2 .add p { margin: 6px 0 10px; }
+.std2 .add > :last-child { margin-bottom: 0; }
+.std2 .srcnote {
+  margin: 18px 0; padding: 12px 16px; border-radius: 12px;
+  background: var(--s2-card); border: 1px dashed color-mix(in srgb, var(--s2-prac) 55%, var(--line-2));
+}
+.std2 .srcnote-l { color: var(--s2-prac); }
+.std2 .srcnote-l::before {
+  content: "SRC ≠"; content: "SRC ≠" / ""; padding: 3px 6px 2px; border-radius: 5px;
+  font: 600 10px/1 var(--s2-mono); letter-spacing: .1em; border: 1px solid currentColor;
+}
+.std2 .srcnote p { margin: 4px 0 8px; font-size: 15px; }
+.std2 .srcnote > :last-child { margin-bottom: 0; }
+.std2 .trap {
+  margin: 18px 0; padding: 12px 18px; border-radius: 4px 12px 12px 4px;
+  background: var(--s2-trap-bg); border-left: 3px solid var(--s2-trap);
+}
+.std2 .trap-l { color: var(--s2-trap); }
+.std2 .trap-l::before {
+  content: ""; width: 16px; height: 16px; background: currentColor;
+  -webkit-mask: var(--s2-i-trap) center / contain no-repeat; mask: var(--s2-i-trap) center / contain no-repeat;
+}
+.std2 .trap p { margin: 4px 0 8px; font-size: 15.5px; }
+.std2 .trap > :last-child { margin-bottom: 0; }
+
+/* ---------- 13. รายการขั้นตอน (อัลกอริทึม) · ลักษณะเฉพาะ ข้อดี/ข้อเสีย ---------- */
+.std2 ol.algo {
+  list-style: none; margin: 8px 0 20px; padding: 0; counter-reset: none;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
+.std2 ol.algo > li {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start;
+  margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--s2-sunk); font-size: 15px; line-height: 1.6;
+}
+.std2 .al-n { font: 600 24px/1.1 var(--s2-mono); color: var(--accent); text-align: center; text-shadow: var(--s2-glow); }
+.std2 .al-tag {
+  display: table; margin: 0 0 4px; padding: 0 8px; border-radius: 999px;
+  font: 600 11px/1.7 var(--s2-thai);
+}
+.std2 .al-tag.pre { background: var(--s2-sum-bg); color: var(--s2-sum); }
+.std2 .al-tag.meas { background: var(--s2-prac-bg); color: var(--s2-prac); }
+.std2 .al-tag.post { background: var(--s2-card); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+.std2 ol.feat {
+  list-style: none; margin: 8px 0 18px; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
+.std2 ol.feat > li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center;
+  margin: 0; padding: 11px 14px 12px; border-radius: 12px; background: var(--s2-sunk);
+}
+.std2 .ft-n { font: 600 18px/1 var(--s2-mono); color: var(--ink-3); min-width: 1.2em; }
+.std2 .ft-tag { justify-self: start; padding: 0 9px; border-radius: 999px; font: 600 11.5px/1.7 var(--s2-thai); }
+.std2 .pro .ft-n { color: var(--ok); }
+.std2 .pro .ft-tag { background: var(--s2-ok-bg); color: var(--ok); }
+.std2 .con .ft-tag { background: var(--s2-trap-bg); color: var(--s2-trap); }
+.std2 ol.feat p { grid-column: 1 / -1; margin: 2px 0 0; font-size: 15px; line-height: 1.6; }
+
+/* ---------- 14. รูปจากสไลด์ figure.ifig > .fw > img + figcaption ---------- */
+.std2 .ifigs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; align-items: start; }
+.std2 .ifig {
+  margin: 18px 0; overflow: hidden; cursor: zoom-in;
+  background: var(--s2-card); border: 1px solid var(--line); border-radius: 14px;
+  transition: border-color .15s;
+}
+.std2 .ifigs > .ifig { margin: 0; }
+.std2 .ifig:hover, .std2 .ifig:focus-visible { border-color: var(--accent); outline: none; }
+.std2 .ifig .fw {
+  display: flex; align-items: center; justify-content: center; min-height: 90px; padding: 14px;
+  background: #FFFFFF; border-bottom: 1px solid var(--line);
+}
+.std2 .ifig img { display: block; max-width: 100%; width: auto; height: auto; }
+.std2 .ifig figcaption {
+  padding: 10px 16px 12px; font-size: 14px; line-height: 1.6; color: var(--ink); background: var(--s2-sunk);
+}
+.std2 .ifig figcaption b {
+  margin-right: 8px; font: 600 11px/1 var(--s2-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent-2);
+}
+.std2 .ifig figcaption span { display: block; margin-top: 4px; font-size: 13.5px; color: var(--ink-2); }
+.std2 .ifig figcaption span[lang="ru"] { display: inline; margin: 0; font-size: inherit; color: inherit; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .std2 .ifig .fw { filter: brightness(.9); } }
+:root[data-theme="dark"] .std2 .ifig .fw { filter: brightness(.9); }
+
+/* ---------- 15. ตาราง .tw · การ์ดสองคอลัมน์ .cols2 > .card ---------- */
+.std2 .tw {
+  max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 18px 0;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--s2-card);
+}
+.std2 .tw table { border-collapse: collapse; width: 100%; margin: 0; font-size: 14.5px; line-height: 1.55; }
+.std2 .tw.wide table { min-width: 560px; }
+.std2 .tw th {
+  text-align: left; vertical-align: bottom; padding: 9px 12px; white-space: nowrap;
+  font: 600 13px/1.4 var(--s2-sans); color: var(--ink-2); background: var(--s2-sunk); border-bottom: 1px solid var(--line);
+}
+.std2 .tw td { padding: 9px 12px; vertical-align: top; border-bottom: 1px solid var(--line); color: var(--ink); }
+.std2 .tw tbody tr:last-child td, .std2 .tw tr:last-child > td { border-bottom: 0; }
+.std2 .tw td.eq-cell { font-family: var(--s2-mono); font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.std2 .tw td.ru-cell { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; }
+.std2 .tw caption { caption-side: bottom; text-align: left; padding: 8px 12px; font-size: 13px; color: var(--ink-3); }
+.std2 .cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.std2 .cols2 > .card { min-width: 0; }
+.std2 .card {
+  position: static; display: block; gap: 0; box-shadow: none;
+  padding: 14px 16px; border-radius: 12px; background: var(--s2-sunk); border: 1px solid var(--line);
+}
+.std2 .card h5 { margin: 0 0 8px; font: 600 14px/1.45 var(--s2-sans); color: var(--ink-2); }
+.std2 .card h5::before { display: none; }
+.std2 .card ul, .std2 .card ol { margin: 0; padding-left: 1.2em; font-size: 15px; }
+.std2 .card .tw { max-width: 100%; overflow-x: auto; }
+.std2 .card .ru, .std2 .card .th, .std2 .card .note { padding-right: 0; font-size: inherit; color: inherit; font-weight: inherit; }
+
+/* ---------- 16. โจทย์เฉลยทีละขั้น ---------- */
+.std2 .prob { margin: 20px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--s2-card); overflow: hidden; }
+.std2 .prob > .ph {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 12px 16px;
+  background: var(--s2-sunk); border-bottom: 1px solid var(--line);
+}
+.std2 .prob .pn {
+  flex: none; padding: 2px 9px; border-radius: 6px; font: 600 12.5px/1.5 var(--s2-thai);
+  background: var(--s2-prac-bg); color: var(--s2-prac);
+}
+.std2 .prob .pt { min-width: 0; font-weight: 600; font-size: 15.5px; line-height: 1.5; }
+.std2 .prob .pbody { padding: 14px 16px 12px; }
+.std2 .prob .given {
+  margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--s2-sunk);
+  font-size: 15px; line-height: 1.7;
+}
+.std2 .prob .given-l, .std2 .ansline .ans-k {
+  display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 6px; vertical-align: .05em;
+  font: 600 12px/1.5 var(--s2-thai);
+  background: var(--s2-card); color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--line);
+}
+.std2 details.sol { margin: 4px 0 0; }
+.std2 details.sol > summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 8px 14px; border-radius: 10px; font: 600 14.5px/1.3 var(--s2-thai);
+  border: 1.5px solid var(--s2-prac); color: var(--s2-prac); background: transparent;
+}
+.std2 details.sol > summary::-webkit-details-marker { display: none; }
+.std2 details.sol > summary::after {
+  content: ""; width: 16px; height: 16px; background: currentColor; transition: transform .2s;
+  -webkit-mask: var(--s2-i-chev) center / contain no-repeat; mask: var(--s2-i-chev) center / contain no-repeat;
+}
+.std2 details.sol[open] > summary { background: var(--s2-prac); color: var(--s2-on); }
+.std2 details.sol[open] > summary::after { transform: rotate(180deg); }
+.std2 details.sol > ol.steps { margin-top: 16px; }
+.std2 .ansline {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0 4px; padding: 10px 14px;
+  border-radius: 10px; background: var(--s2-ok-bg); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent);
+}
+.std2 .ansline .ans-k { margin: 0; background: var(--ok); color: var(--s2-on); box-shadow: none; }
+.std2 .ansline .ans-v { font: 600 16px/1.5 var(--s2-mono); color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* ---------- 17. ส่วนฝึกสอบ (การ์ดแถบสีส้ม) ---------- */
+.std2 .sub.prac { overflow: hidden; padding-top: 28px; }
+.std2 .sub.prac::before { background: var(--s2-prac); }
+.std2 .sub.prac .sub-no { color: var(--s2-prac); background: var(--s2-prac-bg); border-color: color-mix(in srgb, var(--s2-prac) 30%, transparent); text-shadow: none; font-size: 0; }
+.std2 .sub.prac .sub-no::before { content: "EXAM"; content: "EXAM" / ""; margin-bottom: 6px; font-size: 8.5px; }
+.std2 .sub.prac .sub-no::after {
+  content: ""; width: 24px; height: 24px; background: currentColor;
+  -webkit-mask: var(--s2-i-prac) center / contain no-repeat; mask: var(--s2-i-prac) center / contain no-repeat;
+}
+.std2 .k-prac { margin: 22px 0 6px; }
+.std2 .k-prac + .k-prac { margin-top: 28px; padding-top: 22px; border-top: 1px dashed var(--line-2); }
+.std2 .k-prac > .blk-l { color: var(--s2-prac); }
+.std2 .k-prac > .blk-l::before { -webkit-mask-image: var(--s2-i-quiz); mask-image: var(--s2-i-quiz); }
+.std2 .k-prac > .blk-l::after { content: "QUIZ"; content: "QUIZ" / ""; }
+.std2 .k-prac.oral > .blk-l::before { -webkit-mask-image: var(--s2-i-oral); mask-image: var(--s2-i-oral); }
+.std2 .k-prac.oral > .blk-l::after { content: "ORAL · RU"; content: "ORAL · RU" / ""; }
+
+/* ---------- 18. ควิซ (DOM ที่ data-demo="quiz2" สร้าง) — override .quiz ส่วนกลาง ---------- */
+.std2 .quiz {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; max-width: none;
+  margin: 0; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none;
+}
+.std2 .quiz > * { min-width: 0; }
+.std2 .quiz-h {
+  display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 12px;
+  background: var(--s2-sunk); border: 1px solid var(--line);
+}
+.std2 canvas.quiz-ring { flex: none; display: block; width: 46px; height: 46px; }
+.std2 .quiz-st { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.std2 .quiz-st b { font: 600 15px/1.4 var(--s2-sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.std2 .quiz-st span { font-size: 13px; color: var(--ink-3); }
+.std2 .q { padding: 16px 18px; border-radius: 14px; background: var(--s2-card); border: 1px solid var(--line); }
+.std2 .q-t { position: relative; margin: 0 0 12px; padding-left: 40px; font-size: 16px; line-height: 1.65; font-weight: 500; color: var(--ink); }
+.std2 .q-t math[display="block"] { margin: .45em 0 0; text-align: left; }
+.std2 .q-n {
+  position: absolute; left: 0; top: 1px; width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center; font: 600 13px/1 var(--s2-mono);
+  background: var(--s2-prac); color: var(--s2-on);
+}
+.std2 .q-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.std2 .q-opts button {
+  appearance: none; -webkit-appearance: none; min-width: 0; min-height: 50px; margin: 0;
+  display: flex; align-items: center; gap: 11px; text-align: left; cursor: pointer;
+  padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line-2);
+  background: var(--s2-card); color: var(--ink); font: 400 15px/1.45 var(--s2-sans); box-shadow: none;
+  transition: border-color .15s, background .15s;
+}
+.std2 .q-opts button:hover:not(:disabled) { border-color: var(--s2-prac); background: var(--s2-card); color: var(--ink); }
+.std2 .q-opts button:disabled { cursor: default; }
+.std2 .o-k {
+  flex: none; width: 26px; height: 26px; border-radius: 7px; display: inline-grid; place-items: center;
+  font: 600 13px/1 var(--s2-thai); background: var(--s2-prac-bg); color: var(--s2-prac);
+}
+.std2 .q-opts button.right { border-color: var(--ok); background: var(--s2-ok-bg); }
+.std2 .q-opts button.right .o-k { background: var(--ok); color: var(--s2-on); }
+.std2 .q-opts button.wrong { border-color: var(--s2-trap); background: var(--s2-trap-bg); }
+.std2 .q-opts button.wrong .o-k { background: var(--s2-trap); color: var(--s2-on); }
+.std2 .q-opts button.dim { opacity: .5; }
+.std2 .q-fb {
+  margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; line-height: 1.7;
+  border: 1px solid var(--line); background: var(--s2-sunk); color: var(--ink);
+}
+.std2 .q-fb.ok { background: var(--s2-ok-bg); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.std2 .q-fb.no { background: var(--s2-trap-bg); border-color: color-mix(in srgb, var(--s2-trap) 40%, transparent); }
+.std2 .q-fb b.v { margin-right: 8px; font-weight: 600; }
+.std2 .q-fb.ok b.v { color: var(--ok); }
+.std2 .q-fb.no b.v { color: var(--s2-trap); }
+.std2 .q-num { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.std2 .q-num input {
+  flex: 0 1 180px; width: 180px; min-width: 0; min-height: 48px; margin: 0; padding: 8px 12px;
+  font: 600 17px/1.2 var(--s2-mono); color: var(--ink); background: var(--s2-card);
+  border: 1.5px solid var(--line-2); border-radius: 12px;
+}
+.std2 .q-num input:focus { border-color: var(--s2-prac); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--s2-prac) 22%, transparent); }
+.std2 .q-unit { font: 500 14px/1 var(--s2-mono); color: var(--ink-3); }
+.std2 .q-check, .std2 .q-reset {
+  appearance: none; -webkit-appearance: none; min-height: 48px; margin: 0; padding: 10px 18px; cursor: pointer;
+  border-radius: 12px; border: 1.5px solid var(--s2-prac); box-shadow: none;
+  font: 600 15px/1.2 var(--s2-thai); background: var(--s2-prac); color: var(--s2-on);
+}
+.std2 .q-check:hover:not(:disabled), .std2 .q-reset:hover { border-color: var(--s2-prac); color: var(--s2-on); background: color-mix(in srgb, var(--s2-prac) 88%, var(--ink)); }
+.std2 .q-check:disabled, .std2 .q-check:disabled:hover {
+  cursor: default; background: var(--s2-sunk); border-color: var(--line); color: var(--ink-3);
+}
+.std2 .q-num input:disabled { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--s2-ok-bg); }
+.std2 .q-reset { background: transparent; color: var(--s2-prac); }
+.std2 .q-reset:hover { color: var(--s2-on); background: var(--s2-prac); }
+.std2 .q-score {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px;
+  border-radius: 12px; background: var(--s2-prac-bg); font-weight: 600;
+}
+.std2 .q-score:empty { display: none; }
+.std2 .q-score .sc-v { font: 600 18px/1.2 var(--s2-mono); color: var(--s2-prac); }
+
+/* ---------- 19. ฝึกสอบปากเปล่า / คำถามสอบ: details.qa (ไม่ใช้ JS) — override details.qa ส่วนกลาง ---------- */
+.std2 .oral-how { margin: -4px 0 14px; font-size: 14.5px; line-height: 1.7; color: var(--ink-2); }
+.std2 details.qa {
+  margin: 0 0 10px; padding: 0; overflow: hidden;
+  background: var(--s2-card); border: 1px solid var(--line); border-radius: 14px;
+}
+.std2 details.qa[open] { border-color: color-mix(in srgb, var(--s2-prac) 45%, var(--line)); }
+.std2 details.qa > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  min-height: 56px; padding: 12px 14px; font-weight: 400; font-size: 16px;
+}
+.std2 details.qa > summary::-webkit-details-marker { display: none; }
+.std2 details.qa > summary::before, .std2 details.qa[open] > summary::before { content: none; display: none; }
+.std2 details.qa > summary::after {
+  content: "เปิดคำตอบ"; content: "เปิดคำตอบ" / ""; padding: 5px 10px; border-radius: 999px; white-space: nowrap;
+  font: 600 12.5px/1.2 var(--s2-thai); border: 1.5px solid var(--s2-prac); color: var(--s2-prac);
+}
+.std2 details.qa[open] > summary::after { content: "ซ่อน"; content: "ซ่อน" / ""; background: var(--s2-prac); color: var(--s2-on); }
+.std2 .qa-n {
+  min-width: 42px; padding: 5px 6px 4px; border-radius: 8px; text-align: center;
+  font: 600 12.5px/1.2 var(--s2-mono); background: var(--s2-prac-bg); color: var(--s2-prac);
+}
+.std2 .qa-q { min-width: 0; font-size: 16.5px; line-height: 1.5; font-weight: 600; color: var(--ink); }
+.std2 details.qa > .ans {
+  margin: 0; padding: 4px 16px 16px; border: 0; font-size: 16px; color: var(--ink);
+}
+.std2 .ans-ru {
+  padding: 14px 16px; border-radius: 12px; background: var(--s2-ru-bg); border-left: 3px solid var(--s2-exp);
+}
+.std2 .ans-ru .ans-l::before {
+  content: "RU"; content: "RU" / ""; padding: 3px 6px 2px; border-radius: 5px; transform: translateY(-1px);
+  font: 600 10px/1 var(--s2-mono); letter-spacing: .12em; background: var(--s2-exp); color: var(--s2-on);
+}
+.std2 .ans-ru p { margin: 0 0 10px; font-size: 15.5px; line-height: 1.8; }
+.std2 .ans-ru > :last-child, .std2 .ans-th > :last-child { margin-bottom: 0; }
+.std2 .ans-th { margin: 14px 0 0; padding: 0 2px; }
+.std2 .ans-th p { margin: 6px 0 10px; font-size: 15px; line-height: 1.75; }
+
+/* ---------- 20. แอนิเมชันทีละขั้น (เปลือก DOM ของเดโมแบบขั้น) ---------- */
+.std2 .anim { margin: 22px 0 10px; overflow: hidden; background: var(--s2-card); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: var(--s2-shadow); }
+.std2 .anim-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--s2-sunk); }
+.std2 .anim-head::before {
+  content: ""; width: 30px; height: 30px; flex: none; border-radius: 9px; background: var(--accent);
+  -webkit-mask: var(--s2-i-play) center / 22px no-repeat; mask: var(--s2-i-play) center / 22px no-repeat;
+}
+.std2 .anim-k { font: 500 12.5px/1.5 var(--s2-sans); color: var(--ink-3); }
+.std2 .anim-k::before { content: "SIM //"; content: "SIM //" / ""; margin-right: 7px; font: 600 10.5px/1 var(--s2-mono); letter-spacing: .14em; color: var(--accent); }
+.std2 .anim-t { font: 600 15.5px/1.4 var(--s2-sans); color: var(--ink); }
+.std2 .anim-stage { position: relative; background: var(--s2-card); }
+.std2 .anim-stage canvas { display: block; width: 100%; }
+.std2 .anim-leg { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 8px 16px; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--line); }
+.std2 .lg { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.std2 .lg::before { content: ""; width: 18px; height: 0; border-top: 2.5px solid var(--c); }
+.std2 .lg.dash::before { border-top-style: dashed; }
+.std2 .lg.dot::before { width: 9px; height: 9px; border: 0; border-radius: 50%; background: var(--c); }
+.std2 .lg-ref { --c: var(--accent); }     /* ค่าที่จุดอ้างอิง */
+.std2 .lg-meas { --c: var(--accent-2); }  /* ค่าที่วัด */
+.std2 .lg-lin { --c: var(--s2-exp); }     /* ค่าประมาณเชิงเส้น */
+.std2 .lg-new { --c: var(--s2-new); }     /* ผลลัพธ์ใหม่ */
+.std2 .anim-ctrl {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--s2-sunk);
+}
+.std2 .ab {
+  appearance: none; -webkit-appearance: none; min-height: 44px; margin: 0; padding: 8px 16px; cursor: pointer; white-space: nowrap;
+  border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--s2-card); color: var(--ink);
+  font: 600 14.5px/1.2 var(--s2-thai); box-shadow: none;
+}
+.std2 .ab:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); background: var(--s2-card); }
+.std2 .ab-next, .std2 .ab-next:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--s2-on); }
+.std2 .ab:disabled { opacity: .38; cursor: default; }
+.std2 .anim-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
+.std2 .anim-dots button {
+  appearance: none; -webkit-appearance: none; width: 36px; height: 36px; margin: 0; padding: 0; cursor: pointer;
+  border-radius: 10px; border: 1.5px solid var(--line-2); background: var(--s2-card); color: var(--ink-2);
+  font: 600 13px/1 var(--s2-mono); box-shadow: none;
+}
+.std2 .anim-dots button:hover { border-color: var(--accent); color: var(--ink); }
+.std2 .anim-dots button.done { border-color: color-mix(in srgb, var(--accent) 60%, transparent); color: var(--accent); background: var(--s2-sum-bg); }
+.std2 .anim-dots button.on { background: var(--accent); border-color: var(--accent); color: var(--s2-on); box-shadow: var(--s2-glow); }
+.std2 .anim-info { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); }
+.std2 .anim-cap { padding: 14px 18px 16px; }
+.std2 .anim-cap h4 { display: flex; gap: 8px; align-items: baseline; margin: 0 0 6px; font: 600 16px/1.45 var(--s2-sans); color: var(--ink); }
+.std2 .st-n { font: 600 .95em var(--s2-mono); color: var(--accent); }
+.std2 .anim-cap p { margin: 0; font-size: 14.5px; line-height: 1.7; color: var(--ink-2); }
+.std2 .anim-nums {
+  padding: 10px 16px 12px; border-left: 1px solid var(--line); font-size: 13.5px; background: var(--s2-sunk);
+}
+.std2 .nr { display: grid; gap: 1px; padding: 6px 0; border-bottom: 1px dashed var(--line-2); }
+.std2 .nr:last-child { border-bottom: 0; }
+.std2 .nk { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+.std2 .nv { font: 500 14px/1.6 var(--s2-mono); color: var(--ink); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.std2 .nv.big { font-size: 17px; font-weight: 600; color: var(--s2-new); text-shadow: var(--s2-glow); }
+.std2 .nv .src-note { font: 400 12px/1.5 var(--s2-thai); color: var(--ink-3); }
+.std2 .anim-fc { padding: 10px 16px 12px; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); border-top: 1px solid var(--line); }
+
+/* ---------- 21. แบบจำลองเดิม (.demo ที่ buildDemo สร้าง) ---------- */
+.std2 .demo {
+  margin: 22px 0 10px; overflow: hidden;
+  background: var(--s2-card); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: var(--s2-shadow);
+}
+.std2 .demo-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 11px 14px 11px 16px;
+  background: var(--s2-sunk); border-bottom: 1px solid var(--line);
+}
+.std2 .demo-head .lbl {
+  flex: 1 0 100%; font: 500 10.5px/1.4 var(--s2-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent-2);
+}
+.std2 .demo-head .lbl::before { content: "SIM // "; content: "SIM // " / ""; color: var(--accent); }
+.std2 .demo-head h4 { flex: 1 1 220px; min-width: 0; margin: 0; font: 600 15px/1.45 var(--s2-sans); color: var(--ink); }
+.std2 .demo-head .spacer { flex: 0 0 0; margin: 0; }
+.std2 .demo-head button {
+  appearance: none; -webkit-appearance: none; min-height: 36px; margin: 0; padding: 6px 12px; cursor: pointer;
+  font: 500 13px/1.3 var(--s2-sans); border: 1px solid var(--line-2); border-radius: 9px;
+  background: var(--s2-card); color: var(--ink-2); box-shadow: none;
+}
+.std2 .demo-head button:hover { border-color: var(--accent); color: var(--ink); }
+.std2 .demo-head button.on { background: var(--accent); border-color: var(--accent); color: var(--s2-on); }
+.std2 .demo .canvas-wrap { padding: 12px 14px 4px; }
+.std2 .demo .legend {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 4px 16px 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-2);
+}
+.std2 .demo .legend i { display: inline-block; width: 16px; height: 2.5px; vertical-align: middle; margin-right: 6px; }
+.std2 .demo .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+.std2 .demo .readout {
+  display: block; padding: 10px 16px 12px; margin: 0; border-top: 1px dashed var(--line-2);
+  font: 400 13.5px/1.75 var(--s2-sans); color: var(--ink-2); white-space: normal; font-variant-numeric: tabular-nums;
+}
+.std2 .demo .readout > span { margin-right: 20px; }
+.std2 .demo .readout > span:last-child { margin-right: 0; }
+.std2 .demo .readout b { color: var(--ink); font-weight: 600; }
+.std2 .demo .readout .good { color: var(--ok); }
+.std2 .demo .readout .bad { color: var(--crit); }
+.std2 .demo .readout sub, .std2 .demo .readout sup { font-size: 80%; }
+.std2 .demo .demo-ctl {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 22px;
+  padding: 12px 16px 16px; border-top: 1px solid var(--line); background: var(--s2-sunk);
+}
+.std2 .demo .demo-ctl:empty { display: none; }
+.std2 .demo .ctl { min-width: 0; }
+.std2 .demo .ctl label { display: block; margin: 0 0 4px; font: 400 13px/1.5 var(--s2-sans); color: var(--ink-2); }
+.std2 .demo .ctl label b { float: right; margin-left: 10px; font: 600 12.5px/1.6 var(--s2-mono); color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.std2 .demo .demo-description { margin: 0; padding: 10px 16px 12px; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.7; color: var(--ink-2); }
+.std2 .demo .demo-description summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+
+/* ---------- 22. บรรทัดแหล่งอ้างอิง ---------- */
+.std2 p.src {
+  margin: 30px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line);
+  font-size: 13px; line-height: 1.65; color: var(--ink-3); max-width: none;
+}
+.std2 p.src::before {
+  content: "SRC"; content: "SRC" / ""; display: inline-block; margin-right: 8px; padding: 2px 6px 1px; border-radius: 5px;
+  font: 600 10px/1.3 var(--s2-mono); letter-spacing: .12em; color: var(--accent-2); border: 1px solid currentColor; vertical-align: .1em;
+}
+.std2 p.src b { color: var(--accent-2); font-weight: 500; }
+
+/* ---------- 23. จอแคบ (อิงความกว้างของ .std2 เอง ไม่ใช่ของหน้าจอ) ---------- */
+@container std2 (max-width: 760px) {
+  .std2 .tmap ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container std2 (max-width: 600px) {
+  .std2 .sec-h, .std2 .sub {
+    background-size: 9px 2px, 2px 9px, 9px 2px, 2px 9px, auto;
+    background-position: left 6px top 6px, left 6px top 6px, right 6px bottom 6px, right 6px bottom 6px, 0 0;
+  }
+  .std2 .sec-h { padding: 22px 18px 18px; border-radius: 16px; }
+  .std2 .chain { flex-direction: column; gap: 2px; padding: 10px 12px; }
+  .std2 .ch-a { transform: rotate(90deg); }
+  .std2 .tmap ol { gap: 6px; }
+  .std2 .tmap button { min-height: 44px; padding: 6px 9px; gap: 8px; font-size: 13px; }
+  .std2 .tmap .tm-n { min-width: 30px; font-size: 11.5px; }
+  .std2 .sec-th { font-size: 16px; }
+  .std2 .k-sum, .std2 .k-trap { padding: 20px 16px 16px; border-radius: 16px; }
+  .std2 .sub { padding: 20px 17px 20px; border-radius: 16px; margin: 14px 0; }
+  .std2 .sub-h { gap: 14px; margin-bottom: 16px; }
+  .std2 .sub-no { width: 52px; height: 52px; border-radius: 12px; font-size: 17px; }
+  .std2 .sub-no::before { font-size: 7.5px; margin-bottom: 5px; }
+  .std2 .sub-t { font-size: 19px; }
+  .std2 .lead { font-size: 16.5px; padding: 11px 14px 12px; }
+  .std2 .blk-l { font-size: 16px; }
+  .std2 .sum-list > li { padding-left: 38px; }
+  .std2 .ru-box { padding: 12px 14px; }
+  .std2 .eq { padding: 6px 10px; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .std2 .eq-m { flex: 1 1 100%; order: 2; }
+  .std2 .eq-n { order: 1; padding: 4px 7px 3px; font-size: 11px; }
+  .std2 .deep-b { margin: 0 4px 4px; padding: 14px 14px 6px; }
+  .std2 ol.algo, .std2 ol.feat, .std2 .cols2 { grid-template-columns: minmax(0, 1fr); }
+  .std2 .traps > li { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .std2 .q { padding: 14px 14px; }
+  .std2 .q-t { padding-left: 36px; }
+  .std2 .q-opts { grid-template-columns: minmax(0, 1fr); }
+  .std2 details.qa > summary { grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; padding: 12px; }
+  .std2 details.qa > summary::after { grid-column: 2; justify-self: start; }
+  .std2 details.qa > .ans { padding: 2px 12px 14px; }
+  .std2 .anim-ctrl { flex-wrap: wrap; justify-content: space-between; }
+  .std2 .anim-dots { order: -1; flex: 1 0 100%; gap: 5px; }
+  .std2 .anim-dots button { width: 34px; height: 34px; }
+  .std2 .ab { flex: 1 1 40%; }
+  .std2 .anim-info { grid-template-columns: minmax(0, 1fr); }
+  .std2 .anim-nums { border-left: 0; border-top: 1px solid var(--line); }
+  .std2 .iter > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .std2 .iter > div span { margin-bottom: 6px; }
+  .std2 .eq-vars { grid-template-columns: minmax(0, 1fr); gap: 0 0; }
+  .std2 .eq-vars dt { text-align: left; margin-top: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .std2 *, .std2 *::before, .std2 *::after { transition: none !important; }
+}
+/* ===== STD2 CSS END ===== */

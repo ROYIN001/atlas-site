@@ -12,17 +12,19 @@ $mime = @{
   ".md"   = "text/markdown; charset=utf-8"
 }
 
-$listener = New-Object System.Net.HttpListener
+$listener = $null
 $port = 0
 foreach ($p in 8000..8010) {
+  # A failed Start() closes the HttpListener, so make a fresh one for every port.
+  $candidate = New-Object System.Net.HttpListener
   try {
-    $listener.Prefixes.Clear()
-    $listener.Prefixes.Add("http://localhost:$p/")
-    $listener.Start()
+    $candidate.Prefixes.Add("http://localhost:$p/")
+    $candidate.Start()
+    $listener = $candidate
     $port = $p
     break
   } catch {
-    $listener.Prefixes.Clear()
+    try { $candidate.Close() } catch { }
   }
 }
 if ($port -eq 0) {

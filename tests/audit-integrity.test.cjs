@@ -19,9 +19,12 @@ const APP_MARKER = '/* ================= APP ================= */';
 const TAU_START = '/* ===== ТАУ: демонстрации (window.TAUDEMOS) ===== */';
 const TAU_END = '/* ===== /ТАУ: демонстрации ===== */';
 const MINIMUM = {
-  subjects: 10, topics: 238, demoFunctions: 308,
-  htmlDemoSlots: 361, metadataDemoSlots: 24,
-  figureSlots: 782, figureFiles: 643
+  // 23.09.2026 ВИ (vhist): +1 วิชา · +23 หัวข้อ · +84 ฟังก์ชัน (39 แผนที่ + ซ้อมสอบ) · +78 ช่องเดโม · +90 รูป
+  // 23.09.2026 СН ЛА nav-7, nav-12 ในมาตรฐานกลาง v2 (.std2): +6 ฟังก์ชัน (แอนิเมชัน STEPS2 5 ตัว + ควิซ quiz2 ของบล็อก STD2) · ช่องเดโม 446 → 466
+  subjects: 11, topics: 261, demoFunctions: 398,
+  // 23.09.2026 СН ЛА นำร่อง: possurf/zenith ของ nav-7/nav-12 ย้ายจาก metadata ไปวางในเนื้อหา (metadata 24 → 22, html 361 → 368)
+  htmlDemoSlots: 466, metadataDemoSlots: 22,
+  figureSlots: 882, figureFiles: 743
 };
 const args = process.argv.slice(2);
 assert.ok(args.length === 0 || (args.length === 2 && args[0] === '--baseline-zip'),

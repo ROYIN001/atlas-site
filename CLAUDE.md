@@ -50,6 +50,8 @@ _work/                          (อยู่ใน .gitignore — บนเค�
 | `Object.assign(DEMOS, window.TEDEMOS \|\| {})` | ทะเบียนของแต่ละวิชา (`TEDEMOS`, `ASUDEMOS`, `NASDEMOS`, `PPODEMOS` …) รวม 278 ฟังก์ชัน |
 | `function buildIndex` | สร้างดัชนีค้นหาจาก `IXHAY` ที่โหลดมาจาก `data/ix/` |
 | `/* ===== ТАУ: демонстрации (window.TAUDEMOS)` | บล็อกเดโมของ ТАУ Т.6–Т.11 (30 ฟังก์ชัน) — **ห้ามแก้ในบล็อกนี้โดยตรง** ต้นฉบับอยู่ที่ `_work/demos/tau-<theme>-<key>.js` (ไฟล์ละหนึ่งฟังก์ชัน ห่อ IIFE แยกกัน) แล้วประกอบด้วย `python _work/demos/assemble.py t6 t7 t8 t9 t10 t11` ซึ่งเขียนทับเฉพาะบล็อกนี้ ตรวจว่าไบต์นอกบล็อกไม่เปลี่ยน คัดลอกบล็อก CSS `.nas` เป็น `.tau` และรัน `node --check` |
+| `/* ===== СН ЛА (ฉบับยกระดับ): демонстрации (window.NAVDEMOS)` | เดโมเฉพาะวิชาของ СН ЛА ที่ยกระดับแล้ว (nav-7, nav-12 · 11 ฟังก์ชัน) วางหลังบล็อก STD2 ก่อน `/* ================= APP` — ต้นฉบับ `_work/navpilot/demos/<key>.js` ประกอบด้วย `_work/navpilot/build.py` (รัน `_work/std2/tools/integrate.py` ก่อน แล้วแทนที่เฉพาะบล็อกนี้) · เนื้อหา `_work/navpilot/v2/src/*.src.html` · หัวข้อ nav ที่ยังไม่ยกระดับใช้คลาสส่วนกลางแบบเดิม |
+| `/* ===== STD2 JS BEGIN` · `/* ===== STD2 CSS BEGIN` | **มาตรฐานกลาง v2 ของทุกวิชา** (ดูหัวข้อ 9) — เอนจินแอนิเมชันทีละขั้น `window.STEPS2` + ปุ่ม `data-jump2` + ควิซ `DEMOS["quiz2"]` · CSS namespace `.std2` · **ห้ามแก้ในบล็อกโดยตรง** แก้ที่ `_work/std2/` แล้วรัน `python3 _work/std2/tools/integrate.py` |
 
 **ลำดับการทำงานเวลาผู้อ่านเปิดวิชา**
 `go({v:"subject", id})` → `renderSubject()` วาดหัวข้อทั้งหมดแต่ใส่แค่กล่องว่าง
@@ -179,3 +181,49 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - คำตัดสินทุกรายการ «เอกสารภาควิชาน่าจะผิด» และคำถามถามอาจารย์อยู่ใน `_work/review/tau__*.fable.md`
 - เครื่องเจ้าของงานเป็น Windows: ใช้ `python` ไม่ใช่ `python3`; ครั้งแรกให้ติดตั้ง
   `pip install -r requirements.txt` และ `python -m playwright install chromium` (ขออนุมัติก่อน)
+
+## 8. วิชา ВИ «Военная история» (`vhist`) — โครงต่างจากวิชาอื่น (เพิ่ม 23 ก.ย. 2026)
+
+วิชาประวัติศาสตร์ ไม่มีสูตร «แบบจำลอง» คือ **แผนที่เคลื่อนไหว 39 แผนที่** + วิดเจ็ตซ้อมสอบ
+- เนื้อหา: `data/t/vhist__vhist-*.json` 23 ไฟล์ (vhist-map, l1a, l1b, l2…l17, s1…s4) — ภาษาไทยเป็นหลัก
+  ภาษารัสเซียเฉพาะศัพท์และสิ่งที่ต้องพูดตอนสอบ (зачёт с оценкой: สุ่มหัวข้อ ตอบปากเปล่า)
+- ข้อมูลแผนที่/แบบทดสอบโหลดแบบขี้เกียจจาก `data/vh/`: `<map>.json` (39) · `quiz-<id>.json` · `exam-<id>.json` ·
+  `quiz-all.json` · `exam-all.json` · `river.json` — ไม่ได้อยู่ใน app.js
+- app.js: บล็อก `/* ВИ: движок карт и виджеты (VHDEMOS) BEGIN … END */` (เอนจิน `VHMAP` + `VHW` + ทะเบียน
+  `vh-<map>`, `vh-quiz-<id>`, `vh-exam-<id>`, `vh-quiz-all`, `vh-exam-all`, `vh-river`) · บล็อก DEEP และบล็อกคลังศัพท์
+  (502 คำ, `MODULES.push` id `vhist`) มีเครื่องหมาย BEGIN/END เช่นกัน · app.css: `/* ===== ВИ CSS BEGIN … END */`
+- **ต้นฉบับทั้งหมดอยู่ใน `_work/vhist/`** (บนเครื่องเท่านั้น): `maps/<key>.js` (สเปกแผนที่ — แก้ที่นี่ ไม่ใช่ที่ JSON),
+  `engine/` (vhmap.js, vhwidgets.js, css), `topics/*.html`, `quiz/`, `exam/`, `notes/` (บันทึกค้นคว้า 19 บรรยาย),
+  `tools/` (`build_map.py` สร้าง JSON แผนที่ + ฐานแม่น้ำ/ทะเลจาก Natural Earth 10m ที่ต้องดาวน์โหลดไว้ใน
+  `/home/claude/geo` · `integrate.py` ประกอบเข้า repo แบบลบบล็อกเดิมแล้วใส่ใหม่ (idempotent) · `check_topic.py`
+  ตรวจหัวข้อ · `proto.py` + `shots.py` ทำหน้าพรีวิวและภาพหน้าจอ) · คู่มือสำหรับ agent: `MAP-API.md`, `TOPIC-GUIDE.md`,
+  `REVIEW-HIST.md`, `REVIEW-LANG.md`
+- รูปจากสไลด์ 90 รูป: `figs/vh-l<NN>-s<slide>-<n>.webp` (ตัดขอบ ≤780 px WebP q70) — คัดเลือกและวางด้วยตาจาก contact sheet ตามคู่มือ `_work/vhist/FIG-GUIDE.md` · สคริปต์ `_work/vhist/tools/figs_media.py` (ดึงรูปจาก pptx พร้อมเลขสไลด์) · `figs_sheets.py` · `figs_conv.py`
+- ข้อตกลงสีแผนที่: ฝ่ายรัสเซีย/โซเวียต = แดง (`su`) · ข้าศึก = น้ำเงิน (`ax`) · พันธมิตรข้าศึก = ม่วง (`al`) · ฝ่ายที่สาม = มะกอก (`nt`)
+- ทุกวิดเจ็ตสร้าง `<canvas>` หนึ่งอันทันที (verify.py นับ canvas = data-demo) แล้วค่อยโหลด JSON
+- ฐานแผนที่ตัดอ่างเก็บน้ำ (Reservoir) ออกโดยค่าเริ่มต้น เพราะส่วนใหญ่สร้างหลังสงคราม (เช่น Цимлянское 1952)
+- ทดสอบบนมือถือด้วย Playwright: `window.scrollBy` / `mouse.wheel` ไม่ปลุก IntersectionObserver ของหัวข้อ
+  ในวิวพอร์ต 390 px — ใช้ `element.scrollIntoView()` แทน (เป็นกับทุกวิชา ไม่ใช่บั๊กของหน้าเว็บ)
+- ศัพท์ที่ตกลงแล้ว: Великая Отечественная война = «มหาสงครามของปิตุภูมิ» · коренной перелом = «จุดพลิกผันครั้งใหญ่» ·
+  корпус = กองทัพน้อย · дивизия = กองพล · бригада = กองพลน้อย
+- **ยกระดับเป็นมาตรฐานกลาง v2 แล้ว (24 ก.ย. 2026)** — หัวข้อฉบับเต็ม 19 หัวข้อ (vhist-map, l1a … l17) เป็น `<div class="std2">`
+  ส่วนหัวข้อสรุป s1–s4 ยังเป็น `.vhist` เดิม · แผนที่เคลื่อนไหวอยู่ใน `.k-exp` ของการ์ดหัวข้อย่อยที่เกี่ยวข้อง (ห้ามอยู่ในเจาะลึก)
+  · ควิซ `vh-quiz-<tid>` / `vh-exam-<tid>` ในหัวข้อถูกแทนด้วย `quiz2` ต่อคำถามการเรียน + `details.qa` ปากเปล่าท้ายหัวข้อ
+  (ทะเบียน `vh-quiz-*`/`vh-exam-*` ยังอยู่ใน VHDEMOS เพราะ tests นับจำนวนเดโมขั้นต่ำ · s4 ยังใช้ `vh-quiz-all`/`vh-exam-all`)
+- **ต้นฉบับหัวข้อฉบับเต็มย้ายไป `_work/vhpilot/`** — `parts/<code>-N.html` + `spec/<tid>.json` (ดัชนีควิซ ข้อตัวเลขเพิ่ม วลี `<mark>`)
+  → `tools/assemble.py` → `src/` → `_work/std2/tools/build_topic.py` → `out/` · หน้า vhist-map แก้ที่ `src/vhist-map.src.html` ตรง ๆ
+  · ประกอบทั้งหมดด้วย `python _work/vhpilot/build.py` (เขียน data/t, สำเนาไป `_work/vhist/topics/`, สร้าง `data/vh/quiz-*`/`exam-*` ใหม่, build_data)
+  · **ห้ามรัน `_work/vhist/tools/integrate.py` รุ่นเดิมทับ** ถ้าไม่จำเป็น (มันเขียน data/t จาก `_work/vhist/topics/` ซึ่ง build.py อัปเดตให้แล้ว แต่ยังเขียนบล็อก app.js ของ ВИ ใหม่ทั้งบล็อก)
+  · คู่มือ agent: `_work/vhpilot/WRITER-VH.md` (แปลงชิ้นส่วนเดิม → STD2) · `REVIEW-VH.md` · รายงานตรวจ `review/<tid>.<tech|lang>.md`
+  · เครื่องมือ: `tools/ratio.py` (เห็นทันที ≤ ~65 % ของฉบับเดิม) · `tools/counts.py` / `fixcounts.py` (ตัวเลข «ควิซ N ข้อ» ในป้าย) · `tools/splitlong.py` (ย่อหน้า > 350 ตัว) · `tools/totxt.py` (ถอดแท็กให้ผู้ตรวจ) · `tools/shot.py <tid>` (ภาพจากหน้าเว็บจริง)
+
+## 9. มาตรฐานกลาง v2 (STD2) — รูปแบบหัวข้อของทุกวิชาต่อจากนี้ (เพิ่ม 23 ก.ย. 2026)
+
+เจ้าของงานอนุมัติรูปแบบ «ผสม» (แบบ 4) จาก СН ЛА nav-7, nav-12 แล้วตัดสินว่า **«เอาเป็นมาตรฐานกลางสำหรับการทำทุกวิชา»** — วิชาที่ยกระดับต่อจากนี้ใช้ชุดเดียวกัน ไม่โคลน CSS/JS ต่อวิชา
+- **อ่าน `_work/std2/README.md` ก่อนเริ่มยกระดับวิชาใด ๆ** (ที่มา · โครงหัวข้อ · เป้าหมายที่วัดได้ · ลำดับงาน · บทเรียน) · สเปก html ตรงตัว `_work/std2/COMPONENTS.md` · แม่แบบคำสั่ง `WRITER.md` / `REVIEW.md`
+- โครงหนึ่งส่วน (учебный вопрос): หัวส่วน `.sec-h` → สรุป 1 นาที `.k-sum` → แผนที่ย่อ `nav.tmap` → การ์ดหัวข้อย่อย `section.sub` (`.lead` ใจความ → `.k-exp` อธิบาย → `details.deep` เจาะลึกพับเก็บ) → กับดักข้อสอบ `.k-trap` กล่องเดียว → ฝึกสอบ `section.sub.prac` (ควิซ `quiz2` + ปุ่มไปคำถามสอบ/โจทย์) · ท้ายหัวข้อ: ฝึกสอบรวม (`details.qa` ปากเปล่า) + สรุปก่อนสอบ · ทั้งหัวข้อครอบ `<div class="std2">` · สูตรเป็น MathML
+- ชุดกลาง (`_work/std2/`, บนเครื่องเท่านั้น): `std2.css` · `js/core.js` (`window.STEPS2`) · `js/quiz.js` · `tools/` (`integrate.py` เขียนบล็อก STD2 เข้า app.css/app.js · `build_topic.py` แปลง `$…$` เป็น MathML · `check.py` · `coverage.py` · `preview.py` · `demotest.py --steps` · `siteshot.py` · `mml.py`)
+- ของแต่ละวิชา: เนื้อหา `data/t/` + เดโมเฉพาะวิชาในบล็อก `window.<วิชา>DEMOS` ของวิชานั้น (เรียก `window.STEPS2` ได้เลย) + สคริปต์ประกอบของวิชา (แบบ `_work/navpilot/build.py`)
+- แก้ชุดกลางแล้ว **ทุกวิชาที่ใช้ `.std2` เปลี่ยนตาม** — รัน `src/verify.py` ทุกวิชานั้น · หน้าที่ยาวมากใช้ `--timeout 240`
+- ข้อควรระวังที่เจอแล้ว: รูปจากสไลด์ห้ามอยู่ใน `details.deep` (verify ได้ `nosrc`) · โค้ดระดับบนสุดของเดโมที่แตะ `document` ต้องเช็ก `typeof document` (tests รัน app.js ใน vm) · ห้าม `href="#…"` ใช้ `data-jump2`
+
