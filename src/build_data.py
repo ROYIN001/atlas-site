@@ -17,7 +17,31 @@ DATA = ROOT / "data"
 assert (DATA / "t").is_dir(), f"ไม่พบ {DATA/'t'}"
 
 tag, ent = re.compile(r'<[^>]*>'), re.compile(r'&#?[a-z0-9]{1,8};', re.I)
-plain = lambda h: re.sub(r'\s+', ' ', ent.sub(' ', tag.sub(' ', h))).strip()
+
+# <script type="application/json"> ในหัวข้อ (ควิซ quiz2 · ข้อมูลวิดเจ็ต ih-data) — เก็บเข้าดัชนีเฉพาะ
+# ข้อความที่คนอ่าน (สตริงที่มีอักษรไทยหรือซีริลลิก) ไม่เก็บชื่อคีย์ ตัวเลข รหัสสี รหัสประเทศ
+# ไม่งั้นค้น «frames» หรือ «options» แล้วเจอทุกหัวข้อ · สคริปต์ที่ไม่ใช่ JSON ไม่ใช่เนื้อหา ตัดทิ้ง
+script = re.compile(r'<script\b[^>]*>(.*?)</script>', re.S | re.I)
+human = re.compile(r'[฀-๿А-Яа-яЁё]')
+
+def _strings(o):
+    if isinstance(o, str):
+        if human.search(o):
+            yield o
+    elif isinstance(o, dict):
+        for v in o.values():
+            yield from _strings(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from _strings(v)
+
+def _script_text(m):
+    try:
+        return " " + " ".join(dict.fromkeys(_strings(json.loads(m.group(1))))) + " "
+    except ValueError:
+        return " "
+
+plain = lambda h: re.sub(r'\s+', ' ', ent.sub(' ', tag.sub(' ', script.sub(_script_text, h)))).strip()
 
 bysubj = collections.defaultdict(list)
 for f in sorted(glob.glob(str(DATA / "t" / "*.json"))):

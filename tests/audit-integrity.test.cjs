@@ -83,10 +83,25 @@ function metadataDemos(rows) {
   return rows.flatMap(row => row.demos || (row.demo ? [row.demo] : []));
 }
 
+function jsonHumanStrings(value, out) {
+  // Same walk as _strings() in src/build_data.py: keep only strings a reader sees (Thai or Cyrillic letters).
+  if (typeof value === 'string') {
+    if (/[฀-๿А-Яа-яЁё]/.test(value)) out.push(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) jsonHumanStrings(item, out);
+  } else if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) jsonHumanStrings(item, out);
+  }
+  return out;
+}
+
 function plainForIndex(html) {
   // Same transformations as src/build_data.py. Search indexes are generated;
   // never repair their text manually when this assertion fails.
-  return html.replace(/<[^>]*>/g, ' ').replace(/&#?[a-z0-9]{1,8};/gi, ' ')
+  return html.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (_, body) => {
+    try { return ' ' + [...new Set(jsonHumanStrings(JSON.parse(body), []))].join(' ') + ' '; }
+    catch (error) { return ' '; }
+  }).replace(/<[^>]*>/g, ' ').replace(/&#?[a-z0-9]{1,8};/gi, ' ')
     .replace(/\s+/g, ' ').trim().toLowerCase();
 }
 

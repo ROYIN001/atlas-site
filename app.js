@@ -944,7 +944,7 @@ function FIGS_LOAD() {
    เลื่อนไปถึงหัวข้อนั้นจริง ๆ ส่วนรูปเป็นไฟล์ .webp แยกที่เบราว์เซอร์
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
-const DATA_VERSION = "20260925-hist1";
+const DATA_VERSION = "20260925-hist2";
 const DBCACHE = new Map();
 let DB_FAILED = false;
 
@@ -49099,10 +49099,25 @@ IH.thBands = function (y0, y1) {
         const g = svgEl("g", { class: "bx", tabindex: 0, role: "button", "aria-label": b.th + " " + b.ru, style: "cursor:pointer" }, svg);
         svgEl("rect", { x: r.x, y: r.y, width: r.w, height: r.h, rx: 8, style: "fill:" + (st === 2 ? "var(--wash)" : "var(--panel)") + ";stroke:" + (S.sel === id ? "var(--accent-2)" : st === 2 ? "var(--accent)" : "var(--line-2)") + ";stroke-width:" + (S.sel === id ? 3 : st === 2 ? 2.6 : 1.3) + ";opacity:" + (st === 0 ? .4 : 1) + (st === 0 ? ";stroke-dasharray:5 4" : "") }, g);
         const fam = getComputedStyle(box).fontFamily, f1 = Math.max(10.5, Math.min(15, 15 * (r.w - 14) / Math.max(1, textW(b.th, "600 15px " + fam)))), f2 = Math.max(9.5, Math.min(12.5, 12.5 * (r.w - 14) / Math.max(1, textW(b.ru, "400 12.5px " + fam))));
-        const t1 = svgEl("text", { x: r.x + r.w / 2, y: r.y + r.h / 2 - 3, "text-anchor": "middle", style: "font-size:" + f1.toFixed(1) + "px;font-weight:600;fill:var(--ink);opacity:" + (st === 0 ? .45 : 1) }, g); t1.textContent = b.th;
-        let ru = b.ru; while (ru.length > 4 && textW(ru, "400 " + f2 + "px " + fam) > r.w - 10) ru = ru.slice(0, -2).trimEnd() + "…"; if (ru !== b.ru) ru = ru.replace(/…+$/, "…");
-        const t2 = svgEl("text", { x: r.x + r.w / 2, y: r.y + r.h / 2 + 15, "text-anchor": "middle", lang: "ru", style: "font-size:" + f2.toFixed(1) + "px;fill:var(--ink-3);opacity:" + (st === 0 ? .45 : 1) }, g); t2.textContent = ru;
-        if (ru !== b.ru) { const tt = svgEl("title", {}, g); tt.textContent = b.th + " · " + b.ru; }
+        /* ชื่อรัสเซีย: ถ้าลดฟอนต์ถึงขั้นต่ำแล้วยังเกินกล่อง (จอแคบ) → แบ่งสองบรรทัดที่ช่องว่าง ไม่ตัดด้วย «…» เพราะผู้อ่านต้องเห็นศัพท์เต็ม
+           ตัด «…» เฉพาะกรณีที่สองบรรทัดที่ฟอนต์ 9 px ก็ยังไม่พอ (มีป้าย title และกล่องคำอธิบายเมื่อแตะให้ดูชื่อเต็ม) */
+        const fitW = r.w - 10, wOf = (s, f) => textW(s, "400 " + f + "px " + fam);
+        let lines = [b.ru], f2b = f2;
+        if (wOf(b.ru, f2) > fitW) {
+          const ws = b.ru.split(" ");
+          if (ws.length > 1) {
+            let best = null;
+            for (let k = 1; k < ws.length; k++) { const a = ws.slice(0, k).join(" "), c = ws.slice(k).join(" "), m = Math.max(wOf(a, 12.5), wOf(c, 12.5)); if (!best || m < best[0]) best = [m, a, c]; }
+            lines = [best[1], best[2]]; f2b = Math.max(9, Math.min(12.5, 12.5 * fitW / best[0]));
+          }
+          lines = lines.map(s => { let t = s; while (t.length > 4 && wOf(t, f2b) > fitW) t = t.slice(0, -2).trimEnd() + "…"; return t.replace(/…+$/, "…"); });
+        }
+        const two = lines.length === 2, cut = lines.join(" ") !== b.ru, cy = r.y + r.h / 2;
+        const t1 = svgEl("text", { x: r.x + r.w / 2, y: two ? cy - 8 : cy - 3, "text-anchor": "middle", style: "font-size:" + f1.toFixed(1) + "px;font-weight:600;fill:var(--ink);opacity:" + (st === 0 ? .45 : 1) }, g); t1.textContent = b.th;
+        const t2 = svgEl("text", { x: r.x + r.w / 2, y: two ? cy + 7 : cy + 15, "text-anchor": "middle", lang: "ru", style: "font-size:" + f2b.toFixed(1) + "px;fill:var(--ink-3);opacity:" + (st === 0 ? .45 : 1) }, g);
+        if (two) lines.forEach((s, k) => { const ts = svgEl("tspan", { x: r.x + r.w / 2, dy: k ? (f2b * 1.18).toFixed(1) : 0 }, t2); ts.textContent = s; });
+        else t2.textContent = lines[0];
+        if (cut) { const tt = svgEl("title", {}, g); tt.textContent = b.th + " · " + b.ru; }
         const pick = () => { S.sel = id; draw(); box.querySelector(".ih-pinfo").innerHTML = "<b>" + esc(b.th) + "</b> <span class='ih-ru' lang='ru'>(" + esc(b.ru) + ")</span><p>" + esc(P.info[id]) + "</p>"; };
         g.addEventListener("click", pick);
         g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
