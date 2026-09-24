@@ -78,7 +78,8 @@ COUNTS = """() => {
     pending: v.querySelectorAll('.tbody[data-lazy], .tbody > .tload:not(.tfail)').length,
     tfail: v.querySelectorAll('.tfail').length,
     demos: v.querySelectorAll('[data-demo]').length,
-    canvas: v.querySelectorAll('canvas').length,
+    // วิดเจ็ตของวิชา История (data-demo="ih-…") วาดด้วย SVG/HTML ไม่ใช่ canvas — นับว่าติดตั้งแล้วเมื่อกล่องมีเนื้อหา
+    canvas: v.querySelectorAll('canvas').length + [...v.querySelectorAll('[data-demo^="ih-"]')].filter(h => h.children.length && !h.querySelector('canvas')).length,
     figs: v.querySelectorAll('figure.ifig[data-fig]').length,
     imgs_ok: imgs.filter(i => i.naturalWidth > 0).length,
     imgs_nosrc: imgs.filter(i => !i.getAttribute('src')).length,

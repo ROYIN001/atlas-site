@@ -227,3 +227,12 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - แก้ชุดกลางแล้ว **ทุกวิชาที่ใช้ `.std2` เปลี่ยนตาม** — รัน `src/verify.py` ทุกวิชานั้น · หน้าที่ยาวมากใช้ `--timeout 240`
 - ข้อควรระวังที่เจอแล้ว: รูปจากสไลด์ห้ามอยู่ใน `details.deep` (verify ได้ `nosrc`) · โค้ดระดับบนสุดของเดโมที่แตะ `document` ต้องเช็ก `typeof document` (tests รัน app.js ใน vm) · ห้าม `href="#…"` ใช้ `data-jump2`
 
+
+## 10. วิชา История (`hist`) — ประวัติศาสตร์รัสเซีย + โลก (เพิ่ม 25 ก.ย. 2026)
+
+- เนื้อหา: `data/t/hist__hist-*.json` 27 ไฟล์ — `hist-map` · `hist-l1…l21` · `hist-etik` (ภาคผนวก Воинский этикет) · สรุป `hist-s1…s4` · รูปแบบ STD2 · id ในหัวข้อขึ้นต้น `i<N>-` (ภาคผนวก `ie-`, สรุป `s1-…s4-`, แผนที่วิชา `hm-`) · รูป `figs/ih-l<NN>-*.webp` 337 ไฟล์
+- **ข้อมูลวิดเจ็ตของแต่ละหัวข้อมากับไฟล์หัวข้อ** (`<script type="application/json" class="ih-data">` ท้าย html) ไม่ได้อยู่ใน app.js — วิดเจ็ตอ่านแล้วรวมเข้า `window.IH` ตอนติดตั้ง · แผนที่ดินแดน/แผนที่โลกโหลดจาก `data/ih/atlas.json`, `world.json`
+- app.js: บล็อก `/* История: словарь (hist) */` (คลังศัพท์ 585 คำ) · `/* История: DEEP (hist) */` (ตั้ง `deep: true` ให้การ์ด hist ด้วย) · `/* История: สื่อและวิดเจ็ต (window.IHDEMOS) */` — ข้อมูลกลาง (ยุค ผู้ปกครอง 862–2026 เฟรมแผนที่ กษัตริย์สยาม) + วิดเจ็ต `ih-atlas ih-dyn ih-flow ih-hist ih-tl ih-power ih-order ih-say ih-world ih-chart ih-drill` · app.css: `/* История: CSS ของสื่อ (namespace .ih) */`
+- วิดเจ็ตวาดด้วย SVG/HTML ไม่ใช่ canvas → `src/verify.py` นับกล่อง `data-demo="ih-…"` ที่มีเนื้อหาเป็น «ติดตั้งแล้ว»
+- **ต้นฉบับอยู่นอก repo** (`История-ต้นทาง.zip` ในโฟลเดอร์ `Russian lesson\И\Claude outputs`): `shared/` (hist.js, hist.css, hist-data.js, mkmap.py, mkworld.py, check_ih.py, test_ih.py, WRITER-IH.md, REVIEW-IH.md) · `out/<หัวข้อ>/` (ih-*.html + data-*.js + REPORT.md) · `review/` · `tools/pack.py` (ประกอบ data/t + บล็อก) · `_work/hist/integrate_hist.py` (ใส่บล็อกใน app.js/app.css แบบแทนที่ได้ แล้วรัน `src/build_data.py`) — แก้ที่ต้นฉบับแล้วประกอบใหม่ อย่าแก้ JSON ในหัวข้อด้วยมือถ้าเลี่ยงได้
+- มุมมอง: แนวของสถาบัน/อาจารย์เป็นเนื้อหาสอบ มุมมองสากลอยู่ในกล่อง «มุมมองสากล» · จุดที่สไลด์ผิดอยู่ในกล่อง «หมายเหตุต้นฉบับ» · ศัพท์ที่ตัดสินแล้วอยู่ใน `WRITER-IH.md` §4 และ `дисциплины/10-И.md` ในโปรเจกต์ Claude
