@@ -55417,6 +55417,16 @@ let RAILOPEN = null;
 try { const r = localStorage.getItem(RAILKEY); if (r) RAILOPEN = new Set(JSON.parse(r)); } catch (e) {}
 if (!RAILOPEN) RAILOPEN = new Set([PROGRAM.current]);
 const saveRail = () => { try { localStorage.setItem(RAILKEY, JSON.stringify([...RAILOPEN])); } catch (e) {} };
+/* v5: โหมดผู้ดูแล — เมนู «ปรับภาคเรียน» มีไว้ให้เจ้าของงานแก้แผนการเรียน ผู้อ่านทั่วไปไม่เห็น
+   เปิดด้วย ?admin ต่อท้ายลิงก์ ปิดด้วย ?admin=0 · จำไว้ในเครื่องนั้น */
+const ADMINKEY = "atlas-admin-v1";
+let ADMIN = false;
+try { ADMIN = localStorage.getItem(ADMINKEY) === "1"; } catch (e) {}
+const ADMIN_Q = new URLSearchParams(location.search).get("admin");
+if (ADMIN_Q !== null) {
+  ADMIN = ADMIN_Q !== "0";
+  try { localStorage.setItem(ADMINKEY, ADMIN ? "1" : "0"); } catch (e) {}
+}
 const BLKCLS = { "ГСЭ": "blk-gse", "МЕН": "blk-men", "ОПД": "blk-opd", "СД": "blk-sd", "ВПД": "blk-vpd" };
 const ICONS = { hist: "📜", elob: "🔋", tau: "🎛️", surn: "🚀", suka: "🛰️", nav: "🧭", toe: "🔌", teh_el: "⚡", asu: "📡", nadezh: "🛡️", ppo: "🔧", vhist: "🗺️" };
 
@@ -55592,7 +55602,7 @@ function buildNav() {
   g2.className = "rail-group"; g2.textContent = "Инструменты · เครื่องมือ";
   navEl.appendChild(g2);
   const un = unassigned().length;
-  mk("ปรับภาคเรียน", un ? un + " ค้าง" : "", () => go({ v: "sem" }), { "data-nav": "sem" });
+  if (ADMIN) mk("ปรับภาคเรียน", un ? un + " ค้าง" : "", () => go({ v: "sem" }), { "data-nav": "sem" });
   mk("Словарь · คลังศัพท์", "0%", () => go({ v: "glossary" }), { "data-nav": "glossary" });
   mk("Карточки · Flashcard", "", () => go({ v: "flash" }), { "data-nav": "flash" });
   mk("Тренажёр · ควิซ", "", () => go({ v: "quiz" }), { "data-nav": "quiz" });
@@ -55624,8 +55634,8 @@ function renderOverview() {
     '<p class="eyebrow">ВКА имени А.Ф. Можайского · г. Санкт-Петербург</p>' +
     '<h1 class="page-title">Атлас курса</h1>' +
     '<div class="page-title-th">Специализация: «' + PROGRAM.spec + '»</div>' +
-    '<p class="lede">ชื่อวิชาและหน่วยกิตมาจากเอกสารหลักสูตรของกระทรวงกลาโหมรัสเซีย ส่วนการจัดภาคเรียนเป็นข้อมูลที่คุณยืนยันเอง ' +
-    'ถ้ามีอะไรเปลี่ยน แก้ได้เองที่เมนู <b>ปรับภาคเรียน</b> แล้วทั้งแอปจะจัดเรียงใหม่ทันที</p>' +
+    '<p class="lede">ชื่อวิชาและหน่วยกิตมาจากเอกสารหลักสูตรของกระทรวงกลาโหมรัสเซีย ส่วนภาคเรียนของแต่ละวิชาจัดตามแผนการเรียนของรุ่นผู้เรียบเรียง ' +
+    'รุ่นของคุณอาจเรียนบางวิชาต่างภาคกันไปบ้าง · การ์ดที่มีป้าย <b>เนื้อหาเต็ม</b> คือวิชาที่เรียบเรียงเนื้อหาไว้แล้วพร้อมแบบจำลองโต้ตอบ ส่วนวิชาอื่นยังมีแค่โครงร่างหัวข้อ</p>' +
     '<div class="statbar">' +
     '<div class="stat"><b>' + SUBJECTS.length + '</b><span>รายวิชา</span></div>' +
     '<div class="stat"><b>' + fmtZe(PROGRAM.listed) + '</b><span>з.е. รวม</span></div>' +
@@ -55662,12 +55672,12 @@ function renderOverview() {
   const un = unassigned().sort(byNum);
   if (un.length) {
     h += '<div class="year"><div class="year-head"><span class="year-num">?</span>' +
-      '<h2>ยังไม่ระบุภาคเรียน</h2><span class="year-note">' + un.length + ' วิชา — ไปติ๊กได้ที่เมนู ปรับภาคเรียน</span></div>' +
+      '<h2>ยังไม่ระบุภาคเรียน</h2><span class="year-note">' + un.length + ' วิชา' + (ADMIN ? ' — ไปติ๊กได้ที่เมนู ปรับภาคเรียน' : '') + '</span></div>' +
       '<div class="subj-grid">' + un.map(subjCard).join("") + '</div></div>';
   }
-  h += '<footer class="foot">ตัดรายการ Тактика специальная การฝึกงานทั้งหมด และ ГИА ออกตามที่สั่งไว้ ส่วนพลศึกษาใส่กลับเข้ามาแล้ว (เรียนภาค 1–9) เหลือ ' +
-    SUBJECTS.length + ' วิชา รวม ' + fmtZe(PROGRAM.listed) + ' з.е. · ' +
-    'ตัวเลขมุมซ้ายของแต่ละการ์ดคือเลขอ้างอิงที่คงที่ ใช้บอกผมได้ว่าจะแก้วิชาไหน · ความคืบหน้าเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</footer></div>';
+  h += '<footer class="foot">รายการนี้ไม่รวมยุทธวิธีเฉพาะ (Тактика специальная) การฝึกงาน และการสอบรับรองของรัฐ (ГИА) แต่รวมพลศึกษา (เรียนภาค 1–9) · รวม ' +
+    SUBJECTS.length + ' วิชา ' + fmtZe(PROGRAM.listed) + ' з.е. · ' +
+    'ตัวเลขมุมซ้ายของการ์ดคือเลขประจำวิชาในเว็บนี้ ไม่เปลี่ยน จึงใช้อ้างอิงได้ · ความคืบหน้าเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</footer></div>';
   view.innerHTML = h;
   view.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go({ v: "subject", id: b.dataset.go })));
   const rb = document.getElementById("resumeBtn");
@@ -55712,12 +55722,38 @@ async function fillBody(el) {
   el.innerHTML = html + demoSlots(t);
   el.querySelectorAll("[data-demo]").forEach(d => { if (d.dataset.demo && DEMOS[d.dataset.demo]) DEMOS[d.dataset.demo](d); });
   if (window.SUKAFIG) window.SUKAFIG(el);
+  fitWideMath(el);
   tocOnFill(el);
 }
 function fillAllBodies() {
   return Promise.all([...document.querySelectorAll(".tbody[data-lazy]")].map(fillBody));
 }
 window.addEventListener("beforeprint", fillAllBodies);
+
+/* ---- v5: สูตรในบรรทัดที่กว้างกว่ากล่องของตัวเอง (จอแคบ) → .m-wide = บรรทัดแยกที่เลื่อนแนวนอนได้ ----
+   ใส่ overflow ให้สูตรทุกตัวไม่ได้ เพราะจะตัดตัวห้อย/ตัวยกของสูตรที่พอดีกล่อง · CSS อยู่ใน app.css «v5» */
+function fitWideMath(root) {
+  const todo = [];
+  root.querySelectorAll('math:not([display="block"])').forEach(m => {
+    let box = m.parentElement;
+    while (box && box !== root && /^(inline|contents)/.test(getComputedStyle(box).display)) box = box.parentElement;
+    if (!box) return;
+    const cs = getComputedStyle(box);
+    const avail = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    if (avail <= 0) return;                      // ยังไม่แสดง เช่นอยู่ใน details ที่ปิดอยู่
+    const need = m.classList.contains("m-wide") ? m.scrollWidth : m.getBoundingClientRect().width;
+    if ((need > avail + 1) !== m.classList.contains("m-wide")) todo.push(m);
+  });
+  todo.forEach(m => m.classList.toggle("m-wide"));   // วัดให้ครบก่อนแล้วค่อยเปลี่ยน จะได้คำนวณเลย์เอาต์รอบเดียว
+}
+document.addEventListener("toggle", e => { if (e.target.open && e.target.closest("#view")) fitWideMath(e.target); }, true);
+let fitW = window.innerWidth, fitTimer;
+window.addEventListener("resize", () => {
+  if (window.innerWidth === fitW) return;          // มือถือยิง resize ตอนแถบ URL หุบ/กาง — ความกว้างไม่เปลี่ยน ไม่ต้องวัดใหม่
+  fitW = window.innerWidth;
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(fitWideMath), 250);
+}, { passive: true });
 
 function renderSubject() {
   LAZYBODY = [];
@@ -55757,7 +55793,7 @@ function renderSubject() {
       deep.summary.forEach(t => {
         h += '<section class="topic" id="' + t.id + '"><div class="topic-head">' +
           '<button class="fold" aria-label="ย่อ/ขยายหัวข้อ">▾</button><div>' +
-          '<h2>' + t.ru + '</h2><div class="th">' + t.th + '</div></div></div>' +
+          '<h2 lang="ru">' + t.ru + '</h2><div class="th">' + t.th + '</div></div></div>' +
           lazyBody(t) + '</section>';
       });
     } else {
@@ -55765,7 +55801,7 @@ function renderSubject() {
       deep.topics.forEach((t, i) => {
         h += '<section class="topic" id="' + t.id + '"><div class="topic-head">' +
           '<button class="fold" aria-label="ย่อ/ขยายหัวข้อ">▾</button><div>' +
-          '<h2>' + (i + 1) + '. ' + t.ru + '</h2><div class="th">' + t.th + '</div></div>' +
+          '<h2 lang="ru">' + (i + 1) + '. ' + t.ru + '</h2><div class="th">' + t.th + '</div></div>' +
           '<button class="topic-check' + (DONE.has("k:" + t.id) ? " done" : "") + '" data-key="k:' + t.id + '" title="ทบทวนหัวข้อนี้แล้ว" aria-label="ทำเครื่องหมายว่าทบทวนแล้ว">✓</button></div>' +
           lazyBody(t) + '</section>';
       });
@@ -55773,7 +55809,7 @@ function renderSubject() {
     TOCX.modeNext = mode;                       // v4: สารบัญ + แถบข้างต่อท้าย .wrap (ดู tocSideHtml)
   } else {
     h += '<section class="topic"><div class="topic-head"><div><h2>Основные разделы</h2><div class="th">หัวข้อหลักของวิชา</div></div></div>' +
-      '<p>ติ๊กหัวข้อที่ทบทวนแล้วเพื่อให้แถบความคืบหน้าเดิน วิชานี้ยังเป็นโครงร่าง — ถ้าอยากให้ทำเนื้อหาเต็มพร้อมภาพและแบบจำลองแบบวิชา ТАУ กับ Системы навигации ЛА บอกผมได้เลย</p><ul style="list-style:none;padding:0">';
+      '<p>วิชานี้ยังมีแค่โครงร่างหัวข้อ ยังไม่ได้เรียบเรียงเนื้อหาเต็มพร้อมรูปและแบบจำลอง · ติ๊กหัวข้อที่ทบทวนแล้วเพื่อให้แถบความคืบหน้าเดิน</p><ul style="list-style:none;padding:0">';
     (s.topics || []).forEach((t, i) => {
       const k = "k:" + s.id + ":" + i;
       h += '<li style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">' +
@@ -56188,7 +56224,7 @@ function go(st) {
       }
     });
   }
-  ({ overview: renderOverview, subject: renderSubject, glossary: renderGlossary, quiz: renderQuiz, search: renderSearch, sem: renderSemEditor, flash: renderFlash }[st.v] || renderOverview)();
+  ({ overview: renderOverview, subject: renderSubject, glossary: renderGlossary, quiz: renderQuiz, search: renderSearch, sem: ADMIN ? renderSemEditor : renderOverview, flash: renderFlash }[st.v] || renderOverview)();
   window.scrollTo({ top: 0, behavior: "instant" });
   syncProgress();
   if (st.v === "subject") { LAST = { v: "subject", id: st.id, y: 0 }; saveLast(); }
@@ -56204,13 +56240,13 @@ function renderSemEditor() {
     '<p class="eyebrow">Опрос · แบบสอบถาม</p>' +
     '<h1 class="page-title">ภาคเรียนไหนเรียนอะไรบ้าง</h1>' +
     '<div class="page-title-th">เลือกภาคเรียนด้านบน แล้วติ๊กวิชาที่เรียนในภาคนั้น — วิชาหนึ่งติ๊กได้หลายภาคถ้าเรียนต่อเนื่อง</div>' +
-    '<p class="lede">ตอนนี้ติ๊กไว้ตามที่ผมเดา กดวิชาที่ผิดเพื่อเอาออก แล้วไปติ๊กในภาคที่ถูกต้อง ทุกอย่างบันทึกในเครื่องนี้ทันที ' +
-    'และหน้าอื่นของแอปจะจัดเรียงตามที่คุณแก้เลย ถ้าแก้แล้วอยากให้ผมฝังลงในแอปถาวร กดปุ่มล่างสุดแล้วส่งสรุปมาให้ผม</p>' +
+    '<p class="lede">ค่าเริ่มต้นมาจากแผนการเรียนใน app.js (<code>SUBJECTS</code>) กดวิชาที่ผิดเพื่อเอาออก แล้วไปติ๊กในภาคที่ถูกต้อง ทุกอย่างบันทึกในเครื่องนี้ทันที ' +
+    'และหน้าอื่นจะจัดเรียงตามที่แก้ · ค่าที่แก้ตรงนี้เห็นแค่ในเครื่องนี้ ถ้าจะให้ผู้อ่านทุกคนเห็น ให้คัดลอกสรุปด้านล่างไปแก้ <code>sems</code> ใน app.js</p>' +
     '<div class="qbar"><button id="clearAll">ล้างทั้งหมด แล้วเริ่มติ๊กใหม่</button>' +
     '<button id="resetDraft">กลับไปใช้ค่าที่ยืนยันไว้</button>' +
     '<span class="m" id="unCount"></span></div>' +
     '</div><div class="semtabs" id="tabs"></div><div id="qbody"></div>' +
-    '<div class="qsum"><h3>สรุปคำตอบ — ส่งข้อความนี้กลับมาให้ผม</h3>' +
+    '<div class="qsum"><h3>สรุปภาคเรียนที่แก้ — คัดลอกไปใช้แก้ app.js</h3>' +
     '<textarea id="sumBox" readonly rows="12" spellcheck="false"></textarea>' +
     '<div class="qbar"><button id="copyBtn">คัดลอก</button><span class="m" id="copyMsg"></span></div></div></div>';
 

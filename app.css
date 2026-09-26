@@ -167,6 +167,7 @@
   .nav-item.deep .tag { color: var(--accent-2); }
 
   main.stage { padding: 0 0 90px; min-width: 0; }
+  .boot { padding: 48px 34px; color: var(--ink-2); }   /* ข้อความใน index.html ระหว่างรอ app.js */
   .wrap { max-width: 880px; padding: 0 34px; }
   .wrap.wide { max-width: 1120px; }
 
@@ -670,20 +671,15 @@
 
   @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; }
+    /* จอแคบเหลือแค่ชื่อเว็บ — เมนูย้ายไปแถบล่าง (#bbar) กับการ์ดในหน้าภาพรวม
+       (เดิมเป็นแถบเลื่อนแนวนอนที่พัง: ปุ่มแรกกว้างหลายหมื่น px แถบสูงครึ่งจอ) */
     aside.rail {
       position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line);
-      flex-direction: row; overflow-x: auto; align-items: center; padding: 12px;
+      flex-direction: row; align-items: center; padding: 10px 16px;
     }
-    .brand { padding: 0 12px 0 6px; flex: none; }
+    .brand { padding: 0; flex: none; }
     .brand-sub { display: none; }
-    .rail-group, .rail-sem { display: none; }
-    aside.rail nav { display: flex; flex-direction: row; gap: 6px; }
-    .nav-item {
-      border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap;
-      flex: none; grid-template-columns: auto auto; padding: 6px 10px;
-      align-items: center;
-    }
-    .nav-item.active { border-left-color: transparent; border-bottom-color: var(--accent); }
+    aside.rail nav { display: none; }
     .topbar { padding: 10px 16px; }
     .wrap, .wrap.wide { padding: 0 16px; }
     .topic-nav { top: 55px; }
@@ -1845,19 +1841,29 @@
     #quizBtn { display: none; }
     .progress-chip .track { width: 54px; }
     button, .btn { padding: 10px 14px; }
-    .nav-item { padding: 9px 12px; }
     .topic-check { width: 30px; height: 30px; }
     .tick { width: 26px; height: 26px; }
     .bmark { width: 26px; height: 26px; right: 42px; }
     .card .ru { padding-right: 72px; }
     .searchbox input { padding: 11px 40px 11px 12px; font-size: 16px; }
     .searchbox { max-width: none; }
-    .sem-body { display: contents; }
     .tw, .ftable { -webkit-overflow-scrolling: touch; }
     .hero { padding: 20px 16px; margin-top: 14px; }
     .quiz { padding: 20px 16px; }
     .fcard { min-height: 260px; }
     .topic-head .fold { width: 32px; height: 32px; }
+  }
+
+  /* ============ v5: กันเนื้อหาล้นจอแคบ (ทุกวิชา · แก้ตรงนี้ได้ ไม่ใช่บล็อกที่ประกอบอัตโนมัติ) ============
+     ตารางใน .tw เลื่อนแนวนอนในกล่องของตัวเอง (เดิมมีแค่ในบล็อกของบางวิชา — บล็อกสรุปของ ТАУ ไม่มี จึงล้นทั้งหน้า)
+     ป้าย .ed ที่ยาวตัดบรรทัดได้บนจอแคบ · สูตรในบรรทัดที่กว้างกว่ากล่องได้คลาส .m-wide จาก fitWideMath() ใน app.js */
+  #view .tw { overflow-x: auto; max-width: 100%; }
+  .topic-head > div { min-width: 0; }                 /* คำรัสเซียยาว ๆ ในชื่อหัวข้อ (h2 lang="ru") ตัดคำได้ ไม่ดันปุ่ม ✓ ออกนอกจอ */
+  .topic-head h2 { overflow-wrap: break-word; }
+  #view .tbody math.m-wide { display: block math; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: 3px 0; }
+  @media (max-width: 600px) {
+    #view .tbody .ed { white-space: normal; max-width: 100%; }
+    .topic-head h2 { hyphens: auto; }
   }
 
 
