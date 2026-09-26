@@ -55842,6 +55842,7 @@ function renderSubject() {
     '<div class="page-title-th">' + s.th + ' · <span class="m">' + fmtZe(s.ze) + ' з.е. ≈ ' + Math.round(s.ze * PROGRAM.zeHour) + ' ак. ч.</span></div>' +
     '<p class="lede">' + (deep ? deep.lede : s.desc) + '</p>' +
     '<div style="margin-top:16px"><span class="track" style="width:180px;display:inline-block;vertical-align:middle"><span class="subj-bar-active" style="width:' + pct(subjKeys(s)) + '%"></span></span> <span class="m" style="font-size:11px;color:var(--ink-3)">ทำเครื่องหมายทบทวนแล้ว ' + pct(subjKeys(s)) + '%</span></div>' +
+    (deep ? '<div class="offl" id="offl"></div>' : '') +
     '<p class="m">สถานะภาคเรียนอิงแผนการเรียน ส่วนเปอร์เซ็นต์อิงการทำเครื่องหมายของคุณในเครื่องนี้ ไม่ใช่ผลสอบหรือการประเมินความเข้าใจ</p>' +
     '</div>';
 
@@ -55920,6 +55921,7 @@ function renderSubject() {
     }), { rootMargin: "-15% 0px -70% 0px" });
   }
   tocBind();
+  offlineUi(s);
   view.querySelectorAll("[data-demo]").forEach(d => { if (d.dataset.demo && DEMOS[d.dataset.demo]) DEMOS[d.dataset.demo](d); });
   if (window.SUKAFIG) window.SUKAFIG(view);
   const lz = view.querySelectorAll(".tbody[data-lazy]");
@@ -57023,6 +57025,77 @@ document.querySelectorAll("#bbar [data-bb]").forEach(b => b.addEventListener("cl
   }
   go({ v });
 }));
+/* ---- v5: อ่านแบบออฟไลน์ (sw.js) ----
+   ลงทะเบียนเฉพาะบนเว็บจริง ไม่ลงทะเบียนบน localhost/127.* (preview.bat, verify.py) กันไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย ?sw=1
+   ปุ่ม «เก็บวิชานี้ไว้อ่านออฟไลน์» ดึงทุกหัวข้อ รูป แผนที่ ฟอนต์ และตัวโปรแกรมผ่าน service worker ให้เก็บลงเครื่อง */
+const SW_OK = "serviceWorker" in navigator &&
+  ((location.protocol === "https:" && !/^(localhost|127\.|\[::1\])/.test(location.hostname)) || /[?&]sw=1\b/.test(location.search));
+if (SW_OK) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (state.v === "subject") offlineUi(ALL_SUBJ.find(x => x.id === state.id)); });
+}
+const OFFKEY = "atlas-offline-v1";
+function offlineUi(s) {
+  const box = document.getElementById("offl");
+  if (!box || !s) return;
+  if (!(SW_OK && navigator.serviceWorker.controller)) { box.hidden = true; return; }
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(OFFKEY) || "{}") || {}; } catch (e) {}
+  const when = saved[s.id];
+  box.hidden = false;
+  box.innerHTML = '<button type="button" id="offlBtn">' + (when ? "↻ อัปเดตสำเนาออฟไลน์" : "⤓ เก็บวิชานี้ไว้อ่านออฟไลน์") + '</button>' +
+    '<span class="m" id="offlMsg" role="status">' + (when ? "เก็บไว้แล้วเมื่อ " + new Date(when).toLocaleDateString("th-TH") + " — เปิดอ่านได้แม้ไม่มีเน็ต"
+      : "ดาวน์โหลดทุกหัวข้อ รูป และแผนที่ของวิชานี้เก็บไว้ในเครื่อง") + '</span>';
+  document.getElementById("offlBtn").addEventListener("click", () => saveOffline(s));
+}
+async function saveOffline(s) {
+  const btn = document.getElementById("offlBtn"), msg = document.getElementById("offlMsg");
+  if (!btn) return;
+  btn.disabled = true;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  const urls = new Set(["./", "manifest.webmanifest", "fonts/fonts.css"]);
+  document.querySelectorAll('script[src], link[rel="stylesheet"][href], link[rel~="icon"][href]').forEach(e => urls.add(e.getAttribute("src") || e.getAttribute("href")));
+  let fails = 0, done = 0;
+  const say = t => { if (msg.isConnected) msg.textContent = t; };
+  const pull = async u => { try { const r = await fetch(u); if (!r.ok) fails++; return r; } catch (e) { fails++; return null; } };
+  say("กำลังรวบรวมรายการไฟล์…");
+  const topics = topicsOf(s.id);
+  const bodies = await Promise.all(topics.map(async t => {
+    const r = await pull("data/t/" + s.id + "__" + t.id + ".json?v=" + DATA_VERSION);
+    try { return r && r.ok ? (await r.json()).html || "" : ""; } catch (e) { return ""; }
+  }));
+  bodies.forEach(h => {
+    for (const m of h.matchAll(/data-fig="([A-Za-z0-9_.-]+)"/g)) urls.add("figs/" + m[1] + ".webp");
+    for (const m of h.matchAll(/data-demo="vh-([a-z0-9-]+)"/g)) urls.add("data/vh/" + m[1] + ".json");
+  });
+  topics.forEach(t => (t.demos || (t.demo ? [t.demo] : [])).forEach(k => { const m = /^vh-([a-z0-9-]+)$/.exec(k); if (m) urls.add("data/vh/" + m[1] + ".json"); }));
+  if (bodies.some(h => h.includes('data-demo="ih-'))) { urls.add("data/ih/atlas.json"); urls.add("data/ih/world.json"); }
+  try { const css = await (await fetch("fonts/fonts.css")).text(); for (const m of css.matchAll(/url\(([^)]+\.woff2)\)/g)) urls.add("fonts/" + m[1]); } catch (e) {}
+  const list = [...urls], total = list.length + topics.length;
+  done = topics.length;
+  let i = 0;
+  await Promise.all(Array.from({ length: 6 }, async () => {
+    while (i < list.length) { await pull(list[i++]); done++; say("กำลังเก็บ " + done + "/" + total + " ไฟล์…"); }
+  }));
+  if (!fails) {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(OFFKEY) || "{}") || {}; } catch (e) {}
+    saved[s.id] = Date.now();
+    try { localStorage.setItem(OFFKEY, JSON.stringify(saved)); } catch (e) {}
+    say("เก็บครบ " + total + " ไฟล์แล้ว — เปิดวิชานี้ได้แม้ไม่มีเน็ต");
+  } else say("โหลดไม่สำเร็จ " + fails + " จาก " + total + " ไฟล์ — ต่อเน็ตแล้วกดอีกครั้ง");
+  btn.disabled = false;
+}
+function netBar() {                                  // แถบบอกว่าออฟไลน์อยู่
+  let bar = document.getElementById("netbar");
+  if (navigator.onLine) { if (bar) bar.remove(); return; }
+  if (!bar) { bar = document.createElement("div"); bar.id = "netbar"; bar.setAttribute("role", "status"); document.body.appendChild(bar); }
+  bar.textContent = "ออฟไลน์ — เปิดได้เฉพาะหัวข้อที่เคยเปิดหรือเก็บไว้อ่านออฟไลน์";
+}
+window.addEventListener("online", netBar);
+window.addEventListener("offline", netBar);
+netBar();
+
 const topBtn = document.getElementById("topBtn");
 topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 let lastScrollY = window.scrollY;
