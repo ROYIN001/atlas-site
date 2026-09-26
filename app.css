@@ -1609,26 +1609,144 @@
   .topic.closed { padding-bottom: 20px; }
   .topic-head h2 { cursor: pointer; }
 
-  /* ============ v2: สารบัญลอย (TOC) ============ */
-  .toc {
-    position: fixed; top: 112px; right: 22px; width: 200px;
-    max-height: calc(100vh - 160px); overflow-y: auto; display: none;
+  /* ============ v4: โครงหน้าวิชา 3 คอลัมน์ — เนื้อหา · แถบข้าง (.marg) · สารบัญ (.toc) ============
+     ต้นฉบับ _work/layout/layout.css · ใส่ด้วย _work/layout/patch_layout.py (แทนที่บล็อกเดิม «v2: สารบัญลอย (TOC)»)
+     จุดเปลี่ยน: < 1400 = คอลัมน์เดียว (ใช้ .topic-nav) · ≥ 1400 = + สารบัญ · ≥ 1560 = + แถบข้าง · ≥ 1760 = คอลัมน์กว้างขึ้น
+     ความกว้างคิดจากจอ 1600 CSS px ของเจ้าของงาน: 1600 − 246 (แถบซ้าย) − 15 (แถบเลื่อน) = 1339 ≥ 928+18+176+18+190 = 1330 */
+  .sgrid {
+    display: grid; grid-template-columns: minmax(0, 948px); justify-content: center;
+    column-gap: 22px; align-items: start;
   }
+  .sgrid > .wrap { min-width: 0; }
+  .sgrid .marg, .sgrid .toc { display: none; }
+  .toc, .marg {
+    position: sticky; top: 72px; max-height: calc(100vh - 150px); min-width: 0;   /* เว้นที่ให้ #topBtn มุมขวาล่าง */
+  }
+  .toc { flex-direction: column; }
   .toc-h {
-    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
-    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; flex: none;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px;
   }
-  .toc button {
-    display: block; width: 100%; text-align: left; background: none; border: 0;
-    border-left: 2px solid var(--line); border-radius: 0; padding: 5px 10px;
+  /* 1 · แถบสถานะ «ตอนนี้» */
+  .toc-strip {
+    flex: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 9px 11px; margin-bottom: 10px;
+  }
+  .toc-now {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--accent);
+  }
+  .toc-cur { font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.35; margin: 2px 0 7px; }
+  .toc-bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .toc-bar i { display: block; height: 100%; background: var(--accent); transition: width .25s; }
+  .toc-kv {
+    display: flex; justify-content: space-between; gap: 6px; margin-top: 6px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .toc-acts { display: flex; gap: 6px; margin-top: 8px; }
+  .toc-acts:empty { display: none; }
+  .toc-acts button {
+    flex: 1 1 0; min-width: 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--accent);
+    background: none; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: 6px; padding: 4px 4px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toc-acts button:hover { background: var(--wash); }
+  /* รายการหัวข้อ (เลื่อนในตัวเอง) */
+  .toc-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; overscroll-behavior: contain; }
+  .toc-g {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 9px 0 2px 10px;
+  }
+  .toc-g:first-child { margin-top: 0; }
+  .toc-it {
+    display: grid; grid-template-columns: 14px minmax(0, 1fr) 8px; gap: 6px; align-items: start;
+    border-left: 2px solid var(--line); padding: 4px 4px 4px 8px;
+  }
+  .toc-it.on { border-left-color: var(--accent); }
+  /* 2 · เครื่องหมายอ่านแล้ว (กดได้ = ทำเครื่องหมายทบทวนแล้ว) */
+  .toc-it .st {
+    width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--line-2); margin-top: 4px;
+    font-size: 8px; line-height: 9px; text-align: center; color: transparent; padding: 0; background: none; cursor: pointer;
+  }
+  .toc-it .st:hover { border-color: var(--ok); }
+  .toc-it.done .st { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .toc-it.on .st { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
+  .toc-it .t {
+    display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 0; padding: 0;
     font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 12px;
     color: var(--ink-3); cursor: pointer; line-height: 1.45;
   }
-  .toc button:hover { color: var(--ink); }
-  .toc button.on { border-left-color: var(--accent); color: var(--accent); font-weight: 600; }
-  @media (min-width: 1360px) {
-    .toc { display: block; }
+  .toc-it .t:hover { color: var(--ink); }
+  .toc-it .t.on { color: var(--accent); font-weight: 600; }
+  /* 3 · จุดผลควิซ */
+  .toc-it .q { width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; border: 1px solid var(--line-2); }
+  .toc-it .q.ok { background: var(--ok); border-color: var(--ok); }
+  .toc-it .q.lo { background: color-mix(in srgb, var(--crit) 55%, #e6a300); border-color: transparent; }
+  /* 4 · หัวข้อย่อยของหัวข้อปัจจุบัน */
+  .toc-subs { margin: 0 0 4px 22px; border-left: 1px dashed var(--line-2); }
+  .toc-subs button {
+    display: block; width: 100%; text-align: left; background: none; border: 0; padding: 3px 8px;
+    font: inherit; font-size: 11px; color: var(--ink-3); line-height: 1.35; cursor: pointer; border-radius: 0 4px 4px 0;
+  }
+  .toc-subs button:hover { color: var(--ink); }
+  .toc-subs button.on { color: var(--accent); font-weight: 600; background: var(--wash); }
+  /* 5 · ก่อนหน้า / ถัดไป */
+  .toc-np { display: flex; gap: 6px; margin-top: 8px; flex: none; }
+  .toc-np > * { flex: 1 1 0; min-width: 0; }
+  .toc-np button {
+    text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+    font: inherit; font-size: 11px; color: var(--ink-2); cursor: pointer;
+  }
+  .toc-np button:hover { border-color: var(--line-2); color: var(--ink); }
+  .toc-np button small { display: block; color: var(--ink-3); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toc-np button.next { text-align: right; }
+  /* แถบข้าง B — การ์ดของส่วนที่กำลังอ่าน */
+  .marg { font-size: 12px; overflow-y: auto; overscroll-behavior: contain; }
+  .mcard {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 9px 11px; margin-bottom: 9px;
+  }
+  .mcard-l {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 5px;
+  }
+  .mcard.trap { border-color: color-mix(in srgb, var(--crit) 35%, var(--line)); }
+  .mcard.trap .mcard-l { color: var(--crit); }
+  .mcard-now { font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+  .mcard-sub { color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+  .mcard p { margin: 0; line-height: 1.4; color: var(--ink-2); }
+  .mcard .tm { display: block; margin: 3px 0; line-height: 1.3; }
+  .mcard .tm b { font-weight: 600; color: var(--ink); }
+  .mcard .tm i { font-style: normal; color: var(--ink-3); display: block; font-size: 11px; }
+  .mcard .chips2 { display: flex; flex-wrap: wrap; gap: 4px; }
+  .mcard .chips2 span { background: var(--wash); color: var(--ink-2); border-radius: 5px; padding: 2px 7px; font-size: 11px; }
+  .mcard button.go {
+    display: block; margin-top: 6px; font: inherit; font-size: 11px; font-weight: 600; color: var(--accent);
+    background: none; border: 0; padding: 0; cursor: pointer;
+  }
+  .mcard button.go:hover { text-decoration: underline; }
+  .mcard .weak button {
+    display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line);
+    padding: 5px 0; font: inherit; font-size: 11.5px; color: var(--ink-2); cursor: pointer; line-height: 1.35;
+  }
+  .mcard .weak button:first-child { border-top: 0; }
+  .mcard .weak button:hover { color: var(--accent); }
+  .mcard .weak button i { display: block; font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+  @media (min-width: 1400px) {
+    .sgrid { grid-template-columns: minmax(0, 928px) 180px; column-gap: 16px; }
+    .sgrid > .wrap { padding: 0 24px; }
+    .sgrid .toc { display: flex; }
     .hastoc .topic-nav { display: none; }
+  }
+  @media (min-width: 1560px) {
+    .sgrid { grid-template-columns: minmax(0, 928px) 176px 190px; column-gap: 18px; }
+    .sgrid .marg { display: block; }
+  }
+  @media (min-width: 1760px) {
+    .sgrid { grid-template-columns: minmax(0, 948px) 220px 220px; column-gap: 24px; }
+    .sgrid > .wrap { padding: 0 34px; }
+    .marg { font-size: 12.5px; }
   }
 
   /* ============ v2: ปุ่มกลับขึ้นบน ============ */

@@ -51171,8 +51171,11 @@ window.STD2DEMOS = window.STD2DEMOS || {};
     function update() {
       rec.draw();
       const done = state.filter(x => x !== undefined).length;
-      if (done < Q.length) { score.innerHTML = ""; return; }
       const ok = state.filter(x => x === true).length;
+      try {
+        host.dispatchEvent(new CustomEvent("std2:quiz", { bubbles: true, detail: { done: done, ok: ok, total: Q.length } }));   // ให้ app.js เก็บผลต่อหัวข้อ (atlas-quiz-v1)
+      } catch (e) { /* old browser */ }
+      if (done < Q.length) { score.innerHTML = ""; return; }
       score.innerHTML = '<span class="sc-v">' + ok + " / " + Q.length + "</span><span>" +
         (ok === Q.length ? "ครบทุกข้อ — พร้อมสำหรับส่วนนี้" : "ทบทวนข้อที่ผิด แล้วลองใหม่") +
         '</span><button type="button" class="q-reset">ลองใหม่</button>';
@@ -55479,6 +55482,7 @@ function toggleKey(k, el, cls) {
   syncProgress();
   const bar = document.querySelector(".subj-bar-active");
   if (bar) bar.style.width = pct(subjKeys(ALL_SUBJ.find(s => s.id === state.id))) + "%";
+  tocMarks();
 }
 
 /* ---- nav ---- */
@@ -55708,6 +55712,7 @@ async function fillBody(el) {
   el.innerHTML = html + demoSlots(t);
   el.querySelectorAll("[data-demo]").forEach(d => { if (d.dataset.demo && DEMOS[d.dataset.demo]) DEMOS[d.dataset.demo](d); });
   if (window.SUKAFIG) window.SUKAFIG(el);
+  tocOnFill(el);
 }
 function fillAllBodies() {
   return Promise.all([...document.querySelectorAll(".tbody[data-lazy]")].map(fillBody));
@@ -55718,10 +55723,11 @@ function renderSubject() {
   LAZYBODY = [];
   if (LAZY_IO) { LAZY_IO.disconnect(); LAZY_IO = null; }
   if (SPY_IO) { SPY_IO.disconnect(); SPY_IO = null; }
+  if (SUB_IO) { SUB_IO.disconnect(); SUB_IO = null; }
   const s = ALL_SUBJ.find(x => x.id === state.id);
   const deep = DEEP[s.id];
   const y = yearOf(s), st = statusOf(s);
-  let h = '<div class="wrap' + (deep ? ' hastoc' : '') + '">' +
+  let h = (deep ? '<div class="sgrid">' : '') + '<div class="wrap' + (deep ? ' hastoc' : '') + '">' +
     '<nav class="crumb"><button data-crumb-home>ภาพรวมหลักสูตร</button><span>›</span>' +
     (semsOf(s).length ? '<span>ชั้นปีที่ ' + y.year + ' · ' + semTxt(s) + '</span><span>›</span>' : '') +
     '<b>' + s.th + '</b></nav>' +
@@ -55764,9 +55770,7 @@ function renderSubject() {
           lazyBody(t) + '</section>';
       });
     }
-    const tocItems = mode === "sum" ? deep.summary : deep.topics;
-    h += '<aside class="toc" aria-label="สารบัญ"><div class="toc-h">สารบัญ · ' + tocItems.length + ' หัวข้อ</div>' +
-      tocItems.map((t, i) => '<button data-toc="' + t.id + '">' + (mode === "full" ? (i + 1) + '. ' : '') + t.th + '</button>').join("") + '</aside>';
+    TOCX.modeNext = mode;                       // v4: สารบัญ + แถบข้างต่อท้าย .wrap (ดู tocSideHtml)
   } else {
     h += '<section class="topic"><div class="topic-head"><div><h2>Основные разделы</h2><div class="th">หัวข้อหลักของวิชา</div></div></div>' +
       '<p>ติ๊กหัวข้อที่ทบทวนแล้วเพื่อให้แถบความคืบหน้าเดิน วิชานี้ยังเป็นโครงร่าง — ถ้าอยากให้ทำเนื้อหาเต็มพร้อมภาพและแบบจำลองแบบวิชา ТАУ กับ Системы навигации ЛА บอกผมได้เลย</p><ul style="list-style:none;padding:0">';
@@ -55783,6 +55787,7 @@ function renderSubject() {
     '<div class="th">' + same.length + ' วิชา</div></div></div><div class="chiprow">' +
     same.map(x => '<button class="chip" data-go="' + x.id + '"><b>' + x.n + '</b> ' + x.th + '</button>').join("") + '</div></section>';
   h += '<footer class="foot">' + (deep ? "เลื่อนสไลเดอร์ในแบบจำลองได้ทุกตัว ค่าที่แสดงคำนวณสด ๆ จากสมการจริง ไม่ใช่ภาพนิ่ง" : "") + '</footer></div>';
+  if (deep) h += tocSideHtml(s, deep, TOCX.modeNext) + '</div>';
   view.innerHTML = h;
 
   view.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
@@ -55811,10 +55816,14 @@ function renderSubject() {
   const tocBtns = view.querySelectorAll("[data-toc]");
   if (tocBtns.length && window.IntersectionObserver) {
     SPY_IO = new IntersectionObserver(es => es.forEach(e => {
-      if (e.isIntersecting) tocBtns.forEach(b => b.classList.toggle("on", b.dataset.toc === e.target.id));
+      if (e.isIntersecting) tocSetCur(e.target.id);
     }), { rootMargin: "-15% 0px -70% 0px" });
     view.querySelectorAll("section.topic[id]").forEach(sec => SPY_IO.observe(sec));
+    SUB_IO = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) tocSetUnit(e.target);
+    }), { rootMargin: "-15% 0px -70% 0px" });
   }
+  tocBind();
   view.querySelectorAll("[data-demo]").forEach(d => { if (d.dataset.demo && DEMOS[d.dataset.demo]) DEMOS[d.dataset.demo](d); });
   if (window.SUKAFIG) window.SUKAFIG(view);
   const lz = view.querySelectorAll(".tbody[data-lazy]");
@@ -55827,6 +55836,335 @@ function renderSubject() {
     } else fillAllBodies();
   }
 }
+
+/* ---- v4: สารบัญยกระดับ + แถบข้าง (โครงหน้าวิชา 3 คอลัมน์ .sgrid) ----
+   ต้นฉบับ _work/layout/layout.js · ใส่ด้วย _work/layout/patch_layout.py (วางก่อน «router»)
+   ข้อมูลที่ใช้มีอยู่แล้วทั้งหมด: DONE (atlas-sula-v1) · BM (atlas-bm-v1) · MODULES (คลังศัพท์) · DOM ของหัวข้อ (.sec-h / h3 / .k-sum / .k-trap / quiz2)
+   ใหม่: QUIZ (atlas-quiz-v1) — ผลควิซ quiz2 ต่อหัวข้อ รับจากเหตุการณ์ "std2:quiz" ที่ _work/std2/js/quiz.js ส่งขึ้นมา */
+const QKEY = "atlas-quiz-v1";
+let QUIZ = {};
+try { const r = localStorage.getItem(QKEY); if (r) QUIZ = JSON.parse(r) || {}; } catch (e) {}
+const saveQuiz = () => { try { localStorage.setItem(QKEY, JSON.stringify(QUIZ)); } catch (e) {} };
+let SUB_IO = null;
+const TOCX = { sid: "", mode: "full", items: [], cur: null, unit: null };
+const MODMAP = { teh_el: "te" };                 // รหัสวิชาใน DEEP → รหัสกลุ่มใน MODULES ที่ไม่ตรงกัน
+/* 6 · หัวกลุ่มในสารบัญ (เฉพาะวิชาที่มี ≥ 12 หัวข้อ) — [ดัชนีเริ่ม (นับจาก 0), ป้าย] · วิชาที่ไม่มีในนี้ใช้ autoGroups() */
+const TOCGROUPS = {
+  vhist: [[1, "ทฤษฎี · โลกยุคโบราณ"], [3, "รุสโบราณถึงปลายจักรวรรดิ"], [8, "สงครามโลกครั้งที่ 1 · กลางเมือง · ระหว่างสงคราม"], [11, "สงครามโลกครั้งที่ 2 · มหาสงครามของปิตุภูมิ"], [16, "หลังสงครามถึงปัจจุบัน"]],
+  hist: [[1, "ทฤษฎี · อารยธรรมโบราณ"], [3, "รุสโบราณ · ยุคกลาง · รัฐมอสโก"], [7, "ศตวรรษที่ 18–19 · จักรวรรดิ"], [11, "ต้นศตวรรษที่ 20 · ระหว่างสงคราม"], [16, "สงครามโลกครั้งที่ 2"], [18, "หลังสงครามถึงปัจจุบัน"], [22, "ภาคผนวก"]]
+};
+const escT = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function topicKind(t) {
+  const ru = t.ru || "";
+  if (/^Карта/.test(ru)) return "";
+  if (/^(ПЗ|Практическ(ое|ие) занят|Семинар)/.test(ru)) return "ปฏิบัติ · ПЗ";
+  if (/^(ЛР|Лабораторн)/.test(ru)) return "ห้องปฏิบัติการ · ЛР";
+  if (/^РГР/.test(ru)) return "РГР";
+  if (/^(Задач|Практические задания|Карта билетов|Вопросы|Разбор типовых)/.test(ru)) return "โจทย์ · สอบ";
+  if (/^Приложение/.test(ru)) return "ภาคผนวก";
+  if (/^(Аббревиатуры|Ключевые термины|Источники|Литература|Межпредметные)/.test(ru)) return "อ้างอิง";
+  return "บรรยาย";
+}
+function autoGroups(items) {
+  const kinds = items.map(topicKind);
+  if (new Set(kinds.filter(Boolean)).size < 2) return [];
+  const g = [];
+  kinds.forEach((k, i) => { if (k && k !== (i ? kinds[i - 1] : null)) g.push([i, k]); });
+  return g;
+}
+function tocSideHtml(s, deep, mode) {
+  const items = mode === "sum" ? deep.summary : deep.topics;
+  TOCX.sid = s.id; TOCX.mode = mode; TOCX.items = items; TOCX.cur = null; TOCX.unit = null;
+  const groups = (mode === "full" && items.length >= 12) ? (TOCGROUPS[s.id] || autoGroups(items)) : [];
+  const gAt = i => { const g = groups.find(x => x[0] === i); return g ? '<div class="toc-g">' + escT(g[1]) + '</div>' : ""; };
+  const list = items.map((t, i) => gAt(i) +
+    '<div class="toc-it" data-tid="' + t.id + '">' +
+    (mode === "full"
+      ? '<button type="button" class="st" data-mark="k:' + t.id + '" title="ทำเครื่องหมายว่าทบทวนแล้ว" aria-label="ทบทวนแล้ว">✓</button>'
+      : '<span class="st" style="visibility:hidden"></span>') +
+    '<button type="button" class="t" data-toc="' + t.id + '">' + (mode === "full" ? (i + 1) + '. ' : '') + escT(t.th) + '</button>' +
+    '<span class="q" data-q="' + t.id + '"></span></div>' +
+    '<div class="toc-subs" data-subs="' + t.id + '" hidden></div>').join("");
+  return '<aside class="marg" aria-label="ประกอบการอ่าน"></aside>' +
+    '<aside class="toc" aria-label="สารบัญ">' +
+    '<div class="toc-strip"><div class="toc-now"></div><div class="toc-cur"></div><div class="toc-bar"><i></i></div><div class="toc-kv"></div><div class="toc-acts"></div></div>' +
+    '<div class="toc-h">สารบัญ · ' + items.length + ' หัวข้อ</div><div class="toc-list">' + list + '</div>' +
+    '<div class="toc-np"></div></aside>';
+}
+function tocBind() {
+  const toc = view.querySelector(".toc");
+  if (!toc) return;
+  toc.querySelectorAll("[data-mark]").forEach(b => b.addEventListener("click", () => {
+    toggleKey(b.dataset.mark);
+    const chk = view.querySelector('.topic-check[data-key="' + b.dataset.mark + '"]');
+    if (chk) chk.classList.toggle("done", DONE.has(b.dataset.mark));
+  }));
+  toc.querySelectorAll("[data-toc]").forEach(b => b.addEventListener("click", () => { const el = document.getElementById(b.dataset.toc); if (el) settleAt(el); }));
+  tocMarks(); tocNp(); margRefresh();
+}
+function quizOfTopic(tid) {
+  const r = QUIZ[tid];
+  if (!r) return null;
+  let ok = 0, done = 0, n = 0;
+  Object.values(r).forEach(x => { ok += x.ok || 0; done += x.done || 0; n += x.n || 0; });
+  if (!done) return null;
+  return { ok, done, n, full: done >= n, pct: Math.round(100 * ok / done) };
+}
+function quizOfSubject(sid) {
+  const deep = DEEP[sid];
+  if (!deep) return null;
+  let ok = 0, done = 0;
+  deep.topics.forEach(t => { const r = quizOfTopic(t.id); if (r) { ok += r.ok; done += r.done; } });
+  return done ? { ok, done, pct: Math.round(100 * ok / done) } : null;
+}
+const modOf = sid => MODMAP[sid] || sid;
+const bmCount = sid => [...BM].filter(k => k.startsWith("g:" + modOf(sid) + "-")).length;
+function tocMarks() {
+  const toc = view.querySelector(".toc");
+  if (!toc) return;
+  toc.querySelectorAll(".toc-it").forEach(it => {
+    it.classList.toggle("done", DONE.has("k:" + it.dataset.tid));
+    const q = it.querySelector(".q"), r = quizOfTopic(it.dataset.tid);
+    q.className = "q" + (r ? (r.full && r.pct >= 80 ? " ok" : " lo") : "");
+    q.title = r ? "ควิซ: ถูก " + r.ok + " จาก " + r.done + " ข้อ" + (r.full ? "" : " · ยังทำไม่ครบ (" + r.n + " ข้อ)") : "ยังไม่ได้ทำควิซของหัวข้อนี้";
+  });
+  tocStrip();
+}
+function tocStrip() {
+  const toc = view.querySelector(".toc");
+  if (!toc) return;
+  const s = ALL_SUBJ.find(x => x.id === TOCX.sid);
+  const items = TOCX.items, i = items.findIndex(t => t.id === TOCX.cur);
+  toc.querySelector(".toc-now").textContent = i >= 0
+    ? "ตอนนี้ · " + (TOCX.mode === "full" ? "หัวข้อ " : "บล็อก ") + (i + 1) + " / " + items.length
+    : (TOCX.mode === "full" ? "ฉบับเต็ม" : "สรุปทบทวน");
+  toc.querySelector(".toc-cur").textContent = i >= 0 ? items[i].th : s.th;
+  const tk = subjKeys(s), nd = tk.filter(k => DONE.has(k)).length;
+  toc.querySelector(".toc-bar i").style.width = pct(tk) + "%";
+  const q = quizOfSubject(TOCX.sid), bm = bmCount(TOCX.sid);
+  toc.querySelector(".toc-kv").innerHTML =
+    '<span title="หัวข้อที่ทำเครื่องหมายว่าทบทวนแล้ว (ในเครื่องนี้)">อ่านแล้ว ' + nd + '/' + tk.length + '</span>' +
+    '<span title="ควิซในเนื้อหา — ถูกกี่เปอร์เซ็นต์ของข้อที่ตอบแล้ว (นับเฉพาะครั้งแรกที่ตอบ)">ควิซ ' + (q ? q.pct + ' %' : '—') + '</span>' +
+    '<span title="ศัพท์ของวิชานี้ที่บุ๊กมาร์กไว้ในคลังศัพท์">★ ' + bm + '</span>';
+  const sec = TOCX.cur ? document.getElementById(TOCX.cur) : null;
+  const acts = [];
+  if (sec) {
+    if (sec.querySelector(".k-sum")) acts.push(["sum", "▶ สรุปสอบ", "ไปสรุปก่อนสอบท้ายหัวข้อนี้"]);
+    if (sec.querySelector('[data-demo="quiz2"]')) acts.push(["quiz", "✎ ควิซ", "ไปควิซแรกของหัวข้อนี้"]);
+  }
+  const box = toc.querySelector(".toc-acts");
+  box.innerHTML = acts.map(a => '<button type="button" data-act="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>').join("");
+  box.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
+    const sec = TOCX.cur ? document.getElementById(TOCX.cur) : null;
+    if (!sec) return;
+    let el = null;
+    if (b.dataset.act === "sum") { const ss = sec.querySelectorAll(".k-sum"); el = ss[ss.length - 1]; }
+    else el = sec.querySelector('[data-demo="quiz2"]');
+    if (el) scrollToEl(el);
+  }));
+}
+function scrollToEl(el) {
+  const sec = el.closest("section.topic");
+  if (sec) sec.classList.remove("closed");
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 84, behavior: "smooth" });
+}
+/* กระโดดไปหัวข้อ: หัวข้อที่ยังไม่โหลดระหว่างทางจะขยายตัวหลังเลื่อนผ่าน ทำให้จุดหมายเคลื่อน — ตรวจซ้ำครั้งเดียวหลัง 0,9 วิ */
+function settleAt(el) {
+  setTimeout(() => {
+    if (!el.isConnected) return;
+    if (Math.abs(el.getBoundingClientRect().top - 110) > 40) window.scrollTo({ top: el.offsetTop - 110, behavior: "auto" });
+  }, 900);
+}
+function jumpTopic(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove("closed");
+  fillBody(el.querySelector(".tbody[data-lazy]"));
+  window.scrollTo({ top: el.offsetTop - 110, behavior: "smooth" });
+  settleAt(el);
+}
+function tocNp() {
+  const toc = view.querySelector(".toc");
+  if (!toc) return;
+  const items = TOCX.items, i = items.findIndex(t => t.id === TOCX.cur);
+  const mk = (t, cls, lab) => t ? '<button type="button" class="' + cls + '" data-np="' + t.id + '">' + lab + '<small>' + escT(t.th) + '</small></button>' : '<span></span>';
+  const np = toc.querySelector(".toc-np");
+  np.innerHTML = mk(i > 0 ? items[i - 1] : null, "prev", "‹ ก่อนหน้า") + mk(i >= 0 && i < items.length - 1 ? items[i + 1] : null, "next", "ถัดไป ›");
+  np.querySelectorAll("[data-np]").forEach(b => b.addEventListener("click", () => jumpTopic(b.dataset.np)));
+}
+/* หน่วยย่อยของหัวข้อ: STD2 = header.sec-h (учебный вопрос) · รูปแบบเดิม = h3 ในตัวเนื้อหา */
+function unitSel(sec) {
+  let u = [...sec.querySelectorAll(".std2 header.sec-h")];
+  if (!u.length) u = [...sec.querySelectorAll(".tbody h3")].slice(0, 14);
+  u.forEach((x, i) => { if (!x.id) x.id = sec.id + "-h" + (i + 1); });
+  return u;
+}
+function unitLabel(u) {
+  const no = u.querySelector(".sec-no"), th = u.querySelector(".sec-th"), t = u.querySelector(".sec-t");
+  let s = (th ? th.textContent : (t ? t.textContent : u.textContent)).trim().replace(/\s+/g, " ");
+  const cut = s.split(/ [—–·] /)[0];
+  if (cut.length >= 8) s = cut;
+  if (s.length > 52) s = s.slice(0, 50) + "…";
+  return (no ? escT(no.textContent.trim().replace(/\.$/, "")) + " · " : "") + escT(s);
+}
+function tocSubs() {
+  const toc = view.querySelector(".toc");
+  if (!toc) return;
+  toc.querySelectorAll(".toc-subs").forEach(d => { d.hidden = true; d.innerHTML = ""; });
+  if (!TOCX.cur) return;
+  const sec = document.getElementById(TOCX.cur), box = toc.querySelector('[data-subs="' + TOCX.cur + '"]');
+  if (!sec || !box) return;
+  const us = unitSel(sec).filter(u => !/-top$/.test(u.id));
+  if (us.length < 2) return;
+  box.innerHTML = us.map(u => '<button type="button" data-sub="' + u.id + '"' + (u === TOCX.unit ? ' class="on"' : '') + '>' + unitLabel(u) + '</button>').join("");
+  box.hidden = false;
+  box.querySelectorAll("[data-sub]").forEach(b => b.addEventListener("click", () => { const el = document.getElementById(b.dataset.sub); if (el) scrollToEl(el); }));
+}
+function tocSetCur(id) {
+  if (id === TOCX.cur) return;
+  TOCX.cur = id;
+  const toc = view.querySelector(".toc");
+  if (!toc) return;
+  toc.querySelectorAll("[data-toc]").forEach(b => b.classList.toggle("on", b.dataset.toc === id));
+  toc.querySelectorAll(".toc-it").forEach(it => it.classList.toggle("on", it.dataset.tid === id));
+  const sec = document.getElementById(id);
+  if (TOCX.unit && !(sec && sec.contains(TOCX.unit))) TOCX.unit = null;
+  tocSubs(); tocStrip(); tocNp(); margRefresh(); unitTick();
+  const it = toc.querySelector('.toc-it[data-tid="' + id + '"]'), list = toc.querySelector(".toc-list");
+  if (it && list) {
+    const a = it.offsetTop - list.offsetTop, b = a + it.offsetHeight;
+    if (a < list.scrollTop + 8 || b > list.scrollTop + list.clientHeight - 8) list.scrollTop = Math.max(0, a - list.clientHeight * 0.3);
+  }
+}
+/* หน่วยย่อยที่กำลังอ่าน = หัวส่วนสุดท้ายที่อยู่เหนือเส้น 30 % ของจอ (คำนวณจากตำแหน่งจริงตอนเลื่อน —
+   IntersectionObserver อย่างเดียวไม่พอ เพราะถ้ากระโดดเข้ากลางส่วน หัวส่วนไม่เคยผ่านจอ) */
+let UNIT_RAF = 0;
+function unitTick() {
+  if (UNIT_RAF) return;
+  UNIT_RAF = requestAnimationFrame(() => {
+    UNIT_RAF = 0;
+    const sec = TOCX.cur ? document.getElementById(TOCX.cur) : null;
+    if (!sec) return;
+    const line = window.innerHeight * 0.3;
+    let best = null;
+    for (const u of unitSel(sec)) { if (u.getBoundingClientRect().top <= line) best = u; else break; }
+    if (best !== TOCX.unit) {
+      TOCX.unit = best;
+      const toc = view.querySelector(".toc");
+      if (toc) toc.querySelectorAll("[data-sub]").forEach(b => b.classList.toggle("on", !!best && b.dataset.sub === best.id));
+      margRefresh();
+    }
+  });
+}
+function tocSetUnit(u) { unitTick(); }
+if (typeof window !== "undefined") window.addEventListener("scroll", unitTick, { passive: true });
+function tocOnFill(el) {
+  const sec = el.closest("section.topic[id]");
+  if (!sec) return;
+  const us = unitSel(sec);
+  if (SUB_IO) us.forEach(u => SUB_IO.observe(u));
+  if (sec.id === TOCX.cur) { tocSubs(); tocStrip(); margRefresh(); unitTick(); }
+}
+/* แถบข้าง B */
+function unitScope(sec, u) {
+  if (!u) return [...sec.querySelectorAll(".tbody > *")];
+  const out = [u];
+  const isHead = x => (u.matches("header.sec-h") ? x.matches("header.sec-h") : x.matches("h3"));
+  for (let x = u.nextElementSibling; x && !isHead(x); x = x.nextElementSibling) out.push(x);
+  return out;
+}
+function termsFor(sid, text) {
+  const mod = MODULES.find(m => m.id === modOf(sid));
+  if (!mod) return [];
+  const low = text.toLowerCase(), out = [];
+  for (const t of mod.terms) {
+    const ru = (t.ru || "").toLowerCase();
+    if (ru.length < 4) continue;
+    let hit = low.includes(ru);
+    if (!hit) {
+      const ws = ru.split(/[\s,()«»–—-]+/).filter(w => w.length >= 5);
+      hit = ws.length > 0 && ws.every(w => low.includes(w.slice(0, Math.max(5, w.length - 3))));
+    }
+    if (hit) { out.push(t); if (out.length >= 6) break; }
+  }
+  return out;
+}
+function margRefresh() {
+  const m = view.querySelector(".marg");
+  if (!m) return;
+  if (TOCX.mode === "sum") { margWeak(m); return; }
+  const sec = TOCX.cur ? document.getElementById(TOCX.cur) : null;
+  const items = TOCX.items, ti = items.findIndex(t => t.id === TOCX.cur);
+  if (!sec || ti < 0) { m.innerHTML = ""; return; }
+  const u = TOCX.unit && sec.contains(TOCX.unit) ? TOCX.unit : null;
+  const scope = unitScope(sec, u);
+  const text = scope.map(x => x.textContent).join(" ");
+  const q = sel => scope.flatMap(x => (x.matches(sel) ? [x] : [...x.querySelectorAll(sel)]));
+  let h = '<div class="mcard"><div class="mcard-l">ส่วนที่กำลังอ่าน</div><div class="mcard-now">' +
+    (u ? unitLabel(u) : escT((ti + 1) + ". " + items[ti].th)) + '</div>' +
+    (u ? '<div class="mcard-sub">' + escT((ti + 1) + ". " + items[ti].th) + '</div>' : '') + '</div>';
+  const terms = termsFor(TOCX.sid, text);
+  if (terms.length) h += '<div class="mcard"><div class="mcard-l">ศัพท์ในส่วนนี้ · ' + terms.length + '</div>' +
+    terms.map(t => '<span class="tm"><b lang="ru">' + escT(t.ru) + '</b><i>' + escT(t.th) + '</i></span>').join("") +
+    '<button type="button" class="go" data-mgo="glossary">คลังศัพท์ทั้งวิชา →</button></div>';
+  const rub = q(".ru-box");
+  if (rub.length) h += '<div class="mcard"><div class="mcard-l">นิยามที่ต้องท่อง · ' + rub.length + '</div>' +
+    '<p>' + escT((rub[0].querySelector(".ru-l") || rub[0]).textContent.trim().slice(0, 70)) + (rub.length > 1 ? ' … +' + (rub.length - 1) : '') + '</p>' +
+    '<button type="button" class="go" data-mel="0" data-msel=".ru-box">ไปนิยามแรก →</button></div>';
+  const chips = u ? [...u.querySelectorAll(".chips .chip")].map(c => c.textContent.trim()).filter(Boolean) : [];
+  if (chips.length) h += '<div class="mcard"><div class="mcard-l">ในส่วนนี้มี</div><div class="chips2">' + chips.map(c => '<span>' + escT(c) + '</span>').join("") + '</div></div>';
+  const traps = q(".k-trap .traps li, .trap");
+  if (traps.length) h += '<div class="mcard trap"><div class="mcard-l">กับดักข้อสอบ · ' + traps.length + '</div>' +
+    '<p>' + escT((traps[0].querySelector("p") || traps[0]).textContent.trim().replace(/\s+/g, " ").slice(0, 110)) + (traps.length > 1 ? ' …' : '') + '</p>' +
+    '<button type="button" class="go" data-mel="0" data-msel=".k-trap, .trap">ไปกับดัก →</button></div>';
+  const quizzes = q('[data-demo="quiz2"]');
+  if (quizzes.length) {
+    const all = [...sec.querySelectorAll('[data-demo="quiz2"]')], rec = QUIZ[sec.id] || {};
+    let done = 0, ok = 0, n = 0;
+    quizzes.forEach(host => { const r = rec[all.indexOf(host)]; const cnt = host.querySelectorAll(".q").length; n += r && r.n ? r.n : cnt; if (r) { done += r.done; ok += r.ok; } });
+    h += '<div class="mcard"><div class="mcard-l">ควิซส่วนนี้</div><p>' +
+      (done ? 'ทำแล้ว ' + done + '/' + n + ' ข้อ · ถูก ' + ok : 'ยังไม่ได้ทำ · ' + n + ' ข้อ') + '</p>' +
+      '<button type="button" class="go" data-mel="0" data-msel="[data-demo=quiz2]">ไปควิซ →</button></div>';
+  }
+  m.innerHTML = h;
+  m.querySelectorAll("[data-msel]").forEach(b => b.addEventListener("click", () => { const el = q(b.dataset.msel)[0]; if (el) scrollToEl(el); }));
+  m.querySelectorAll("[data-mgo]").forEach(b => b.addEventListener("click", () => go({ v: b.dataset.mgo })));
+}
+function margWeak(m) {
+  const deep = DEEP[TOCX.sid];
+  const rows = deep.topics.filter(t => !/-map$/.test(t.id)).map((t, i) => ({ t, i: deep.topics.indexOf(t), r: quizOfTopic(t.id), done: DONE.has("k:" + t.id) }));
+  const hasData = rows.some(x => x.r || x.done);
+  const wq = rows.filter(x => x.r && (x.r.pct < 80 || !x.r.full));          // ควิซยังอ่อน — สำคัญกว่า
+  const wr = rows.filter(x => !x.r && !x.done);                              // ยังไม่ได้อ่าน/ยังไม่ได้ทำควิซ
+  const weak = wq.concat(wr).slice(0, 8), total = wq.length + wr.length;
+  const why = x => x.r ? (x.r.full ? 'ควิซถูก ' + x.r.pct + ' %' : 'ควิซยังไม่ครบ ' + x.r.done + '/' + x.r.n) : 'ยังไม่ได้อ่าน';
+  let h = '<div class="mcard"><div class="mcard-l">จุดที่ยังอ่อน' + (hasData ? ' · ' + total : '') + '</div>';
+  if (!hasData) h += '<p>ยังไม่มีข้อมูลในเครื่องนี้ — พอทำเครื่องหมาย «อ่านแล้ว» และทำควิซในฉบับเต็ม การ์ดนี้จะชี้หัวข้อที่ควรกลับไปทวน</p>';
+  else if (!weak.length) h += '<p>ทุกหัวข้ออ่านแล้ว และควิซที่ทำผ่านเกณฑ์ 80 % — พร้อมทวนสรุปได้เลย</p>';
+  else h += '<div class="weak">' + weak.map(x => '<button type="button" data-full="' + x.t.id + '">' + (x.i + 1) + '. ' + escT(x.t.th) + '<i>' + why(x) + ' · เปิดฉบับเต็ม →</i></button>').join("") + '</div>';
+  h += '</div>';
+  const bm = bmCount(TOCX.sid);
+  h += '<div class="mcard"><div class="mcard-l">คลังศัพท์</div><p>บุ๊กมาร์กไว้ ' + bm + ' คำ</p><button type="button" class="go" data-mgo="glossary">ไปคลังศัพท์ →</button></div>';
+  m.innerHTML = h;
+  m.querySelectorAll("[data-full]").forEach(b => b.addEventListener("click", () => {
+    MODE = "full";
+    try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
+    clearDemos(); renderSubject();
+    setTimeout(() => jumpTopic(b.dataset.full), 60);
+  }));
+  m.querySelectorAll("[data-mgo]").forEach(b => b.addEventListener("click", () => go({ v: b.dataset.mgo })));
+}
+/* ผลควิซ quiz2 → เก็บต่อหัวข้อ (ลำดับของ quiz2 ในหัวข้อเป็นคีย์) */
+document.addEventListener("std2:quiz", e => {
+  const host = e.target && e.target.closest ? e.target.closest('[data-demo="quiz2"]') : null;
+  const sec = host && host.closest("section.topic[id]");
+  const d = e.detail || {};
+  if (!sec || !d.done) return;
+  const k = [...sec.querySelectorAll('[data-demo="quiz2"]')].indexOf(host);
+  (QUIZ[sec.id] = QUIZ[sec.id] || {})[k] = { done: d.done, ok: d.ok, n: d.total, t: Date.now() };
+  saveQuiz(); tocMarks();
+  if (sec.id === TOCX.cur) margRefresh();
+});
 
 /* ---- router ---- */
 let state = { v: "overview" };
