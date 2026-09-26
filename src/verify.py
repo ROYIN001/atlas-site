@@ -128,6 +128,10 @@ def lap(label, t0):
 def load_pass(page, timeout_ms):
     """เลื่อนจนสุด → รอกล่อง → เลื่อนอีกรอบให้ SUKAFIG (800 px) ใส่ src รูป → รอรูป"""
     t = time.perf_counter()
+    # เริ่มจากบนสุดเสมอ — หลังสลับโหมด หน้าอาจค้างอยู่กลางหน้า หัวข้อที่อยู่เหนือจุดนั้นจะไม่ผ่านจอระหว่างเลื่อนลง
+    # (IntersectionObserver ไม่เห็น → ค้าง «กำลังโหลด» ถึงหมดเวลา) เจอกับโหมดสรุปของ hist 26 ก.ย. 2026
+    page.evaluate("window.scrollTo(0, 0)")
+    page.wait_for_timeout(100)
     scroll_to_bottom(page);            t = lap("scroll1", t)
     wait_boxes(page, timeout_ms);      t = lap("boxes1", t)
     # กล่องที่เพิ่งเติมอาจดันเนื้อหาลงไปอีก เลื่อนซ้ำจนสุดจริง ๆ แล้วรออีกครั้ง
