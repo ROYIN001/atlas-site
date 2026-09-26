@@ -56631,36 +56631,40 @@ function renderGlossary() {
 /* ---- search ---- */
 const INDEX = [];
 let INDEX_BUILT = false;
-/* ข้อความสำหรับค้นหาก็อยู่ในฐานข้อมูล — ดึงเบื้องหลังหลังหน้าโหลดเสร็จ
-   ระหว่างที่ยังมาไม่ถึง การค้นหาครอบคลุมชื่อวิชา ชื่อหัวข้อ และคลังศัพท์ */
+/* ข้อความเต็มของทุกหัวข้ออยู่ใน data/ix (ราว 4.5 MB แบบบีบอัด) — โหลดเมื่อผู้อ่านเริ่มค้นหาเท่านั้น
+   (เดิมโหลดทุกครั้งที่เปิดเว็บ แม้ไม่ได้ค้นหา) · ระหว่างรอ ผลมาจากชื่อวิชา ชื่อหัวข้อ และคลังศัพท์
+   แล้วหน้าผลค้นหาเติมเองเมื่อดัชนีมาครบ · ตัวเรียก: โฟกัสช่องค้นหา · ปุ่มค้นหาแถบล่าง · หน้าผลค้นหา */
 const IXHAY = {};
-let IX_LOADED = false;
+let IX_LOADED = false, IX_READY = false, IX_DONE = 0, IX_TOTAL = 0;
 async function loadIndex() {
   if (IX_LOADED) return;
   IX_LOADED = true;
   const man = await fetch("data/manifest.json?v=" + DATA_VERSION).then(r => r.ok ? r.json() : null).catch(() => null);
   const subs = (man && man.subjects) || {};
+  IX_TOTAL = Object.keys(subs).length;
   await Promise.all(Object.keys(subs).map(async sid => {
     const d = await dbGet("ix", sid);
     (d && d.rows || []).forEach(r => { IXHAY[sid + "__" + r.id] = r.hay; });
+    IX_DONE++;
   }));
+  IX_READY = true;
   INDEX.length = 0; INDEX_BUILT = false;
   // Refresh an early search once full-text content is available.
   if (state.v === "search") renderSearch();
 }
-window.addEventListener("load", () => setTimeout(loadIndex, 1200));
 function buildIndex() {
   if (INDEX_BUILT) return;
   INDEX_BUILT = true;
   const strip = html => html.replace(/<[^>]*>/g, " ").replace(/&#?[a-z0-9]{1,8};/gi, " ").replace(/\s+/g, " ");
+  const add = (e, body) => { const head = normS(e.title + " " + e.sub + " "); e.head = head.length; e.hay = head + normS(body || ""); INDEX.push(e); };
   ALL_SUBJ.forEach(s => {
-    INDEX.push({ kind: "วิชา · " + semTxt(s), title: s.ru, sub: s.th + " — " + s.desc, hay: (s.ru + " " + s.th + " " + s.desc + " " + (s.topics || []).join(" ")).toLowerCase(), go: { v: "subject", id: s.id } });
-    if (DEEP[s.id]) DEEP[s.id].topics.forEach(t => {
-      INDEX.push({ kind: "หัวข้อ · " + s.th, title: t.ru, sub: t.th, hay: (t.ru + " " + t.th + " " + (IXHAY[s.id + "__" + t.id] || strip(t.html || ""))).toLowerCase(), go: { v: "subject", id: s.id }, jump: t.id });
-    });
+    add({ kind: "วิชา · " + semTxt(s), title: s.ru, sub: s.th + " — " + strip(s.desc), go: { v: "subject", id: s.id } }, (s.topics || []).join(" "));
+    if (DEEP[s.id]) [["หัวข้อ", DEEP[s.id].topics], ["สรุปทบทวน", DEEP[s.id].summary || []]].forEach(([k, list]) => list.forEach(t => {
+      add({ kind: k + " · " + s.th, title: t.ru, sub: t.th, go: { v: "subject", id: s.id, topic: t.id } }, IXHAY[s.id + "__" + t.id] || strip(t.html || ""));
+    }));
   });
   MODULES.forEach(m => m.terms.forEach(t => {
-    INDEX.push({ kind: "ศัพท์ · " + m.th, title: t.ru, sub: t.th + " — " + t.note, hay: (t.ru + " " + (t.abbr || "") + " " + t.th + " " + t.note).toLowerCase(), go: { v: "glossary" } });
+    add({ kind: "ศัพท์ · " + m.th, title: t.ru + (t.abbr ? " " + t.abbr : ""), sub: t.th + " — " + strip(t.note || ""), go: { v: "glossary" } }, "");
   }));
 }
 function searchAliases(query) {
@@ -56672,29 +56676,102 @@ function searchAliases(query) {
 function escapeText(value) {
   return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+/* ё กับ е ถือเป็นตัวเดียวกัน (ตำรารัสเซียส่วนใหญ่ไม่พิมพ์ ё) · ความยาวสตริงไม่เปลี่ยน ใช้ตำแหน่งร่วมกับต้นฉบับได้ */
+const normS = x => String(x).toLowerCase().replace(/ё/g, "е");
+/* คะแนน: ตรงในชื่อ > ในชื่อไทย/คำอธิบาย > ในเนื้อหา (นับจำนวนครั้ง) · ถ้าทั้งวลีไม่เจอ ยอมรับเมื่อทุกคำอยู่ในรายการเดียวกัน */
+function searchHit(x, queries) {
+  let best = null;
+  for (let q of queries) {
+    if (!q) continue;
+    let at = x.hay.indexOf(q), score = 0;
+    if (at >= 0) {
+      score = at < x.head ? (normS(x.title).includes(q) ? (normS(x.title).startsWith(q) ? 130 : 100) : 50) : 0;
+      let n = 0;
+      for (let i = x.hay.indexOf(q, x.head); i >= 0 && n < 20; i = x.hay.indexOf(q, i + q.length)) n++;
+      score += 10 + 2 * n;
+      if (at < x.head && n) at = x.hay.indexOf(q, x.head);
+    } else {
+      const ws = q.split(/\s+/).filter(w => w.length >= 2);
+      if (ws.length < 2 || !ws.every(w => x.hay.includes(w))) continue;
+      score = 5 + ws.filter(w => x.hay.lastIndexOf(w, x.head) >= 0).length * 10;
+      const inBody = ws.map(w => x.hay.indexOf(w, x.head)).filter(i => i >= 0);
+      at = inBody.length ? Math.min(...inBody) : -1;
+      q = ws.find(w => x.hay.indexOf(w, x.head) === at) || ws[0];
+    }
+    if (!best || score > best.score) best = { score, at, q };
+  }
+  return best;
+}
+function searchSnippet(x, hit) {                  // ข้อความรอบคำที่เจอในเนื้อหา (ตัวพิมพ์เล็ก ตามที่เก็บในดัชนี)
+  if (!hit || hit.at < x.head) return "";
+  const a = Math.max(x.head, hit.at - 70), b = Math.min(x.hay.length, hit.at + hit.q.length + 90);
+  let pre = x.hay.slice(a, hit.at), post = x.hay.slice(hit.at + hit.q.length, b);
+  if (a > x.head) pre = "…" + pre.replace(/^\S*\s/, "");
+  if (b < x.hay.length) post = post.replace(/\s\S*$/, "") + "…";
+  return escapeText(pre) + "<mark>" + escapeText(x.hay.substr(hit.at, hit.q.length)) + "</mark>" + escapeText(post);
+}
+/* ไฮไลต์คำที่ค้นในหัวข้อปลายทาง แล้วคืน <mark> แรก — scrollToTopic เลื่อนไปหาที่แรกที่เจอแทนหัวข้อ */
+function markHits(root, query) {
+  const qs = [...new Set(searchAliases(query).map(normS))].filter(q => q.length >= 2);
+  let first = markTerms(root, qs);
+  if (!first) {
+    const ws = [...new Set(qs.flatMap(q => q.split(/\s+/)))].filter(w => w.length >= 3).sort((a, b) => b.length - a.length);
+    if (ws.length) first = markTerms(root, ws.slice(0, 2));
+  }
+  return first;
+}
+function markTerms(root, terms) {
+  if (!terms.length) return null;
+  const skip = "script,style,math,svg,canvas,textarea,mark,[data-demo]";
+  const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest(skip) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  const hits = [];
+  for (let n = tw.nextNode(); n && hits.length < 60; n = tw.nextNode()) {
+    const low = normS(n.data);
+    if (low.length !== n.data.length) continue;
+    for (const t of terms) { const i = low.indexOf(t); if (i >= 0) { hits.push([n, i, t.length]); break; } }
+  }
+  let first = null;
+  for (const [node, i, len] of hits) {
+    const r = document.createRange(), m = document.createElement("mark");
+    m.className = "q-hit";
+    try { r.setStart(node, i); r.setEnd(node, i + len); r.surroundContents(m); } catch (e) { continue; }
+    if (!first) first = m;
+  }
+  return first;
+}
 function renderSearch() {
+  if (!IX_READY) loadIndex();
   buildIndex();
   const q = state.q;
-  const queries = searchAliases(q);
-  const hits = INDEX.filter(x => queries.some(term => x.hay.includes(term))).slice(0, 60);
+  const queries = [...new Set(searchAliases(q).map(normS))];
+  const all = [];
+  INDEX.forEach((x, i) => { const hit = searchHit(x, queries); if (hit) all.push({ x, hit, i }); });
+  all.sort((a, b) => b.hit.score - a.hit.score || a.i - b.i);
+  const hits = all.slice(0, 60);
   let h = '<div class="wrap"><div class="page-head"><p class="eyebrow">Поиск</p>' +
     '<h1 class="page-title">ผลการค้นหา “' + escapeText(q) + '”</h1>' +
-    '<div class="page-title-th">พบ ' + hits.length + ' รายการ' + (hits.length === 60 ? "+ (แสดง 60 แรก)" : "") + '</div></div><div class="res">';
+    '<div class="page-title-th">พบ ' + all.length + ' รายการ' + (all.length > 60 ? " (แสดง 60 รายการที่ตรงที่สุด)" : "") + '</div>' +
+    (IX_READY ? '' : '<p class="ix-wait" role="status"><span id="ixst">กำลังโหลดข้อความเต็มของทุกหัวข้อ…</span> ตอนนี้ค้นได้แค่ชื่อวิชา ชื่อหัวข้อ และคลังศัพท์ ผลจะเติมเองเมื่อโหลดเสร็จ (ครั้งแรกราว 4 MB)</p>') +
+    '</div><div class="res">';
   if (!hits.length) h += '<p class="empty">ไม่พบ ลองพิมพ์บางส่วนของคำรัสเซีย เช่น «устойч» หรือคำไทย เช่น «เสถียร»</p>';
-  hits.forEach((x, i) => {
+  hits.forEach(({ x, hit }, i) => {
+    const snip = searchSnippet(x, hit);
     h += '<button class="res-item" data-i="' + i + '"><span class="k">' + x.kind + '</span>' +
-      '<span class="t">' + x.title + '</span><span class="s">' + x.sub.slice(0, 150) + '</span></button>';
+      '<span class="t">' + x.title + '</span><span class="s">' + escapeText(x.sub.slice(0, 150)) + '</span>' +
+      (snip ? '<span class="snip">' + snip + '</span>' : '') + '</button>';
   });
   h += '</div></div>';
   view.innerHTML = h;
+  if (!IX_READY) {                                // ตัวนับความคืบหน้า — หยุดเองเมื่อออกจากหน้านี้หรือดัชนีมาครบ
+    const tick = setInterval(() => {
+      const el = document.getElementById("ixst");
+      if (!el || IX_READY) { clearInterval(tick); return; }
+      if (IX_TOTAL) el.textContent = "กำลังโหลดข้อความเต็มของทุกหัวข้อ " + IX_DONE + "/" + IX_TOTAL + " วิชา…";
+    }, 250);
+  }
   view.querySelectorAll(".res-item").forEach(b => b.addEventListener("click", () => {
-    const x = hits[+b.dataset.i];
-    if (x.jump) {
-      MODE = "full";
-      try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
-    }
-    go(x.go);
-    if (x.jump) setTimeout(() => { const el = document.getElementById(x.jump); if (el) window.scrollTo({ top: el.offsetTop - 110, behavior: "smooth" }); }, 60);
+    const x = hits[+b.dataset.i].x;
+    go(x.go.topic ? Object.assign({}, x.go, { hl: q }) : x.go);
   }));
 }
 
@@ -56841,6 +56918,7 @@ function renderQuiz() {
 
 /* ---- search box ---- */
 let searchTimer;
+searchEl.addEventListener("focus", loadIndex, { once: true });     // เริ่มโหลดดัชนีข้อความเต็มตอนผู้อ่านจะค้นหา
 searchEl.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {

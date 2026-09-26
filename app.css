@@ -1866,6 +1866,16 @@
     .topic-head h2 { hyphens: auto; }
   }
 
+  /* ============ v5: ค้นหา — ข้อความรอบคำที่เจอ · ไฮไลต์ในหัวข้อปลายทาง · สถานะโหลดดัชนี ============ */
+  :root { --hl: #FCE38A; --hl-ink: #3D2E00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hl: #6A5410; --hl-ink: #FFF3C4; } }
+  :root[data-theme="dark"] { --hl: #6A5410; --hl-ink: #FFF3C4; }
+  .res-item .snip { display: block; margin-top: 6px; font-size: 13px; line-height: 1.55; color: var(--ink-2); overflow-wrap: anywhere; }
+  .res-item .snip mark, mark.q-hit { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding: 0 2px; }
+  mark.q-hit { box-shadow: 0 0 0 2px var(--hl); }
+  .ix-wait { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+  .ix-wait span { font-weight: 600; color: var(--accent); }
+
 
   /* ============ v3: สองเล่ม ============ */
   .volsw { display: flex; gap: 0; margin: 10px 18px 2px; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; }

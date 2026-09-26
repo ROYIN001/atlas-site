@@ -203,10 +203,11 @@ def check_search(page, base, timeout_ms):
     page.goto("about:blank")
     page.goto(base, wait_until="domcontentloaded")
     page.wait_for_selector("#view .subj-grid .subj", timeout=timeout_ms)
-    # loadIndex() ยิง 1.2 s หลัง load แล้วเติม IXHAY — รอสูงสุด 5 s (ตามหัวข้อ 4)
+    # ดัชนีข้อความเต็ม (data/ix) โหลดเมื่อผู้อ่านเริ่มค้นหา — โฟกัสช่องค้นหาแล้วรอจนครบทุกวิชา
+    page.focus("#search")
     ix_ready = True
     try:
-        page.wait_for_function("() => Object.keys(IXHAY).length > 0", timeout=5000)
+        page.wait_for_function("() => typeof IX_READY !== 'undefined' && IX_READY", timeout=timeout_ms)
     except Exception:
         ix_ready = False
     page.fill("#search", QUERY)        # handler หน่วง 160 ms แล้ว go({v:"search"})
@@ -318,7 +319,7 @@ def main():
 
             # 3) ค้นหา
             hits, ix_ready, ix_keys = check_search(page, base, timeout_ms)
-            print(f"search «{QUERY}» → {hits} hits · IXHAY {ix_keys} rows{'' if ix_ready else ' (ดัชนีมาไม่ทัน 5 s)'}")
+            print(f"search «{QUERY}» → {hits} hits · IXHAY {ix_keys} rows{'' if ix_ready else ' (ดัชนีโหลดไม่ครบ)'}")
             browser.close()
     finally:
         srv.shutdown()
