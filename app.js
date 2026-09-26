@@ -55412,10 +55412,16 @@ const LASTKEY = "atlas-last-v1";
 let LAST = null;
 try { const r = localStorage.getItem(LASTKEY); if (r) LAST = JSON.parse(r); } catch (e) {}
 const saveLast = () => { try { localStorage.setItem(LASTKEY, JSON.stringify(LAST)); } catch (e) {} };
+/* v5: ภาคเรียนของผู้อ่าน — รุ่นน้องแต่ละคนอยู่คนละภาค · ยังไม่เลือก = ใช้ภาคของผู้เรียบเรียง (PROGRAM.current) */
+const MYSEMKEY = "atlas-mysem-v1";
+let MYSEM = null;
+try { const v = +localStorage.getItem(MYSEMKEY); if (v >= 1 && v <= 9) MYSEM = v; } catch (e) {}
+const curSem = () => MYSEM || PROGRAM.current;
+const onBreak = () => !MYSEM && PROGRAM.onBreak;
 const RAILKEY = "atlas-rail-v1";
 let RAILOPEN = null;
 try { const r = localStorage.getItem(RAILKEY); if (r) RAILOPEN = new Set(JSON.parse(r)); } catch (e) {}
-if (!RAILOPEN) RAILOPEN = new Set([PROGRAM.current]);
+if (!RAILOPEN) RAILOPEN = new Set([curSem()]);
 const saveRail = () => { try { localStorage.setItem(RAILKEY, JSON.stringify([...RAILOPEN])); } catch (e) {} };
 /* v5: โหมดผู้ดูแล — เมนู «ปรับภาคเรียน» มีไว้ให้เจ้าของงานแก้แผนการเรียน ผู้อ่านทั่วไปไม่เห็น
    เปิดด้วย ?admin ต่อท้ายลิงก์ ปิดด้วย ?admin=0 · จำไว้ในเครื่องนั้น */
@@ -55517,8 +55523,8 @@ function semTxt(s) {
 const statusOf = s => {
   const a = semsOf(s);
   if (!a.length) return "next";
-  if (semLast(s) < PROGRAM.current) return "done";
-  if (a.includes(PROGRAM.current)) return PROGRAM.onBreak ? "next" : "now";
+  if (semLast(s) < curSem()) return "done";
+  if (a.includes(curSem())) return onBreak() ? "next" : "now";
   return "next";
 };
 const STATUS_TH = { done: "ภาคเรียนที่ผ่านมา (ตามแผน)", now: "ภาคเรียนปัจจุบัน (ตามแผน)", next: "ภาคเรียนที่ยังไม่ถึง (ตามแผน)" };
@@ -55608,6 +55614,38 @@ function buildNav() {
   mk("Тренажёр · ควิซ", "", () => go({ v: "quiz" }), { "data-nav": "quiz" });
 }
 
+/* ---- v5: สำรอง/นำเข้าความคืบหน้า — ทุกคีย์ atlas-* ใน localStorage (ยกเว้นโหมดผู้ดูแล) เป็นไฟล์ JSON ---- */
+function progressExport() {
+  try {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("atlas-") && k !== ADMINKEY) data[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify({ app: "atlas-site", v: 1, saved: new Date().toISOString(), data }, null, 1)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "study-program-progress-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    return true;
+  } catch (e) { return false; }
+}
+async function progressImport(file) {
+  let j;
+  try { j = JSON.parse(await file.text()); } catch (e) { throw new Error("อ่านไฟล์ไม่ได้ (ไม่ใช่ JSON)"); }
+  if (!j || j.app !== "atlas-site" || !j.data || typeof j.data !== "object") throw new Error("ไม่ใช่ไฟล์สำรองของเว็บนี้");
+  const keys = Object.keys(j.data).filter(k => /^atlas-[\w-]+$/.test(k) && k !== ADMINKEY && typeof j.data[k] === "string");
+  if (!keys.length) throw new Error("ไฟล์ไม่มีข้อมูลความคืบหน้า");
+  const when = j.saved ? new Date(j.saved).toLocaleString("th-TH") : "ไม่ทราบเวลา";
+  if (!confirm("แทนที่ความคืบหน้าในเครื่องนี้ด้วยไฟล์ที่สำรองไว้เมื่อ " + when + " ?")) return;
+  const old = [];
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("atlas-") && k !== ADMINKEY) old.push(k); }
+  old.forEach(k => localStorage.removeItem(k));
+  keys.forEach(k => localStorage.setItem(k, j.data[k]));
+  location.reload();
+}
+
 /* ---- overview ---- */
 function subjCard(s) {
   const p = pct(subjKeys(s)), st = statusOf(s);
@@ -55616,7 +55654,7 @@ function subjCard(s) {
     '<span class="pill blk">' + s.block + '</span>' +
     (DEEP[s.id] ? '<span class="pill deep">เนื้อหาเต็ม</span>' : inOtherVol(s.id) ? '<span class="pill vol">เนื้อหาเต็ม · ' + VOLS[volOf(s.id)].label + '</span>' : '') +
     (st === "now" ? '<span class="pill now">กำลังเรียน</span>' : '') +
-    (st === "next" && semsOf(s).includes(PROGRAM.current) ? '<span class="pill next">ภาคหน้า</span>' : '') +
+    (st === "next" && semsOf(s).includes(curSem()) ? '<span class="pill next">ภาคหน้า</span>' : '') +
     (ICONS[s.id] ? '<span class="icon">' + ICONS[s.id] + '</span>' : '') + '</span>' +
     '<span class="ru">' + s.ru + '</span>' +
     '<span class="th">' + s.th + '</span>' +
@@ -55628,7 +55666,8 @@ function subjCard(s) {
 }
 
 function renderOverview() {
-  const now = runningIn(PROGRAM.current);
+  const cs = curSem(), brk = onBreak();
+  const now = runningIn(cs);
   const lastS = LAST && LAST.v === "subject" ? ALL_SUBJ.find(x => x.id === LAST.id) : null;
   const lastT = lastS && LAST.topic && DEEP[lastS.id] ? [...DEEP[lastS.id].topics, ...(DEEP[lastS.id].summary || [])].find(t => t.id === LAST.topic) : null;
   let h = '<div class="wrap wide"><div class="page-head hero">' +
@@ -55640,17 +55679,26 @@ function renderOverview() {
     '<div class="statbar">' +
     '<div class="stat"><b>' + SUBJECTS.length + '</b><span>รายวิชา</span></div>' +
     '<div class="stat"><b>' + fmtZe(PROGRAM.listed) + '</b><span>з.е. รวม</span></div>' +
-    '<div class="stat"><b>' + (PROGRAM.onBreak ? 'ปิดเทอม' : 'ภาค ' + PROGRAM.current) + '</b><span>' + (PROGRAM.onBreak ? 'ภาคหน้าคือภาค ' + PROGRAM.current : 'กำลังเรียน') + '</span></div>' +
+    '<div class="stat"><b>' + Object.keys(DEEP).length + '</b><span>วิชาที่มีเนื้อหาเต็ม</span></div>' +
     '<div class="stat"><b>' + PROGRAM.zeHour + '</b><span>ชั่วโมงต่อ 1 з.е.</span></div>' +
     '</div>' +
     (lastS ? '<button class="resume-chip" id="resumeBtn">▸ อ่านต่อจากครั้งก่อน — <b>' +
       (ICONS[lastS.id] ? ICONS[lastS.id] + ' ' : '') + lastS.ru + '</b>' + (lastT ? ' · ' + lastT.th : '') + '</button>' : '') +
     '</div>';
 
-  h += '<div class="nowstrip' + (PROGRAM.onBreak ? ' next' : '') + '"><div class="nowhead">' +
-    '<span class="year-num">ภาคเรียนที่ ' + PROGRAM.current + '</span>' +
-    '<h2>' + (PROGRAM.onBreak ? 'ภาคเรียนหน้า' : 'กำลังเรียนอยู่ตอนนี้') + '</h2>' +
-    '<span class="year-note">' + (PROGRAM.onBreak ? 'ตอนนี้ปิดเทอมอยู่ · ' : '') + now.length + ' วิชา · ' + semZe(PROGRAM.current).toFixed(1) + ' з.е.</span></div>' +
+  const deepList = SUBJECTS.filter(s => DEEP[s.id]).sort(byNum);   // v5: ทางลัดไปวิชาที่อ่านได้จริง — ขึ้นก่อนทุกอย่าง
+  h += '<section class="deepstrip" aria-labelledby="deepH"><div class="nowhead"><h2 id="deepH">วิชาที่มีเนื้อหาเต็ม</h2>' +
+    '<span class="year-note">' + deepList.length + ' วิชา · เรียบเรียงแล้วพร้อมแบบจำลองโต้ตอบ</span></div><div class="dgrid">' +
+    deepList.map(s => '<button class="dchip" data-go="' + s.id + '"><span class="ic" aria-hidden="true">' + (ICONS[s.id] || '📘') + '</span>' +
+      '<span class="nm"><b>' + s.th + '</b><i>' + s.ru + '</i></span><span class="pc">' + pct(subjKeys(s)) + '%</span></button>').join("") + '</div></section>';
+
+  h += '<div class="nowstrip' + (brk ? ' next' : '') + '"><div class="nowhead">' +
+    '<span class="year-num">ภาคเรียนที่ ' + cs + '</span>' +
+    '<h2>' + (MYSEM ? 'ภาคเรียนของคุณ' : brk ? 'ภาคเรียนหน้า' : 'กำลังเรียนอยู่ตอนนี้') + '</h2>' +
+    '<span class="year-note">' + (brk ? 'ตอนนี้ปิดเทอมอยู่ · ' : '') + now.length + ' วิชา · ' + semZe(cs).toFixed(1) + ' з.е.</span></div>' +
+    '<div class="mysem" role="group" aria-label="เลือกภาคเรียนของคุณ"><span>' + (MYSEM ? 'ภาคที่คุณเรียนอยู่:' : 'ตอนนี้แสดงภาคของผู้เรียบเรียง · เลือกภาคที่คุณเรียนอยู่:') + '</span>' +
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => '<button data-mysem="' + n + '" class="' + (n === MYSEM ? 'on' : '') + '" aria-pressed="' + (n === MYSEM) + '">' + n + '</button>').join("") +
+    (MYSEM ? '<button data-mysem="0" class="clr">ล้าง</button>' : '') + '</div>' +
     '<div class="subj-grid">' + now.map(subjCard).join("") + '</div></div>';
 
   YEARS.forEach(y => {
@@ -55679,8 +55727,31 @@ function renderOverview() {
   h += '<footer class="foot">รายการนี้ไม่รวมยุทธวิธีเฉพาะ (Тактика специальная) การฝึกงาน และการสอบรับรองของรัฐ (ГИА) แต่รวมพลศึกษา (เรียนภาค 1–9) · รวม ' +
     SUBJECTS.length + ' วิชา ' + fmtZe(PROGRAM.listed) + ' з.е. · ' +
     'ตัวเลขมุมซ้ายของการ์ดคือเลขประจำวิชาในเว็บนี้ ไม่เปลี่ยน จึงใช้อ้างอิงได้ · ความคืบหน้าเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</footer></div>';
+  h += '<section class="backup" aria-labelledby="bkH"><h3 id="bkH">ความคืบหน้าของคุณ</h3>' +
+    '<p>เครื่องหมาย «ทบทวนแล้ว» คำศัพท์ที่จำได้ บุ๊กมาร์ก ผลควิซ และตำแหน่งที่อ่านค้างไว้ เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ' +
+    'สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
+    '<div class="qbar"><button id="bkSave">สำรองเป็นไฟล์</button><button id="bkLoad">นำเข้าจากไฟล์</button>' +
+    '<input type="file" id="bkFile" accept="application/json,.json" hidden><span class="m" id="bkMsg" role="status"></span></div></section>';
   view.innerHTML = h;
   view.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go({ v: "subject", id: b.dataset.go })));
+  view.querySelectorAll("[data-mysem]").forEach(b => b.addEventListener("click", () => {
+    const n = +b.dataset.mysem;
+    MYSEM = n || null;
+    try { if (MYSEM) localStorage.setItem(MYSEMKEY, String(MYSEM)); else localStorage.removeItem(MYSEMKEY); } catch (e) {}
+    RAILOPEN.add(curSem()); saveRail();
+    const fold = navEl.querySelector('.sem-body[data-fold="' + curSem() + '"]');   // เปิดภาคนั้นในแถบซ้ายด้วย
+    if (fold) { fold.classList.add("open"); if (fold.previousElementSibling) fold.previousElementSibling.classList.add("open"); }
+    go({ v: "overview" }, { replace: true });
+  }));
+  const bkMsg = document.getElementById("bkMsg"), bkFile = document.getElementById("bkFile");
+  document.getElementById("bkSave").addEventListener("click", () => { bkMsg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
+  document.getElementById("bkLoad").addEventListener("click", () => bkFile.click());
+  bkFile.addEventListener("change", async () => {
+    const f = bkFile.files && bkFile.files[0];
+    bkFile.value = "";
+    if (!f) return;
+    try { await progressImport(f); } catch (e) { bkMsg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
+  });
   const rb = document.getElementById("resumeBtn");
   if (rb) rb.addEventListener("click", () => go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off }));
 }
@@ -56954,8 +57025,12 @@ document.querySelectorAll("#bbar [data-bb]").forEach(b => b.addEventListener("cl
 }));
 const topBtn = document.getElementById("topBtn");
 topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+let lastScrollY = window.scrollY;
 window.addEventListener("scroll", () => {
-  topBtn.classList.toggle("show", window.scrollY > 650);
+  const y = window.scrollY;                         // ปุ่มขึ้นบนโผล่เฉพาะตอนเลื่อนขึ้น — ไม่ลอยทับแถบเลื่อนของแบบจำลองระหว่างอ่าน
+  if (y < 650 || y > lastScrollY + 4) topBtn.classList.remove("show");
+  else if (y < lastScrollY - 4) topBtn.classList.add("show");
+  lastScrollY = y;
   clearTimeout(WSS_T);
   WSS_T = setTimeout(writeScrollState, 400);        // หัวข้อที่อ่านอยู่ → ที่อยู่ของหน้า + «อ่านต่อ»
 }, { passive: true });
