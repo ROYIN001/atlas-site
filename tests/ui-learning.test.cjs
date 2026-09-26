@@ -52,7 +52,7 @@ test('late full-text index completion refreshes only an active search and invali
   for (const activeView of ['search', 'subject']) {
     let refreshed = 0, fetched = 0;
     const sandbox = {
-      IX_LOADED: false, INDEX_BUILT: true, INDEX: [{ stale: true }], IXHAY: {},
+      IX_LOADED: false, IX_READY: false, IX_DONE: 0, IX_TOTAL: 0, INDEX_BUILT: true, INDEX: [{ stale: true }], IXHAY: {},
       state: { v: activeView },
       fetch: async () => { fetched++; return { ok: true, json: async () => ({ subjects: { tau: {} } }) }; },
       dbGet: async (kind, sid) => {
@@ -63,10 +63,12 @@ test('late full-text index completion refreshes only an active search and invali
     };
     const load = vm.runInNewContext(
       section('const DATA_VERSION =', 'const DBCACHE =') +
-      section('async function loadIndex(', 'window.addEventListener("load"') + '\nloadIndex;', sandbox
+      section('async function loadIndex(', 'function buildIndex(') + '\nloadIndex;', sandbox
     );
     await load();
     assert.equal(sandbox.IXHAY['tau__tau-t11'], 'фильтр калмана');
+    assert.equal(sandbox.IX_READY, true);
+    assert.equal(sandbox.IX_DONE, sandbox.IX_TOTAL, 'progress counter reaches the subject count');
     assert.equal(sandbox.INDEX.length, 0);
     assert.equal(sandbox.INDEX_BUILT, false);
     assert.equal(refreshed, activeView === 'search' ? 1 : 0);
