@@ -51,6 +51,13 @@ function attrValues(html, attribute) {
     .map(match => match[2]);
 }
 
+function subjectScripts() {
+  const dir = path.join(ROOT, 'js', 'subj');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter(name => name.endsWith('.js')).sort()
+    .map(name => ({ name, code: fs.readFileSync(path.join(dir, name), 'utf8') }));
+}
+
 function sourceRegistry(source) {
   const boundary = source.indexOf(APP_MARKER);
   assert.ok(boundary >= 0, 'Cannot find the boundary before browser application startup');
@@ -63,7 +70,9 @@ function sourceRegistry(source) {
   const context = vm.createContext({
     window: { matchMedia: () => ({ matches: false }) }
   }, { codeGeneration: { strings: false, wasm: false } });
-  const result = vm.runInContext(source.slice(0, boundary) + '\n' +
+  // Per-subject files js/subj/<subject>.js register their demos into the same DEMOS
+  // registry (the browser loads them when that subject opens); run them after the prefix.
+  const result = vm.runInContext(source.slice(0, boundary) + '\n' + subjectScripts().map(f => f.code).join('\n;\n') + '\n' +
     '({deep: DEEP, subjects: SUBJECTS, demoKeys: Object.keys(DEMOS),' +
     ' invalidDemoKeys: Object.keys(DEMOS).filter(k => typeof DEMOS[k] !== "function")})',
     context, { timeout: 3000, filename: 'app.js:declarations-and-registries' });
@@ -175,6 +184,52 @@ test('Manifest and all search indexes match the current source content', () => {
         `${subject}__${expected[i].id}: stale search text; run python src/build_data.py`);
     }
   }
+});
+
+test('Per-subject JS/CSS files are listed in the manifest with their current hash', () => {
+  const crypto = require('node:crypto');
+  const manifest = parseJson(read('data/manifest.json'), 'data/manifest.json');
+  const dir = path.join(ROOT, 'js', 'subj');
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(name => /\.(js|css)$/.test(name)) : [];
+  for (const name of files) {
+    const [subject, ext] = [name.replace(/\.(js|css)$/, ''), name.split('.').pop()];
+    assert.ok(manifest.subjects[subject], `js/subj/${name}: subject has no topics in data/t`);
+    const hash = crypto.createHash('sha1').update(fs.readFileSync(path.join(dir, name))).digest('hex').slice(0, 10);
+    assert.equal(manifest.subjects[subject][ext], hash, `js/subj/${name}: stale manifest; run python src/build_data.py`);
+  }
+  for (const [subject, entry] of Object.entries(manifest.subjects)) {
+    for (const ext of ['js', 'css']) {
+      if (entry[ext]) assert.ok(files.includes(`${subject}.${ext}`), `manifest lists missing js/subj/${subject}.${ext}`);
+    }
+  }
+});
+
+test('In-content links (#/subject/topic[/id] and #id) point at existing pages and elements', () => {
+  // Router format: see "router (v5)" in app.js. Plain #id links must target an id in the same topic.
+  const ids = html => new Set(attrValues(html, 'id'));
+  const pages = new Set(['', 'glossary', 'flash', 'quiz', 'search']);
+  const bad = [];
+  for (const [file, topic] of topics) {
+    for (const href of attrValues(topic.html, 'href').filter(h => h.startsWith('#'))) {
+      const legacy = /^#s=([\w-]+)$/.exec(href);        // old route form, still routed
+      if (legacy) { if (!registry.subjects.some(s => s.id === legacy[1])) bad.push(`${file}: ${href} (unknown subject)`); continue; }
+      if (!href.startsWith('#/')) {                          // #id in this topic, or #<topic id> of the same subject
+        const id = decodeURIComponent(href.slice(1)), subject = file.split('__')[0], deep = registry.deep[subject];
+        const isTopic = deep && [...deep.topics, ...(deep.summary || [])].some(t => t.id === id);
+        if (!ids(topic.html).has(id) && !isTopic) bad.push(`${file}: ${href} (no such id in this topic or topic in this subject)`);
+        continue;
+      }
+      const [subject, seg, anchor] = href.slice(2).split('/').map(decodeURIComponent);
+      if (pages.has(subject)) continue;
+      const deep = registry.deep[subject];
+      if (!registry.subjects.some(s => s.id === subject)) { bad.push(`${file}: ${href} (unknown subject)`); continue; }
+      if (!seg || seg === 'sum' || seg === 'full') continue;
+      const target = deep && [...deep.topics, ...(deep.summary || [])].find(t => t.id === seg);
+      if (!target) { bad.push(`${file}: ${href} (unknown topic)`); continue; }
+      if (anchor && !ids(topics.get(`${subject}__${seg}.json`).html).has(anchor)) bad.push(`${file}: ${href} (no id "${anchor}" in ${seg})`);
+    }
+  }
+  assert.deepEqual(bad, [], 'Broken in-content links');
 });
 
 test('Every HTML and metadata demo slot has a registered function', () => {

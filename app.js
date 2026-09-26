@@ -55744,6 +55744,7 @@ async function fillBody(el) {
   delete el.dataset.lazy;
   let html = null;
   try { html = await topicHtml(sid, t); } catch (e) { html = null; }
+  if (html !== null) await subjAssets(sid);         // ไฟล์ JS/CSS ของวิชา (ถ้ามี) ต้องมาก่อนติดตั้งแบบจำลอง
   if (html === null) {
     const viaFile = location.protocol === "file:";
     el.innerHTML = '<div class="tload tfail">โหลดหัวข้อนี้ไม่สำเร็จ' +
@@ -55770,6 +55771,37 @@ function fillAllBodies() {
   return Promise.all([...document.querySelectorAll(".tbody[data-lazy]")].map(fillBody));
 }
 window.addEventListener("beforeprint", fillAllBodies);
+
+/* ---- v5: ไฟล์ JS/CSS แยกรายวิชา — js/subj/<วิชา>.js และ .css โหลดเมื่อเปิดวิชานั้นครั้งแรก ----
+   วิชาที่ยกระดับใหม่ใส่แบบจำลอง/รูปแบบของตัวเองในไฟล์นี้ แทนการต่อบล็อกใน app.js (app.js จะได้ไม่โตขึ้นเรื่อย ๆ
+   และผู้อ่านไม่ต้องโหลดแบบจำลองของวิชาที่ไม่ได้เปิด) · src/build_data.py ใส่ hash ของไฟล์ลง data/manifest.json
+   (subjects.<วิชา>.js / .css) ใช้เป็น ?v= · กติกาของไฟล์: ลงทะเบียนด้วย Object.assign(DEMOS, { … }) ·
+   ห้ามแตะ document ที่ระดับบนสุด (tests รันไฟล์ใน vm) · CSS อยู่ใต้ namespace ของวิชา */
+let MANIFEST = null;
+const MANIFEST_URL = "data/manifest.json?v=" + DATA_VERSION;
+const manifestGet = () => MANIFEST || (MANIFEST = fetch(MANIFEST_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .catch(() => { MANIFEST = null; return null; }));             // โหลดไม่ได้ชั่วคราว — ครั้งหน้าลองใหม่
+const SUBJ_ASSET = {};
+function subjAssets(sid) {
+  if (!sid) return Promise.resolve();
+  return SUBJ_ASSET[sid] || (SUBJ_ASSET[sid] = manifestGet().then(man => {
+    if (!man) { delete SUBJ_ASSET[sid]; return; }
+    const m = (man.subjects && man.subjects[sid]) || {}, jobs = [];
+    if (m.css) {
+      const l = document.createElement("link");
+      l.rel = "stylesheet"; l.href = "js/subj/" + sid + ".css?v=" + m.css;
+      jobs.push(new Promise(r => { l.onload = l.onerror = () => r(); }));
+      document.head.appendChild(l);
+    }
+    if (m.js) {
+      const sc = document.createElement("script");
+      sc.src = "js/subj/" + sid + ".js?v=" + m.js;
+      jobs.push(new Promise(r => { sc.onload = sc.onerror = () => r(); }));
+      document.head.appendChild(sc);
+    }
+    return Promise.all(jobs);
+  }));
+}
 
 /* ---- v5: สูตรในบรรทัดที่กว้างกว่ากล่องของตัวเอง (จอแคบ) → .m-wide = บรรทัดแยกที่เลื่อนแนวนอนได้ ----
    ใส่ overflow ให้สูตรทุกตัวไม่ได้ เพราะจะตัดตัวห้อย/ตัวยกของสูตรที่พอดีกล่อง · CSS อยู่ใน app.css «v5» */
@@ -55802,6 +55834,7 @@ function setFold(sec, open) {                     // ย่อ/ขยายห�
   if (f) f.setAttribute("aria-expanded", String(open));
 }
 function renderSubject() {
+  subjAssets(state.id);                              // เริ่มโหลดไฟล์ของวิชาคู่ขนานกับหัวข้อแรก
   LAZYBODY = [];
   if (LAZY_IO) { LAZY_IO.disconnect(); LAZY_IO = null; }
   if (SPY_IO) { SPY_IO.disconnect(); SPY_IO = null; }
@@ -56482,6 +56515,7 @@ function inPageAnchor(raw, push) {
   try { id = decodeURIComponent(raw); } catch (e) {}
   const el = id && document.getElementById(id);
   if (!push) { try { history.replaceState(history.state, "", ROUTED || "#/"); } catch (e) {} }   // คืนที่อยู่ของหน้า
+  if ((!el || !view.contains(el)) && state.v === "subject" && subjRoute(state.id, id).topic) { navTopic(id); return; }   // #<หัวข้อ> ที่ไม่ได้อยู่บนหน้า (เช่นลิงก์จากบล็อกสรุปไปฉบับเต็ม)
   if (!el || !view.contains(el)) return;
   if (push) { writeScrollState(); setHistory("push", routeOnly(state), {}); }
   scrollToTarget(el);
@@ -57049,6 +57083,8 @@ async function saveOffline(s) {
   });
   topics.forEach(t => (t.demos || (t.demo ? [t.demo] : [])).forEach(k => { const m = /^vh-([a-z0-9-]+)$/.exec(k); if (m) urls.add("data/vh/" + m[1] + ".json"); }));
   if (bodies.some(h => h.includes('data-demo="ih-'))) { urls.add("data/ih/atlas.json"); urls.add("data/ih/world.json"); }
+  urls.add(MANIFEST_URL);
+  try { const m = (((await manifestGet()) || {}).subjects || {})[s.id] || {}; if (m.js) urls.add("js/subj/" + s.id + ".js?v=" + m.js); if (m.css) urls.add("js/subj/" + s.id + ".css?v=" + m.css); } catch (e) {}
   try { const css = await (await fetch("fonts/fonts.css")).text(); for (const m of css.matchAll(/url\(([^)]+\.woff2)\)/g)) urls.add("fonts/" + m[1]); } catch (e) {}
   const list = [...urls], total = list.length + topics.length;
   done = topics.length;
