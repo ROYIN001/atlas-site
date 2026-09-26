@@ -55630,6 +55630,7 @@ function subjCard(s) {
 function renderOverview() {
   const now = runningIn(PROGRAM.current);
   const lastS = LAST && LAST.v === "subject" ? ALL_SUBJ.find(x => x.id === LAST.id) : null;
+  const lastT = lastS && LAST.topic && DEEP[lastS.id] ? [...DEEP[lastS.id].topics, ...(DEEP[lastS.id].summary || [])].find(t => t.id === LAST.topic) : null;
   let h = '<div class="wrap wide"><div class="page-head hero">' +
     '<p class="eyebrow">ВКА имени А.Ф. Можайского · г. Санкт-Петербург</p>' +
     '<h1 class="page-title">Атлас курса</h1>' +
@@ -55643,7 +55644,7 @@ function renderOverview() {
     '<div class="stat"><b>' + PROGRAM.zeHour + '</b><span>ชั่วโมงต่อ 1 з.е.</span></div>' +
     '</div>' +
     (lastS ? '<button class="resume-chip" id="resumeBtn">▸ อ่านต่อจากครั้งก่อน — <b>' +
-      (ICONS[lastS.id] ? ICONS[lastS.id] + ' ' : '') + lastS.ru + '</b></button>' : '') +
+      (ICONS[lastS.id] ? ICONS[lastS.id] + ' ' : '') + lastS.ru + '</b>' + (lastT ? ' · ' + lastT.th : '') + '</button>' : '') +
     '</div>';
 
   h += '<div class="nowstrip' + (PROGRAM.onBreak ? ' next' : '') + '"><div class="nowhead">' +
@@ -55681,11 +55682,7 @@ function renderOverview() {
   view.innerHTML = h;
   view.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go({ v: "subject", id: b.dataset.go })));
   const rb = document.getElementById("resumeBtn");
-  if (rb) rb.addEventListener("click", () => {
-    const y = (LAST && LAST.y) || 0;
-    go({ v: "subject", id: LAST.id });
-    setTimeout(() => window.scrollTo({ top: y, behavior: "instant" }), 90);
-  });
+  if (rb) rb.addEventListener("click", () => go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off }));
 }
 
 /* ---- subject ---- */
@@ -55829,20 +55826,12 @@ function renderSubject() {
   view.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
     MODE = b.dataset.mode;
     try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
-    clearDemos(); renderSubject();
+    go({ v: "subject", id: state.id, mode: MODE });
   }));
   view.querySelectorAll("[data-key]").forEach(b => b.addEventListener("click", () => toggleKey(b.dataset.key, b)));
   view.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go({ v: "subject", id: b.dataset.go })));
-  const jumpTo = id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.classList.remove("closed");
-      fillBody(el.querySelector(".tbody[data-lazy]"));
-      window.scrollTo({ top: el.offsetTop - 110, behavior: "smooth" });
-    }
-  };
-  view.querySelectorAll("[data-jump]").forEach(b => b.addEventListener("click", () => jumpTo(b.dataset.jump)));
-  view.querySelectorAll("[data-toc]").forEach(b => b.addEventListener("click", () => jumpTo(b.dataset.toc)));
+  view.querySelectorAll("[data-jump]").forEach(b => b.addEventListener("click", () => navTopic(b.dataset.jump)));
+  view.querySelectorAll("[data-toc]").forEach(b => b.addEventListener("click", () => navTopic(b.dataset.toc)));
   const ch = view.querySelector("[data-crumb-home]");
   if (ch) ch.addEventListener("click", () => go({ v: "overview" }));
   view.querySelectorAll("section.topic .topic-head").forEach(hd => hd.addEventListener("click", e => {
@@ -56202,10 +56191,192 @@ document.addEventListener("std2:quiz", e => {
   if (sec.id === TOCX.cur) margRefresh();
 });
 
-/* ---- router ---- */
+/* ---- router (v5) ----
+   ทุกหน้ามีที่อยู่ของตัวเองใน hash — ปุ่ม Back ของเบราว์เซอร์/มือถือย้อนได้ บุ๊กมาร์กและส่งลิงก์ได้ถึงระดับหัวข้อ
+     #/                        ภาพรวม                  #/glossary[/<คำกรอง>]  คลังศัพท์
+     #/<วิชา>                  หน้าวิชา (โหมดที่เลือกไว้)   #/flash · #/quiz · #/sem (โหมดผู้ดูแล)
+     #/<วิชา>/sum · /full      หน้าวิชาในโหมดนั้น          #/search/<คำค้น>
+     #/<วิชา>/<หัวข้อ>[/<id>]    เปิดหัวข้อ (โหมดตามชนิดหัวข้อ) แล้วเลื่อนไปหา — ต่อด้วย id ขององค์ประกอบในหัวข้อได้
+   รูปแบบเก่า #s=<วิชา> ยังใช้ได้ (แปลงเป็นแบบใหม่ทันที)
+   ประวัติ: เปลี่ยนหน้า/กดสารบัญ = เพิ่มรายการ · เลื่อนอ่าน = แก้รายการปัจจุบัน (ที่อยู่ชี้หัวข้อที่อ่านอยู่ + ระยะในหัวข้อ)
+   ลิงก์ในเนื้อหา: <a href="#/<วิชา>/<หัวข้อ>"> ข้ามหัวข้อ/ข้ามวิชา · <a href="#<id>"> ไปองค์ประกอบในหน้าเดียวกัน */
 let state = { v: "overview" };
-function go(st) {
-  if (st.v === "subject" && inOtherVol(st.id)) { openVol(volOf(st.id), st.id); return; }
+let ROUTED = "";                                  // hash ที่จัดการไปแล้ว — popstate กับ hashchange ยิงคู่กัน ทำครั้งเดียวพอ
+const PAGES = ["glossary", "flash", "quiz", "search", "sem"];
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+const topicsOf = id => DEEP[id] ? [...DEEP[id].topics, ...(DEEP[id].summary || [])] : [];
+const modePref = () => { try { return localStorage.getItem("atlas-mode-v1") || "sum"; } catch (e) { return "sum"; } };
+const curMode = () => (DEEP[state.id] && DEEP[state.id].summary && DEEP[state.id].summary.length) ? MODE : "full";
+function subjRoute(id, seg, anchor) {
+  if (!ALL_SUBJ.some(x => x.id === id)) return { v: "overview" };
+  const st = { v: "subject", id }, deep = DEEP[id];
+  if (seg === "sum" || seg === "full") st.mode = seg;
+  else if (seg && deep) {
+    if (deep.topics.some(t => t.id === seg)) st.mode = "full";
+    else if ((deep.summary || []).some(t => t.id === seg)) st.mode = "sum";
+    if (st.mode) { st.topic = seg; if (anchor) st.anchor = anchor; }
+  }
+  return st;
+}
+function parseRoute(hash) {
+  const h = String(hash || "").replace(/^#/, "");
+  const legacy = /^s=([\w-]+)$/.exec(h);
+  if (legacy) return subjRoute(legacy[1]);
+  if (h && h[0] !== "/") return null;                        // #<id> = ลิงก์ในหน้า ไม่ใช่ที่อยู่ของหน้า
+  const p = h.slice(1).split("/").map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
+  if (!p[0]) return { v: "overview" };
+  if (p[0] === "search") { const q = p.slice(1).join("/").trim().toLowerCase(); return q ? { v: "search", q } : { v: "overview" }; }
+  if (p[0] === "glossary") { const q = p.slice(1).join("/"); return q ? { v: "glossary", q } : { v: "glossary" }; }
+  if (p[0] === "sem" && !ADMIN) return { v: "overview" };
+  if (PAGES.includes(p[0])) return { v: p[0] };
+  return subjRoute(p[0], p[1], p[2]);
+}
+function routeHash(st) {
+  const e = encodeURIComponent;
+  if (st.v === "subject") return "#/" + st.id + (st.topic ? "/" + st.topic + (st.anchor ? "/" + e(st.anchor) : "") : st.mode ? "/" + st.mode : "");
+  if (st.v === "search") return "#/search/" + e(st.q || "");
+  if (st.v === "glossary") return "#/glossary" + (st.q ? "/" + e(st.q) : "");
+  return st.v && st.v !== "overview" ? "#/" + st.v : "#/";
+}
+function routeOnly(st) {
+  const r = { v: st.v };
+  ["id", "q", "mode", "topic", "anchor"].forEach(k => { if (st[k]) r[k] = st[k]; });
+  return r;
+}
+function pageTitle(st) {
+  const base = "Study Program";
+  if (st.v === "subject") {
+    const s = ALL_SUBJ.find(x => x.id === st.id);
+    const t = st.topic && topicsOf(st.id).find(x => x.id === st.topic);
+    return s ? (t ? t.th + " — " : "") + s.th + " · " + base : base;
+  }
+  if (st.v === "search") return "ค้นหา «" + st.q + "» · " + base;
+  const names = { glossary: "คลังศัพท์", flash: "Flashcard คำศัพท์", quiz: "ควิซคำศัพท์", sem: "ปรับภาคเรียน" };
+  return names[st.v] ? names[st.v] + " · " + base : base;
+}
+function setHistory(how, st, extra) {
+  const hash = routeHash(st), hs = Object.assign({ r: routeOnly(st) }, extra || {});
+  try { history[how === "push" && hash !== location.hash ? "pushState" : "replaceState"](hs, "", hash); } catch (e) { /* Safari จำกัดจำนวนครั้งต่อ 30 วินาที */ }
+  ROUTED = location.hash;
+  document.title = pageTitle(st);
+}
+
+/* ---- ตำแหน่งบนหน้า: หัวข้อที่อ่านอยู่ + ระยะในหัวข้อ (ไม่ใช่พิกเซลของหน้า เพราะกล่องเนื้อหาโหลดทีหลัง) ---- */
+function navOffset() {                            // ความสูงของแถบที่ติดบนจอ (ช่องค้นหา + ชิปหัวข้อบนจอแคบ)
+  let off = 0;
+  const tb = document.querySelector(".topbar");
+  if (tb && getComputedStyle(tb).position === "sticky") off = tb.getBoundingClientRect().height;
+  const tn = view.querySelector(".topic-nav");
+  if (tn && tn.offsetParent && getComputedStyle(tn).position === "sticky") off = Math.max(off, (parseFloat(getComputedStyle(tn).top) || 0) + tn.offsetHeight);
+  return Math.round(off) + 12;
+}
+function currentTopicEl() {
+  const line = navOffset() + 2;
+  let cur = null;
+  for (const sec of view.querySelectorAll("section.topic[id]")) { if (sec.getBoundingClientRect().top <= line) cur = sec; else break; }
+  return cur;
+}
+let WSS_T = 0;
+function writeScrollState() {                     // เขียนตำแหน่งปัจจุบันลงรายการประวัตินี้ + «อ่านต่อ» — Back/รีเฟรชกลับมาตรงนี้
+  clearTimeout(WSS_T);
+  const st = routeOnly(state), extra = { y: Math.round(window.scrollY) };
+  if (state.v === "subject") {
+    const cur = currentTopicEl();
+    delete st.anchor;
+    if (cur) { st.topic = cur.id; extra.off = Math.round(navOffset() - cur.getBoundingClientRect().top); }
+    else delete st.topic;
+    state.topic = st.topic;
+    LAST = { v: "subject", id: state.id, mode: curMode(), topic: st.topic || null, off: extra.off || 0 };
+    saveLast();
+  }
+  setHistory("replace", st, extra);
+}
+
+/* ---- เลื่อนไปหาเป้าหมายให้ตรงที่ ----
+   กล่องหัวข้อระหว่างทางยังเป็นที่ว่างรอโหลด พอเลื่อนผ่านก็ขยาย/หดตัว ตำแหน่งที่คำนวณไว้ครั้งเดียวจึงเพี้ยน
+   (เคยวัดได้เลยเป้า 600–1 900 px) → กระโดดทันทีแล้วคอยแก้ตำแหน่งจนนิ่ง หยุดทันทีที่ผู้อ่านแตะ/เลื่อนเอง */
+let NAVJOB = 0;
+function scrollToTarget(el, off) {                // off = ระยะที่ el เลยเส้นใต้แถบบนขึ้นไป (บวก = el อยู่สูงกว่าเส้น)
+  off = off || 0;
+  const job = ++NAVJOB;
+  const sec = el.closest && el.closest("section.topic");
+  if (sec) sec.classList.remove("closed");
+  for (let d = el.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) d.open = true;
+  const want = () => navOffset() - off;
+  const target = () => Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY - want()));
+  if (Math.abs(el.getBoundingClientRect().top - want()) < window.innerHeight * 1.2 && !REDUCED) {
+    window.scrollTo({ top: target(), behavior: "smooth" });      // ใกล้ ๆ เนื้อหารอบข้างโหลดแล้ว เลื่อนนุ่มได้
+    return;
+  }
+  window.scrollTo({ top: target(), behavior: "instant" });
+  const cancel = () => { if (job === NAVJOB) NAVJOB++; };
+  const evs = ["wheel", "touchstart", "keydown", "mousedown"];
+  evs.forEach(ev => window.addEventListener(ev, cancel, { once: true, passive: true }));
+  const t0 = performance.now();
+  let calmSince = t0;
+  const tick = () => {
+    const now = performance.now();
+    if (job !== NAVJOB || !el.isConnected || now - t0 > 6000 || now - calmSince > 1200) { evs.forEach(ev => window.removeEventListener(ev, cancel)); return; }
+    if (Math.abs(el.getBoundingClientRect().top - want()) > 2) { window.scrollTo({ top: target(), behavior: "instant" }); calmSince = now; }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function bodyReady(body) {                        // รอจนกล่องหัวข้อมีเนื้อหาจริง (หรือขึ้นข้อความโหลดไม่สำเร็จ)
+  return new Promise(res => {
+    const t0 = Date.now();
+    (function chk() {
+      if (!body.isConnected || (body.dataset.lazy === undefined && !body.querySelector(":scope > .tload:not(.tfail)")) || Date.now() - t0 > 8000) res();
+      else setTimeout(chk, 40);
+    })();
+  });
+}
+async function scrollToTopic(id, o) {             // o: { off, anchor (id ในหัวข้อ), hl (คำที่ค้นหา — ไฮไลต์แล้วไปที่แรกที่เจอ) }
+  o = o || {};
+  const sec = document.getElementById(id);
+  if (!sec || !view.contains(sec)) return;
+  sec.classList.remove("closed");
+  const body = sec.querySelector(".tbody");
+  if (body) { if (body.dataset.lazy !== undefined) fillBody(body); await bodyReady(body); }
+  if (!sec.isConnected) return;
+  let el = sec, off = o.off || 0;
+  if (o.anchor) { const a = document.getElementById(o.anchor); if (a && sec.contains(a)) { el = a; off = 0; } }
+  if (o.hl && body && typeof markHits === "function") { const m = markHits(body, o.hl); if (m) { el = m; off = -Math.round(window.innerHeight * 0.2); } }
+  scrollToTarget(el, off);
+}
+function navTopic(id, o) {                        // กดสารบัญ/ชิปหัวข้อ/ก่อนหน้า-ถัดไป — เพิ่มประวัติ Back จึงกลับมาที่เดิมได้
+  if (state.v !== "subject") return;
+  const st = subjRoute(state.id, id);
+  if (!st.topic) return;
+  if (st.mode !== curMode()) { go(Object.assign(st, o)); return; }
+  writeScrollState();
+  state.topic = id;
+  setHistory("push", st, { off: 0 });
+  scrollToTopic(id, o);
+}
+/* บล็อก v4 (ต้นฉบับ _work/layout/layout.js) มีตัวกระโดดของตัวเองที่เลื่อนนุ่มไปตำแหน่งที่คำนวณครั้งเดียว — แทนด้วยตัวใหม่ข้างบน
+   ครั้งหน้าที่แก้ layout.js ให้เรียก navTopic / scrollToTarget ตรง ๆ แล้วลบสามบรรทัดนี้ได้ */
+jumpTopic = id => navTopic(id);
+scrollToEl = el => scrollToTarget(el);
+settleAt = () => {};
+
+function go(st, opt) {
+  opt = opt || {};
+  if (!opt.pop && !opt.init) writeScrollState();   // เก็บตำแหน่งของหน้าที่กำลังออก
+  st = Object.assign({}, st);
+  const hl = st.hl, off = st.off;
+  delete st.hl; delete st.off;
+  if (st.v === "sem" && !ADMIN) st = { v: "overview" };
+  if (st.v === "subject") {
+    if (!ALL_SUBJ.some(x => x.id === st.id)) st = { v: "overview" };
+    else {
+      if (st.topic) { const r = subjRoute(st.id, st.topic); st.mode = r.mode; if (!r.topic) delete st.topic; }
+      MODE = st.mode || modePref();
+    }
+  }
+  if (st.v === "glossary") { if (st.q !== undefined) searchEl.value = st.q; else if (searchEl.value.trim()) st.q = searchEl.value.trim(); }
+  if (st.v === "search" && (opt.pop || opt.init)) searchEl.value = st.q;
   state = st;
   clearDemos();
   navEl.querySelectorAll(".nav-item").forEach(b => {
@@ -56224,12 +56395,57 @@ function go(st) {
       }
     });
   }
-  ({ overview: renderOverview, subject: renderSubject, glossary: renderGlossary, quiz: renderQuiz, search: renderSearch, sem: ADMIN ? renderSemEditor : renderOverview, flash: renderFlash }[st.v] || renderOverview)();
-  window.scrollTo({ top: 0, behavior: "instant" });
+  ({ overview: renderOverview, subject: renderSubject, glossary: renderGlossary, quiz: renderQuiz, search: renderSearch, sem: renderSemEditor, flash: renderFlash }[st.v] || renderOverview)();
   syncProgress();
-  if (st.v === "subject") { LAST = { v: "subject", id: st.id, y: 0 }; saveLast(); }
   document.querySelectorAll("#bbar [data-bb]").forEach(b => b.classList.toggle("on", b.dataset.bb === st.v));
+  if (opt.pop) { ROUTED = location.hash; document.title = pageTitle(st); }
+  else setHistory(opt.replace || opt.init ? "replace" : "push", st, { y: opt.y || 0, off: off || 0 });
+  window.scrollTo({ top: st.topic ? 0 : opt.y || 0, behavior: "instant" });
+  if (st.v === "subject") {
+    if (st.topic) scrollToTopic(st.topic, { off, anchor: st.anchor, hl });
+    LAST = { v: "subject", id: st.id, mode: curMode(), topic: st.topic || null, off: off || 0 };
+    saveLast();
+  }
+  const h1 = view.querySelector("h1");               // ผู้ใช้คีย์บอร์ด/โปรแกรมอ่านจอเริ่มที่หัวเรื่องของหน้าใหม่ (ไม่แย่งโฟกัสจากช่องค้นหา)
+  if (h1 && !opt.init && document.activeElement !== searchEl) { h1.setAttribute("tabindex", "-1"); h1.focus({ preventScroll: true }); }
 }
+function onRoute() {
+  if (location.hash === ROUTED) return;
+  const st = parseRoute(location.hash);
+  if (!st) { inPageAnchor(location.hash.slice(1), false); return; }
+  const hs = history.state && history.state.r ? history.state : {};
+  if (/^#s=/.test(location.hash)) { go(st, { replace: true }); return; }
+  const same = st.v === "subject" && state.v === "subject" && st.id === state.id && (st.mode || (st.topic ? null : MODE)) === curMode();
+  if (same) {                                      // วิชาเดียวกัน โหมดเดียวกัน — เลื่อนไปอย่างเดียว ไม่วาดหน้าใหม่
+    ROUTED = location.hash;
+    state.topic = st.topic; state.mode = st.mode; state.anchor = st.anchor;
+    document.title = pageTitle(st);
+    if (st.topic) scrollToTopic(st.topic, { off: hs.off, anchor: st.anchor });
+    else window.scrollTo({ top: hs.y || 0, behavior: "instant" });
+    return;
+  }
+  go(Object.assign(st, { off: hs.off }), { pop: true, y: hs.y });
+}
+function inPageAnchor(raw, push) {
+  let id = raw;
+  try { id = decodeURIComponent(raw); } catch (e) {}
+  const el = id && document.getElementById(id);
+  if (!push) { try { history.replaceState(history.state, "", ROUTED || "#/"); } catch (e) {} }   // คืนที่อยู่ของหน้า
+  if (!el || !view.contains(el)) return;
+  if (push) { writeScrollState(); setHistory("push", routeOnly(state), {}); }
+  scrollToTarget(el);
+}
+document.addEventListener("click", e => {          // <a href="#…"> ในเนื้อหา: ที่อยู่ของหน้า → go · #<id> → เลื่อนไปในหน้า
+  const a = e.target.closest && e.target.closest('a[href^="#"]');
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const href = a.getAttribute("href");
+  if (href === "#") return;
+  e.preventDefault();
+  const st = parseRoute(href);
+  if (!st) { inPageAnchor(href.slice(1), true); return; }
+  if (st.v === "subject" && state.v === "subject" && st.id === state.id && st.topic && st.mode === curMode()) navTopic(st.topic, { anchor: st.anchor });
+  else go(st);
+});
 
 
 /* ---- แบบสอบถามภาคเรียน ---- */
@@ -56629,14 +56845,19 @@ searchEl.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     const q = searchEl.value.trim().toLowerCase();
-    if (state.v === "glossary" && renderGlossary.filter) { renderGlossary.filter(); return; }
-    if (q.length >= 2) go({ v: "search", q });
-    else if (state.v === "search") go({ v: "overview" });
+    if (state.v === "glossary" && renderGlossary.filter) {
+      renderGlossary.filter();
+      state.q = searchEl.value.trim() || undefined;
+      setHistory("replace", state, { y: 0 });             // ที่อยู่ #/glossary/<คำกรอง> ส่งต่อได้
+      return;
+    }
+    if (q.length >= 2) go({ v: "search", q }, { replace: state.v === "search" });   // พิมพ์ต่อไม่เพิ่มประวัติทีละตัวอักษร
+    else if (state.v === "search") go({ v: "overview" }, { replace: true });
   }, 160);
 });
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== searchEl) { e.preventDefault(); searchEl.focus(); }
-  else if (e.key === "Escape" && document.activeElement === searchEl) { searchEl.value = ""; searchEl.blur(); if (state.v === "search") go({ v: "overview" }); }
+  else if (e.key === "Escape" && document.activeElement === searchEl) { searchEl.value = ""; searchEl.blur(); if (state.v === "search") go({ v: "overview" }, { replace: true }); }
 });
 document.getElementById("quizBtn").addEventListener("click", () => go({ v: "quiz" }));
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => LIVE.forEach(d => d.draw && d.draw()));
@@ -56655,30 +56876,19 @@ document.querySelectorAll("#bbar [data-bb]").forEach(b => b.addEventListener("cl
 }));
 const topBtn = document.getElementById("topBtn");
 topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-let scrollSaveTimer;
 window.addEventListener("scroll", () => {
   topBtn.classList.toggle("show", window.scrollY > 650);
-  clearTimeout(scrollSaveTimer);
-  scrollSaveTimer = setTimeout(() => {
-    if (state.v === "subject" && LAST && LAST.id === state.id) {
-      LAST.y = window.scrollY;
-      saveLast();
-    }
-  }, 300);
+  clearTimeout(WSS_T);
+  WSS_T = setTimeout(writeScrollState, 400);        // หัวข้อที่อ่านอยู่ → ที่อยู่ของหน้า + «อ่านต่อ»
 }, { passive: true });
 
 buildNav();
 buildVolSw();
 setTimeout(buildIndex, 2000);
-(function () {
-  const h = (location.hash || "").replace(/^#/, "");
-  const m = /^s=([\w-]+)$/.exec(h);
-  const sub = m && ALL_SUBJ.find(x => x.id === m[1]);
-  if (sub && !inOtherVol(sub.id)) go({ v: "subject", id: sub.id });
-  else go({ v: "overview" });
+window.addEventListener("popstate", onRoute);
+window.addEventListener("hashchange", onRoute);
+(function () {                                      // เปิดครั้งแรกตามที่อยู่ในลิงก์ · รีเฟรชแล้วกลับที่เดิม (history.state เก็บระยะในหัวข้อไว้)
+  const st = parseRoute(location.hash) || { v: "overview" };
+  const hs = history.state && history.state.r ? history.state : {};
+  go(Object.assign(st, { off: hs.off }), { init: true, y: hs.y });
 })();
-window.addEventListener("hashchange", () => {
-  const m = /^s=([\w-]+)$/.exec((location.hash || "").replace(/^#/, ""));
-  const sub = m && ALL_SUBJ.find(x => x.id === m[1]);
-  if (sub && !inOtherVol(sub.id)) go({ v: "subject", id: sub.id });
-});
