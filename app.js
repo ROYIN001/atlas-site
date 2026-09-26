@@ -958,8 +958,6 @@ function dbGet(coll, name) {
   return p;
 }
 
-function loadFigs() { return Promise.resolve(true); }
-async function figReady() {}
 
 async function topicHtml(sid, t) {
   if (typeof t.html === "string" && t.html) return t.html;
@@ -55436,30 +55434,6 @@ if (ADMIN_Q !== null) {
 const BLKCLS = { "ГСЭ": "blk-gse", "МЕН": "blk-men", "ОПД": "blk-opd", "СД": "blk-sd", "ВПД": "blk-vpd" };
 const ICONS = { hist: "📜", elob: "🔋", tau: "🎛️", surn: "🚀", suka: "🛰️", nav: "🧭", toe: "🔌", teh_el: "⚡", asu: "📡", nadezh: "🛡️", ppo: "🔧", vhist: "🗺️" };
 
-/* ---- v3: สองเล่ม — วิชาเนื้อหาเต็มถูกแบ่งไว้คนละหน้าเพราะเพดานขนาดไฟล์ ---- */
-const VOL = 1;
-const VOLS = {
-  1: { url: "https://claude.ai/code/artifact/cafa6049-3eaa-4868-b97c-6875d66424b3", label: "เล่ม 1", note: "ТАУ · СН ЛА · ТОЭ · СУ РН · СУ КА · ТЭ · АСУ КА · НАС", subj: ["tau", "nav", "toe", "surn", "suka", "teh_el", "asu", "nadezh"] },
-  2: { url: "https://claude.ai/code/artifact/666a1fe7-024d-4586-b16b-1738bb109276", label: "เล่ม 2", note: "ППО ЛА", subj: ["ppo"] }
-};
-const volOf = id => VOL;
-const inOtherVol = id => volOf(id) !== VOL;
-const openVol = (v, id) => { try { window.open(VOLS[v].url + (id ? "#s=" + id : ""), "_blank", "noopener"); } catch (e) {} };
-function buildVolSw() {
-  const el = document.getElementById("volsw");
-  if (el) el.remove();
-  return;
-  if (!el) return;
-  el.innerHTML = [1, 2].map(v =>
-    '<button data-vol="' + v + '" class="' + (v === VOL ? "on" : "") + '" title="' + VOLS[v].note + '">' +
-    '<b>' + VOLS[v].label + '</b><i>' + VOLS[v].subj.length + ' วิชาเต็ม</i></button>').join("");
-  el.querySelectorAll("[data-vol]").forEach(b => b.addEventListener("click", () => {
-    const v = +b.dataset.vol;
-    if (v !== VOL) openVol(v);
-  }));
-}
-
-
 const ALL_SUBJ = SUBJECTS;
 const fmtZe = v => (v % 1 === 0 ? String(v) : String(v).replace(".", ","));
 const view = document.getElementById("view");
@@ -55560,7 +55534,6 @@ function buildNav() {
     const b = mk('<span class="nnum">' + s.n + '</span> ' + s.ru + cont, "0%",
       () => go({ v: "subject", id: s.id }), { "data-nav-subj": s.id, title: s.th + (run ? " · ภาค " + run : "") }, parent);
     if (DEEP[s.id]) b.classList.add("deep");
-    else if (inOtherVol(s.id)) { b.classList.add("other"); b.querySelector(".tag").textContent = VOLS[volOf(s.id)].label; }
     return b;
   };
   const mkFold = (key, headHtml, cls) => {
@@ -55652,7 +55625,7 @@ function subjCard(s) {
   return '<button class="subj ' + st + ' ' + (BLKCLS[s.block] || '') + '" data-go="' + s.id + '">' +
     '<span class="cardtop"><span class="num">' + s.n + '</span>' +
     '<span class="pill blk">' + s.block + '</span>' +
-    (DEEP[s.id] ? '<span class="pill deep">เนื้อหาเต็ม</span>' : inOtherVol(s.id) ? '<span class="pill vol">เนื้อหาเต็ม · ' + VOLS[volOf(s.id)].label + '</span>' : '') +
+    (DEEP[s.id] ? '<span class="pill deep">เนื้อหาเต็ม</span>' : '') +
     (st === "now" ? '<span class="pill now">กำลังเรียน</span>' : '') +
     (st === "next" && semsOf(s).includes(curSem()) ? '<span class="pill next">ภาคหน้า</span>' : '') +
     (ICONS[s.id] ? '<span class="icon">' + ICONS[s.id] + '</span>' : '') + '</span>' +
@@ -55823,6 +55796,11 @@ window.addEventListener("resize", () => {
   fitTimer = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(fitWideMath), 250);
 }, { passive: true });
 
+function setFold(sec, open) {                     // ย่อ/ขยายหัวข้อ + บอกสถานะให้โปรแกรมอ่านจอ
+  sec.classList.toggle("closed", !open);
+  const f = sec.querySelector(":scope > .topic-head .fold");
+  if (f) f.setAttribute("aria-expanded", String(open));
+}
 function renderSubject() {
   LAZYBODY = [];
   if (LAZY_IO) { LAZY_IO.disconnect(); LAZY_IO = null; }
@@ -55861,7 +55839,7 @@ function renderSubject() {
       h += '<div class="topic-nav">' + deep.summary.map((t, i) => '<button data-jump="' + t.id + '">' + t.th + '</button>').join("") + '</div>';
       deep.summary.forEach(t => {
         h += '<section class="topic" id="' + t.id + '"><div class="topic-head">' +
-          '<button class="fold" aria-label="ย่อ/ขยายหัวข้อ">▾</button><div>' +
+          '<button class="fold" aria-label="ย่อ/ขยายหัวข้อ" aria-expanded="true">▾</button><div>' +
           '<h2 lang="ru">' + t.ru + '</h2><div class="th">' + t.th + '</div></div></div>' +
           lazyBody(t) + '</section>';
       });
@@ -55869,7 +55847,7 @@ function renderSubject() {
       h += '<div class="topic-nav">' + deep.topics.map((t, i) => '<button data-jump="' + t.id + '">' + (i + 1) + '. ' + t.th + '</button>').join("") + '</div>';
       deep.topics.forEach((t, i) => {
         h += '<section class="topic" id="' + t.id + '"><div class="topic-head">' +
-          '<button class="fold" aria-label="ย่อ/ขยายหัวข้อ">▾</button><div>' +
+          '<button class="fold" aria-label="ย่อ/ขยายหัวข้อ" aria-expanded="true">▾</button><div>' +
           '<h2 lang="ru">' + (i + 1) + '. ' + t.ru + '</h2><div class="th">' + t.th + '</div></div>' +
           '<button class="topic-check' + (DONE.has("k:" + t.id) ? " done" : "") + '" data-key="k:' + t.id + '" title="ทบทวนหัวข้อนี้แล้ว" aria-label="ทำเครื่องหมายว่าทบทวนแล้ว">✓</button></div>' +
           lazyBody(t) + '</section>';
@@ -55908,7 +55886,7 @@ function renderSubject() {
   if (ch) ch.addEventListener("click", () => go({ v: "overview" }));
   view.querySelectorAll("section.topic .topic-head").forEach(hd => hd.addEventListener("click", e => {
     if (e.target.closest(".topic-check")) return;
-    hd.parentElement.classList.toggle("closed");
+    setFold(hd.parentElement, hd.parentElement.classList.contains("closed"));
   }));
   const tocBtns = view.querySelectorAll("[data-toc]");
   if (tocBtns.length && window.IntersectionObserver) {
@@ -56374,7 +56352,7 @@ function scrollToTarget(el, off) {                // off = ระยะที่
   off = off || 0;
   const job = ++NAVJOB;
   const sec = el.closest && el.closest("section.topic");
-  if (sec) sec.classList.remove("closed");
+  if (sec) setFold(sec, true);
   for (let d = el.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) d.open = true;
   const want = () => navOffset() - off;
   const target = () => Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY - want()));
@@ -56409,7 +56387,7 @@ async function scrollToTopic(id, o) {             // o: { off, anchor (id ใน
   o = o || {};
   const sec = document.getElementById(id);
   if (!sec || !view.contains(sec)) return;
-  sec.classList.remove("closed");
+  setFold(sec, true);
   const body = sec.querySelector(".tbody");
   if (body) { if (body.dataset.lazy !== undefined) fillBody(body); await bodyReady(body); }
   if (!sec.isConnected) return;
@@ -56632,7 +56610,7 @@ function renderGlossary() {
     '<button id="bmBtn">★ เฉพาะบุ๊กมาร์ก</button>' +
     '<button id="flashBtn">ฝึกแบบ Flashcard</button></div></div><div id="gloss" class="' + (drill ? "drill" : "") + '">';
   MODULES.forEach(m => {
-    h += '<div class="modcap" data-mod="' + m.id + '"><h3>' + m.ru + '</h3><span class="th">' + m.th + '</span></div><div class="g-grid" data-grid="' + m.id + '">';
+    h += '<div class="modcap" data-mod="' + m.id + '"><h2>' + m.ru + '</h2><span class="th">' + m.th + '</span></div><div class="g-grid" data-grid="' + m.id + '">';
     m.terms.forEach((t, i) => {
       const k = "g:" + m.id + "-" + i;
       h += '<article class="card' + (DONE.has(k) ? " known" : "") + (BM.has(k) ? " bm" : "") + '" data-k="' + k + '" data-hay="' +
@@ -56647,6 +56625,7 @@ function renderGlossary() {
   });
   h += '</div><p class="empty hidden" id="gEmpty">ไม่พบคำที่ตรงกับที่ค้นหา</p></div>';
   view.innerHTML = h;
+  view.querySelectorAll(".card .f").forEach(f => { if (f.scrollWidth > f.clientWidth + 1) f.tabIndex = 0; });   // กล่องสูตรที่เลื่อนได้ ต้องโฟกัสด้วยคีย์บอร์ดได้
 
   const gloss = document.getElementById("gloss");
   let onlyUnknown = false, onlyBM = false;
@@ -57109,7 +57088,6 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 buildNav();
-buildVolSw();
 setTimeout(buildIndex, 2000);
 window.addEventListener("popstate", onRoute);
 window.addEventListener("hashchange", onRoute);
