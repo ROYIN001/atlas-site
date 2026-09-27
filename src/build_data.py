@@ -77,3 +77,29 @@ for f in sorted(SUBJ.glob("*.*")) if SUBJ.is_dir() else []:
 json.dump({"subjects": manifest}, open(DATA / "manifest.json", "w", encoding="utf-8"),
           ensure_ascii=False)
 print(f"เขียนดัชนีใหม่ {len(manifest)} วิชา รวม {sum(len(v) for v in bysubj.values())} หัวข้อ")
+
+# ---------- ขั้นตอน build เพิ่มเติม (src/build_steps/*.py) ----------
+# แต่ละ session/ความสามารถมีไฟล์ของตัวเอง มีฟังก์ชัน run(ctx) เขียนผลลง data/<ชื่อของตัวเอง>/ หรือ data/<ชื่อ>.json
+# ห้ามแก้ manifest.json หรือ data/ix จากขั้นตอนเหล่านี้ (เป็นของสคริปต์หลัก) · รันเรียงตามชื่อไฟล์ · ล้มหนึ่งไฟล์ไม่หยุดไฟล์อื่น
+import importlib.util, sys, traceback
+sys.path.insert(0, str(ROOT / "src"))
+STEPS = sorted((ROOT / "src" / "build_steps").glob("*.py")) if (ROOT / "src" / "build_steps").is_dir() else []
+ctx = {"root": ROOT, "data": DATA,
+       "topics": {sid: [(r["id"], json.load(open(DATA / "t" / f"{sid}__{r['id']}.json", encoding="utf-8"))["html"]) for r in rows]
+                  for sid, rows in bysubj.items()},
+       "manifest": {k: dict(v) for k, v in manifest.items()}}
+failed = 0
+for f in STEPS:
+    if f.name.startswith("_"):
+        continue
+    try:
+        spec = importlib.util.spec_from_file_location("build_steps." + f.stem, f)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        msg = mod.run(ctx)
+        print(f"  ขั้น {f.stem}: {msg or 'เสร็จ'}")
+    except Exception:
+        failed += 1
+        print(f"  ! ขั้น {f.stem} ล้ม:\n" + "".join("    " + l for l in traceback.format_exc().splitlines(True)))
+if failed:
+    sys.exit(1)
