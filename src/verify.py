@@ -3,6 +3,7 @@
     python src/verify.py                 # ทุกวิชาใน data/manifest.json · CPU ช้า 6 เท่า
     python src/verify.py --subject tau   # เฉพาะวิชาเดียว
     python src/verify.py --no-throttle   # ไม่จำลองมือถือ (เร็วกว่ามาก)
+    python src/verify.py --mobile        # เพิ่มการตรวจจอมือถือ 360 px: ไม่มีอะไรล้นจอ (ใช้ทุกครั้งที่ยกระดับวิชา)
 
 ต้องผ่านทุกข้อ: ทุกวิชาเปิดได้ · ไม่มี .tfail · canvas = [data-demo] · รูปทุกใบ
 naturalWidth > 0 · ค้นหาคำรัสเซียเจอ · ไม่มี page error
@@ -202,15 +203,65 @@ def check_subject(page, base, sid, errors, timeout_ms):
     return res
 
 
+# ---------- จอมือถือ: ไม่มีอะไรล้นจอ (ตาราง สูตร ป้าย ชื่อหัวข้อยาว) ----------
+# เติมทุกกล่อง เปิดเจาะลึกทุกกล่อง แล้วหาองค์ประกอบที่ «เริ่ม» ล้นขอบขวา (พ่อของมันยังไม่ล้น และไม่มีกล่องเลื่อนครอบ)
+# ล้นแม้จุดเดียว เบราว์เซอร์มือถือจะย่อทั้งหน้าจนตัวหนังสือเล็ก หรือส่วนที่ล้นถูกตัดหายไป
+MOBILE_W = 360
+MOBILE_SCAN = """async (W) => {
+  await fillAllBodies();
+  await new Promise(r => setTimeout(r, 1500));
+  document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+  await new Promise(r => setTimeout(r, 1500));
+  const clipped = el => {
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (/(auto|scroll|hidden|clip)/.test(cs.overflowX) && p.getBoundingClientRect().right <= W + 1) return true;
+    }
+    return false;
+  };
+  const out = [];
+  for (const el of document.querySelectorAll('#view *')) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || r.right <= W + 1) continue;
+    if (el.parentElement.getBoundingClientRect().right > W + 1) continue;
+    if (clipped(el)) continue;
+    const t = el.closest('section.topic');
+    out.push((t && t.id ? t.id : '-') + ' ' + el.tagName.toLowerCase() + (el.classList.length ? '.' + el.classList[0] : '') + ' ' + Math.round(r.right) + 'px');
+  }
+  return { layout: document.documentElement.scrollWidth, n: out.length, first: out.slice(0, 8) };
+}"""
+
+
+def check_mobile(browser, base, sid, timeout_ms, errors):
+    """เปิดวิชาบนจอ 360 px ทั้งสองโหมดผ่านที่อยู่ #/<วิชา>/full|sum แล้วสแกนหาสิ่งที่ล้นจอ"""
+    res = {}
+    for mode in ("full", "sum"):
+        ctx = browser.new_context(viewport={"width": MOBILE_W, "height": 780}, is_mobile=True, has_touch=True)
+        ctx.route(lambda url: any(h in url for h in BLOCKED_HOSTS),
+                  lambda route: route.fulfill(status=200, content_type="text/css", body=""))
+        pg = ctx.new_page()
+        pg.set_default_timeout(timeout_ms)
+        pg.on("pageerror", lambda e: errors.append(f"pageerror (mobile {sid}): {e}"))
+        pg.goto(f"{base}#/{sid}/{mode}", wait_until="domcontentloaded")
+        pg.wait_for_function("id => typeof state !== 'undefined' && state.id === id && document.querySelector('#view section.topic')", arg=sid)
+        if mode == "sum" and not pg.query_selector("#view .modebar"):
+            ctx.close()
+            break                                  # วิชาไม่มีโหมดสรุป
+        res[mode] = pg.evaluate(MOBILE_SCAN, MOBILE_W)
+        ctx.close()
+    return res
+
+
 # ---------- ค้นหา ----------
 def check_search(page, base, timeout_ms):
     page.goto("about:blank")
     page.goto(base, wait_until="domcontentloaded")
     page.wait_for_selector("#view .subj-grid .subj", timeout=timeout_ms)
-    # loadIndex() ยิง 1.2 s หลัง load แล้วเติม IXHAY — รอสูงสุด 5 s (ตามหัวข้อ 4)
+    # ดัชนีข้อความเต็ม (data/ix) โหลดเมื่อผู้อ่านเริ่มค้นหา — โฟกัสช่องค้นหาแล้วรอจนครบทุกวิชา
+    page.focus("#search")
     ix_ready = True
     try:
-        page.wait_for_function("() => Object.keys(IXHAY).length > 0", timeout=5000)
+        page.wait_for_function("() => typeof IX_READY !== 'undefined' && IX_READY", timeout=timeout_ms)
     except Exception:
         ix_ready = False
     page.fill("#search", QUERY)        # handler หน่วง 160 ms แล้ว go({v:"search"})
@@ -230,6 +281,8 @@ def main():
     ap.add_argument("--no-throttle", action="store_true", help="ไม่จำลอง CPU ช้า 6 เท่า")
     ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--timeout", type=int, default=90, help="วินาทีต่อการรอแต่ละขั้น")
+    ap.add_argument("--mobile", action="store_true",
+                    help="ตรวจจอมือถือ 360 px เพิ่ม: ไม่มีตาราง/สูตร/ป้ายไหนล้นจอ (ทั้งสองโหมด เปิดเจาะลึกทุกกล่อง)")
     ap.add_argument("--verbose", action="store_true", help="พิมพ์เวลาแต่ละช่วงของทุกวิชา")
     ap.add_argument("--update-baseline", action="store_true",
                     help="บันทึกจำนวนของรอบนี้ลง src/verify-baseline.json — ใช้เมื่อตั้งใจเพิ่ม/ลดเนื้อหา")
@@ -252,10 +305,12 @@ def main():
     base = f"http://127.0.0.1:{port}/"
     srv = start_server(port)
     errors = []          # page error + console error ทั้งหมด (ข้อความ)
+    external = set()     # คำขอไปเซิร์ฟเวอร์อื่น — ต้องไม่มี (ฟอนต์อยู่ใน fonts/ แล้ว · อ่านออฟไลน์ได้ต้องพึ่งไฟล์ในเว็บเดียวกัน)
     t_all = time.perf_counter()
     home_ready = float("nan")
     results = []
     hits, ix_ready, ix_keys = 0, False, 0
+    mobile_bad = 0
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
@@ -272,6 +327,8 @@ def main():
                 pg.set_default_timeout(timeout_ms)
                 pg.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
                 pg.on("console", lambda m: errors.append(f"console.error: {m.text}") if m.type == "error" else None)
+                pg.on("request", lambda r: external.add(r.url.split("?")[0][:120])
+                      if r.url.startswith(("http:", "https:")) and not r.url.startswith(base) else None)
                 if not args.no_throttle:
                     ctx.new_cdp_session(pg).send("Emulation.setCPUThrottlingRate", {"rate": 6})
                 return pg
@@ -320,9 +377,27 @@ def main():
                 print(f"{r['id']:8} {r['boxes']:>5} {sb:>12} {r['demos']:>3}/{r['canvas']:<4} "
                       f"{r['figs']:>3}/{r['imgs_ok']:<4} {r['tfail']:>5} {r['errors']:>3} {r['secs']:>6.1f}  {flag}{extra}")
 
+            # 2b) จอมือถือ
+            if args.mobile:
+                print(f"mobile {MOBILE_W}px — ล้นจอ (full / sum)")
+                for sid in subjects:
+                    try:
+                        m = check_mobile(browser, base, sid, timeout_ms, errors)
+                    except Exception as e:
+                        errors.append(f"script: mobile {sid}: {e}")
+                        mobile_bad += 1
+                        continue
+                    bad = {k: v for k, v in m.items() if v["n"] or v["layout"] > MOBILE_W}
+                    mobile_bad += len(bad)
+                    cols = " / ".join(f"{m[k]['n']}" for k in m)
+                    print(f"{sid:8} {cols:>9}  {'ok' if not bad else 'FAIL'}")
+                    for k, v in bad.items():
+                        for line in v["first"]:
+                            print(f"           {k}: {line}")
+
             # 3) ค้นหา
             hits, ix_ready, ix_keys = check_search(page, base, timeout_ms)
-            print(f"search «{QUERY}» → {hits} hits · IXHAY {ix_keys} rows{'' if ix_ready else ' (ดัชนีมาไม่ทัน 5 s)'}")
+            print(f"search «{QUERY}» → {hits} hits · IXHAY {ix_keys} rows{'' if ix_ready else ' (ดัชนีโหลดไม่ครบ)'}")
             browser.close()
     finally:
         srv.shutdown()
@@ -330,6 +405,8 @@ def main():
 
     for e in errors:
         print("  ! " + e[:300])
+    for u in sorted(external):
+        print("  ! เรียกเซิร์ฟเวอร์ภายนอก: " + u)
 
     # ---------- data/t ↔ DOM — ของหายต้องรู้ (กฎ «จำนวนต้องไม่ลดลง» ครึ่งแรก) ----------
     def expected_from_files(sid):
@@ -378,11 +455,12 @@ def main():
     tot = lambda k: sum(r[k] for r in results)
     ok = (
         len(results) == len(subjects) and all(r["ok"] for r in results)
-        and hits > 0 and len(errors) == 0 and not xfail and not bfail
+        and hits > 0 and len(errors) == 0 and not xfail and not bfail and mobile_bad == 0 and not external
     )
     print(f"SUMMARY subjects={len(results)} boxes={tot('boxes')} tfail={tot('tfail')} "
           f"demos={tot('demos')} canvas={tot('canvas')} figs={tot('figs')} imgs_ok={tot('imgs_ok')} "
-          f"errors={len(errors)} search_hits={hits} home_ready_s={home_ready:.2f} {'PASS' if ok else 'FAIL'}")
+          f"errors={len(errors)} search_hits={hits} home_ready_s={home_ready:.2f}"
+          f"{f' mobile_fail={mobile_bad}' if args.mobile else ''} {'PASS' if ok else 'FAIL'}")
     print(f"total {time.perf_counter() - t_all:.1f}s")
     bad_ids = {m.split(":", 1)[0] for m in xfail}
     if args.update_baseline:
