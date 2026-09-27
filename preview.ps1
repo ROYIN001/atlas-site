@@ -9,6 +9,8 @@ $mime = @{
   ".webp" = "image/webp"
   ".png"  = "image/png"
   ".svg"  = "image/svg+xml"
+  ".woff2" = "font/woff2"
+  ".webmanifest" = "application/manifest+json"
   ".md"   = "text/markdown; charset=utf-8"
 }
 

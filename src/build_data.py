@@ -8,9 +8,9 @@
     python3 src/build_data.py        # รันจากรากของ repo
 
 สคริปต์จะเขียนใหม่เฉพาะ data/ix/*.json กับ data/manifest.json
-ไม่แตะเนื้อหาใน data/t/
+ไม่แตะเนื้อหาใน data/t/ · ถ้ามี js/subj/<วิชา>.js หรือ .css จะบันทึก hash ของไฟล์ลง manifest ด้วย
 """
-import json, glob, os, re, pathlib, shutil, collections
+import json, glob, os, re, pathlib, shutil, collections, hashlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -58,11 +58,21 @@ for _f in (DATA / "ix").glob("*.json"):
     _f.unlink()
 
 manifest = {}
+SUBJ = ROOT / "js" / "subj"          # ไฟล์ JS/CSS แยกรายวิชา (ถ้ามี) — app.js โหลดเมื่อเปิดวิชานั้น
 for sid, rows in sorted(bysubj.items()):
     json.dump({"rows": rows}, open(DATA / "ix" / f"{sid}.json", "w", encoding="utf-8"),
               ensure_ascii=False)
     manifest[sid] = {"n": len(rows)}
-    print(f"  {sid:8} {len(rows):>3} หัวข้อ")
+    extra = ""
+    for ext in ("js", "css"):         # hash ของไฟล์ใช้เป็น ?v= — ไฟล์เปลี่ยนเมื่อไร เบราว์เซอร์โหลดใหม่เอง
+        f = SUBJ / f"{sid}.{ext}"
+        if f.is_file():
+            manifest[sid][ext] = hashlib.sha1(f.read_bytes()).hexdigest()[:10]
+            extra += f" + {sid}.{ext}"
+    print(f"  {sid:8} {len(rows):>3} หัวข้อ{extra}")
+for f in sorted(SUBJ.glob("*.*")) if SUBJ.is_dir() else []:
+    if f.stem not in manifest:
+        print(f"  ! {f.name}: ไม่มีวิชา {f.stem} ใน data/t — ไฟล์นี้จะไม่ถูกโหลด")
 
 json.dump({"subjects": manifest}, open(DATA / "manifest.json", "w", encoding="utf-8"),
           ensure_ascii=False)
