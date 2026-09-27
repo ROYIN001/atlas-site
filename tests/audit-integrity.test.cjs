@@ -23,7 +23,8 @@ const MINIMUM = {
   // 23.09.2026 СН ЛА nav-7, nav-12 ในมาตรฐานกลาง v2 (.std2): +6 ฟังก์ชัน (แอนิเมชัน STEPS2 5 ตัว + ควิซ quiz2 ของบล็อก STD2) · ช่องเดโม 446 → 466
   subjects: 11, topics: 261, demoFunctions: 398,
   // 23.09.2026 СН ЛА นำร่อง: possurf/zenith ของ nav-7/nav-12 ย้ายจาก metadata ไปวางในเนื้อหา (metadata 24 → 22, html 361 → 368)
-  htmlDemoSlots: 466, metadataDemoSlots: 22,
+  // 27.09.2026 СН ЛА ครบทุกหัวข้อในมาตรฐานกลาง v2: demo ระดับหัวข้อ 16 ช่องของ nav (topics + summary) ย้ายไปวางในเนื้อหา (metadata 22 → 6)
+  htmlDemoSlots: 466, metadataDemoSlots: 6,
   figureSlots: 882, figureFiles: 743
 };
 const args = process.argv.slice(2);
