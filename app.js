@@ -70837,7 +70837,11 @@ function parseRoute(hash) {
   if (h && h[0] !== "/") return null;                        // #<id> = ลิงก์ในหน้า ไม่ใช่ที่อยู่ของหน้า
   const p = h.slice(1).split("/").map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
   if (!p[0]) return { v: "overview" };
-  if (p[0] === "search") { const q = p.slice(1).join("/").trim().toLowerCase(); return q ? { v: "search", q } : { v: "overview" }; }
+  if (p[0] === "search") {                                 // #/search/<คำ>[/<วิชา>] — คำค้นมี «/» ได้ จึงนับเซกเมนต์สุดท้ายเป็นวิชาเฉพาะเมื่อเป็น id ใน SUBJECTS
+    const seg = p.slice(1), sid = seg.length > 1 && ALL_SUBJ.some(s => s.id === seg[seg.length - 1]) ? seg.pop() : "";
+    const q = seg.join("/").trim().toLowerCase();
+    return q ? (sid ? { v: "search", q, sid } : { v: "search", q }) : { v: "overview" };
+  }
   if (p[0] === "glossary") { const q = p.slice(1).join("/"); return q ? { v: "glossary", q } : { v: "glossary" }; }
   if (p[0] === "sem" && !ADMIN) return { v: "overview" };
   if (PAGES.includes(p[0])) return { v: p[0] };
@@ -70847,14 +70851,14 @@ function parseRoute(hash) {
 function routeHash(st) {
   const e = encodeURIComponent;
   if (st.v === "subject") return "#/" + st.id + (st.topic ? "/" + st.topic + (st.anchor ? "/" + e(st.anchor) : "") : st.mode ? "/" + st.mode : "");
-  if (st.v === "search") return "#/search/" + e(st.q || "");
+  if (st.v === "search") return "#/search/" + e(st.q || "") + (st.sid ? "/" + st.sid : "");
   if (st.v === "glossary") return "#/glossary" + (st.q ? "/" + e(st.q) : "");
   if (PAGE_DEFS[st.v]) return "#/" + st.v + (st.seg || []).map(x => "/" + e(x)).join("");
   return st.v && st.v !== "overview" ? "#/" + st.v : "#/";
 }
 function routeOnly(st) {
   const r = { v: st.v };
-  ["id", "q", "mode", "topic", "anchor", "seg"].forEach(k => { if (st[k]) r[k] = st[k]; });
+  ["id", "q", "sid", "mode", "topic", "anchor", "seg"].forEach(k => { if (st[k]) r[k] = st[k]; });   // sid = ขอบเขต «วิชานี้» ของ #/search
   return r;
 }
 function pageTitle(st) {
@@ -71436,39 +71440,87 @@ function markTerms(root, terms) {
   }
   return first;
 }
-let SX_HITS = [];
+/* ตัวเลือกของหน้าผลค้นหา (ขอบเขต · ชนิดผล · จำนวนที่แสดง) — คงไว้เมื่อกด Back กลับมาจากหัวข้อ
+   เก็บใน localStorage เพราะ history.state ของรายการค้นหาถูกเขียนทับตอนออกจากหน้า · ขอบเขต «วิชานี้» อยู่ในที่อยู่ด้วย (#/search/<คำ>/<วิชา>) */
+const SXKEY = "atlas-search-v1", SX_STEP = 60;
+let SX = { q: "", from: "", scope: "all", kind: "all", shown: SX_STEP };
+try { const o = JSON.parse(localStorage.getItem(SXKEY) || "{}"); if (o && typeof o === "object") SX = Object.assign(SX, o); } catch (e) {}
+const sxSave = () => { try { localStorage.setItem(SXKEY, JSON.stringify(SX)); } catch (e) {} };
+let SX_FROM = null, SX_KEEP = false, SX_HITS = [];     // ช่องค้นหาตั้ง: วิชาที่เริ่มค้นจาก · พิมพ์ต่อในหน้าผล (คงตัวกรองไว้)
+const SX_KINDS = [["all", "ทั้งหมด"], ["topic", "หัวข้อ"], ["sum", "สรุป"], ["term", "ศัพท์"], ["subj", "วิชา"]];
 const SX_EX = ["устойч", "เสถียร", "Kalman", "передаточная функция"];
 function renderSearch() {
   const q = state.q;
-  loadIndex();
+  if (SX.q !== q && !SX_KEEP) SX = { q, from: "", scope: "all", kind: "all", shown: SX_STEP };   // คำค้นใหม่ = เริ่มตัวกรองใหม่
+  if (SX.q !== q) SX.shown = SX_STEP;
+  if (SX_FROM) SX.from = SX_FROM;
+  SX.q = q; SX_KEEP = false; SX_FROM = null;
+  if (state.sid) { SX.scope = "subj"; SX.from = state.sid; }
+  else if (SX.scope === "subj") SX.scope = "all";                 // ที่อยู่ไม่มีวิชา = ทุกวิชา
+  if (!["all", "subj", "gloss"].includes(SX.scope)) SX.scope = "all";
+  if (!SX_KINDS.some(k => k[0] === SX.kind)) SX.kind = "all";
+  sxSave();
+  if (SX.scope !== "gloss") loadIndex(state.sid ? [state.sid] : []);
+  if (document.activeElement !== searchEl && normS(searchEl.value.trim()) !== normS(q)) searchEl.value = q;
   view.innerHTML = '<div class="wrap sx"><div class="page-head"><p class="eyebrow">Поиск</p>' +
     '<h1 class="page-title">ผลการค้นหา “' + escapeText(q) + '”</h1>' +
     '<div class="page-title-th" id="sxCount"></div>' +
+    '<div class="sx-bar" id="sxScope" role="group" aria-label="ขอบเขตการค้นหา"></div>' +
+    '<div class="sx-bar" id="sxKind" role="group" aria-label="ชนิดของผล"></div>' +
     '<div id="sxStatus" role="status"></div></div>' +
-    '<div class="res" id="sxRes"></div></div>';
+    '<div class="res" id="sxRes"></div><div class="sx-more" id="sxMore"></div></div>';
   view.querySelector(".sx").addEventListener("click", sxClick);
   searchRefresh();
 }
-/* วาดส่วนที่เปลี่ยนได้ของหน้าผลค้นหา — เรียกซ้ำเมื่อดัชนีแต่ละวิชามาถึง โดยไม่แตะช่องค้นหาและตำแหน่งเลื่อน */
+/* วาดส่วนที่เปลี่ยนได้ของหน้าผลค้นหา — เรียกซ้ำเมื่อดัชนีแต่ละวิชามาถึง / เปลี่ยนตัวกรอง โดยไม่แตะช่องค้นหาและตำแหน่งเลื่อน */
 function searchRefresh() {
   const box = document.getElementById("sxRes");
   if (state.v !== "search" || !box) return;
-  if (IX_SUBJ && !IX_READY && !ixBusy() && IX_SUBJ.some(s => !IXST[s])) loadIndex();
+  if (SX.scope !== "gloss" && IX_SUBJ && !IX_READY && !ixBusy() && IX_SUBJ.some(s => !IXST[s])) loadIndex(state.sid ? [state.sid] : []);
   buildIndex();
-  const q = state.q, queries = searchQueries(q);
+  const q = state.q, queries = searchQueries(q), sid = SX.scope === "subj" ? SX.from : "";
+  const noIx = !!(sid && IX_SUBJ && !IX_SUBJ.includes(sid));          // วิชาที่ยังไม่มีเนื้อหาเต็ม — ไม่มีดัชนีให้รอ
   const all = [];
-  INDEX.forEach((x, i) => { const hit = searchHit(x, queries); if (hit) all.push({ x, hit, i }); });
+  INDEX.forEach((x, i) => {
+    if (SX.scope === "gloss" ? x.type !== "term" : sid && x.sid !== sid) return;
+    const hit = searchHit(x, queries);
+    if (hit) all.push({ x, hit, i });
+  });
   all.sort((a, b) => b.hit.score - a.hit.score || a.i - b.i);
-  SX_HITS = all.slice(0, 60);
-  document.getElementById("sxCount").textContent = "พบ " + all.length + " รายการ" + (all.length > 60 ? " (แสดง 60 รายการที่ตรงที่สุด)" : "");
-  document.getElementById("sxStatus").innerHTML = sxStatusHtml();
+  const cnt = { all: all.length, topic: 0, sum: 0, term: 0, subj: 0 };
+  all.forEach(r => { cnt[r.x.type]++; });
+  const kind = SX.scope === "gloss" ? "all" : SX.kind;
+  const list = kind === "all" ? all : all.filter(r => r.x.type === kind);
+  SX_HITS = list.slice(0, SX.shown);
+  const act = document.activeElement, keep = act && view.contains(act) ? sxFocusKey(act) : "";
+  const kname = (SX_KINDS.find(k => k[0] === kind) || [])[1];
+
+  document.getElementById("sxCount").textContent = "พบ " + all.length + " รายการ" +
+    (sid ? " ในวิชา " + ixName(sid) : SX.scope === "gloss" ? " ในคลังศัพท์" : "") +
+    (kind !== "all" ? " · แสดงเฉพาะ" + kname + " " + list.length + " รายการ" : "") +
+    (list.length > SX_HITS.length ? " · แสดง " + SX_HITS.length + " รายการแรก" : "");
+  const chip = (attr, val, on, label, n, dis) => '<button type="button" class="sx-chip' + (on ? " on" : "") + '" ' + attr + '="' + val + '" aria-pressed="' + on + '"' +
+    (dis ? " disabled" : "") + '>' + label + (n !== undefined ? ' <b>' + n + '</b>' : '') + '</button>';
+  document.getElementById("sxScope").innerHTML =
+    chip("data-scope", "all", SX.scope === "all", "ทุกวิชา") +
+    (SX.from ? chip("data-scope", "subj", SX.scope === "subj", "วิชานี้ · " + escapeText(ixName(SX.from))) : "") +
+    chip("data-scope", "gloss", SX.scope === "gloss", "คลังศัพท์");
+  const kbar = document.getElementById("sxKind");
+  kbar.hidden = SX.scope === "gloss" || !all.length;
+  kbar.innerHTML = SX_KINDS.map(([k, label]) => chip("data-kind", k, kind === k, label, cnt[k], k !== "all" && !cnt[k] && kind !== k)).join("");
+  document.getElementById("sxStatus").innerHTML = sxStatusHtml(sid);
+
   let h = "";
-  if (!all.length) {
-    const busy = ixBusy(), miss = ixMissing().length > 0;
+  if (!list.length) {
+    const busy = SX.scope !== "gloss" && !noIx && (sid ? IXST[sid] !== "ok" && IXST[sid] !== "fail" : ixBusy());
+    const miss = SX.scope !== "gloss" && (sid ? IXST[sid] === "fail" : ixMissing().length > 0);
     h = '<div class="sx-empty"><p class="empty">' + (busy ? "ยังไม่พบ «" + escapeText(q) + "» ในส่วนที่โหลดแล้ว — ผลจะเพิ่มเองเมื่อโหลดข้อความเต็มครบ"
-      : "ไม่พบ «" + escapeText(q) + "»" + (miss ? " — อาจอยู่ในวิชาที่โหลดไม่สำเร็จ" : "")) + '</p>';
+      : "ไม่พบ «" + escapeText(q) + "»" + (sid ? " ในวิชา " + escapeText(ixName(sid)) : SX.scope === "gloss" ? " ในคลังศัพท์" : kind !== "all" ? " ในชนิด «" + kname + "»" : "") +
+        (miss ? " — อาจอยู่ในวิชาที่โหลดไม่สำเร็จ" : "")) + '</p>';
     if (!busy) {
-      h += '<div class="sx-acts"><button type="button" data-sx="edit">เปลี่ยนคำค้น</button></div>' +
+      h += '<div class="sx-acts">' + (SX.scope !== "all" ? '<button type="button" data-scope="all">ค้นทุกวิชา</button>' : "") +
+        (kind !== "all" && all.length ? '<button type="button" data-kind="all">ดูทุกชนิด (' + all.length + ')</button>' : "") +
+        '<button type="button" data-sx="edit">เปลี่ยนคำค้น</button></div>' +
         '<p class="sx-ex">ลองพิมพ์บางส่วนของคำรัสเซียหรือคำไทย เช่น ' +
         SX_EX.map(w => '<a href="#/search/' + encodeURIComponent(w.toLowerCase()) + '">' + escapeText(w) + '</a>').join(" · ") + '</p>';
     }
@@ -71476,13 +71528,23 @@ function searchRefresh() {
   }
   SX_HITS.forEach((r, i) => {
     const x = r.x, snip = searchSnippet(x, r.hit);
-    h += '<button class="res-item" data-i="' + i + '"><span class="k">' + x.kind + '</span>' +
+    h += '<a class="res-item" href="' + escapeText(x.href) + '" data-i="' + i + '"><span class="k">' + x.kind + '</span>' +
       '<span class="t">' + x.title + '</span><span class="s">' + escapeText(x.sub.slice(0, 150)) + '</span>' +
-      (snip ? '<span class="snip">' + snip + '</span>' : '') + '</button>';
+      (snip ? '<span class="snip">' + snip + '</span>' : '') + '</a>';
   });
   box.innerHTML = h;
+  const rest = list.length - SX_HITS.length;
+  document.getElementById("sxMore").innerHTML = rest > 0
+    ? '<button type="button" data-sx="more">แสดงเพิ่มอีก ' + Math.min(SX_STEP, rest) + ' รายการ (เหลือ ' + rest + ')</button>' : "";
+  if (keep) { const el = view.querySelector(keep); if (el) el.focus({ preventScroll: true }); }
 }
-function sxStatusHtml() {
+function sxFocusKey(el) {                          // วาดใหม่แล้วคืนโฟกัสให้ปุ่ม/ผลเดิม (ผู้ใช้คีย์บอร์ด)
+  for (const a of ["data-scope", "data-kind", "data-sx"]) if (el.hasAttribute(a)) return "[" + a + '="' + el.getAttribute(a) + '"]';
+  if (el.classList.contains("res-item")) return '.res-item[data-i="' + el.dataset.i + '"]';
+  return "";
+}
+function sxStatusHtml(sid) {
+  if (SX.scope === "gloss") return "";
   const off = typeof navigator !== "undefined" && navigator.onLine === false;
   const offTxt = off ? " — เครื่องนี้ออฟไลน์อยู่ ค้นเนื้อหาได้เฉพาะวิชาที่เก็บไว้อ่านออฟไลน์" : "";
   const box = (st, txt, retry) => '<div class="sx-st" data-st="' + st + '"><span>' + txt + '</span>' +
@@ -71491,6 +71553,12 @@ function sxStatusHtml() {
   if (!IX_SUBJ) return IX_MANST === "fail"
     ? box("fail", "โหลดดัชนีค้นหาไม่สำเร็จ — " + titlesOnly + offTxt, "ลองใหม่")
     : box("load", "กำลังเตรียมดัชนีค้นหา… " + titlesOnly + " ผลจะเติมเอง");
+  if (sid) {
+    const st = IXST[sid];
+    if (st === "ok" || !IX_SUBJ.includes(sid)) return "";
+    if (st === "fail") return box("fail", "โหลดข้อความเต็มของ " + escapeText(ixName(sid)) + " ไม่สำเร็จ — ตอนนี้ค้นได้แค่ชื่อหัวข้อและคลังศัพท์" + offTxt, "ลองใหม่");
+    return box("load", "กำลังโหลดข้อความเต็มของ " + escapeText(ixName(sid)) + "… ผลจะเติมเองเมื่อโหลดเสร็จ");
+  }
   if (IX_READY) return "";
   const miss = ixMissing(), names = miss.map(s => escapeText(ixName(s))).join(", ");
   if (ixBusy()) return box("load", "กำลังโหลดข้อความเต็ม " + IX_DONE + "/" + IX_TOTAL + " วิชา… ผลจะเติมเองเมื่อแต่ละวิชามาถึง" + (miss.length ? " · ขาด: " + names : "") +
@@ -71500,11 +71568,30 @@ function sxStatusHtml() {
   return box("load", "กำลังเตรียมดัชนีค้นหา…");
 }
 function sxClick(e) {
-  const t = e.target.closest("[data-sx], .res-item");
+  const t = e.target.closest("[data-scope], [data-kind], [data-sx], a.res-item");
   if (!t || !view.contains(t)) return;
-  if (t.matches(".res-item")) {
+  if (t.matches("a.res-item")) {                   // ลิงก์จริง (คัดลอก/เปิดแท็บใหม่ได้) — คลิกธรรมดาส่งคำค้นไปไฮไลต์ในหัวข้อด้วย
     const r = SX_HITS[+t.dataset.i];
-    if (r) go(r.x.go.topic ? Object.assign({}, r.x.go, { hl: state.q }) : r.x.go);
+    if (!r || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    go(r.x.go.topic ? Object.assign({}, r.x.go, { hl: state.q }) : r.x.go);
+    return;
+  }
+  if (t.dataset.scope) {
+    SX.scope = t.dataset.scope; SX.shown = SX_STEP;
+    if (SX.scope === "subj" && SX.from) state.sid = SX.from; else delete state.sid;
+    sxSave();
+    setHistory("replace", state, { y: Math.round(window.scrollY) });
+    if (SX.scope !== "gloss") loadIndex(state.sid ? [state.sid] : []);
+    searchRefresh();
+  } else if (t.dataset.kind) {
+    SX.kind = t.dataset.kind; SX.shown = SX_STEP;
+    sxSave(); searchRefresh();
+  } else if (t.dataset.sx === "more") {
+    const from = SX_HITS.length;
+    SX.shown += SX_STEP; sxSave(); searchRefresh();
+    const first = view.querySelector('.res-item[data-i="' + from + '"]');
+    if (first) first.focus({ preventScroll: true });
   } else if (t.dataset.sx === "retry") {
     ixRetry(); searchRefresh();
   } else if (t.dataset.sx === "edit") {
@@ -71657,11 +71744,11 @@ function renderQuiz() {
 /* ---- search box ---- */
 let searchTimer;
 searchEl.addEventListener("focus", () => {                          // โฟกัส = เตรียมเฉพาะวิชาที่เปิดอยู่ · ทุกวิชาโหลดเมื่อเริ่มพิมพ์
-  const sid = state.v === "subject" ? state.id : "";
+  const sid = state.v === "subject" ? state.id : state.v === "search" ? state.sid : "";
   if (sid) ixPrime([sid]);
 });
 searchEl.addEventListener("input", () => {
-  if (state.v !== "glossary" && searchEl.value.trim()) loadIndex([state.v === "subject" ? state.id : ""]);   // วิชาที่เปิดอยู่ก่อน แล้วที่เหลือทีละวิชา
+  if (state.v !== "glossary" && searchEl.value.trim()) loadIndex([state.v === "subject" ? state.id : state.sid]);   // วิชาที่เปิดอยู่ก่อน แล้วที่เหลือทีละวิชา
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     const q = searchEl.value.trim().toLowerCase();
@@ -71671,7 +71758,10 @@ searchEl.addEventListener("input", () => {
       setHistory("replace", state, { y: 0 });             // ที่อยู่ #/glossary/<คำกรอง> ส่งต่อได้
       return;
     }
-    if (q.length >= 2) go({ v: "search", q }, { replace: state.v === "search" });   // พิมพ์ต่อไม่เพิ่มประวัติทีละตัวอักษร
+    if (q.length >= 2) {
+      if (state.v === "search") { SX_KEEP = true; go({ v: "search", q, sid: state.sid }, { replace: true }); }   // พิมพ์ต่อ: ไม่เพิ่มประวัติทีละตัวอักษร คงขอบเขต/ตัวกรอง
+      else { SX_FROM = state.v === "subject" ? state.id : null; go({ v: "search", q }); }                    // เริ่มค้นจากหน้าวิชา → มีชิป «วิชานี้»
+    }
     else if (state.v === "search") go({ v: "overview" }, { replace: true });
   }, 160);
 });
