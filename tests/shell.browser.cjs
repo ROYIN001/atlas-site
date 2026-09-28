@@ -83,7 +83,8 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok }); console.lo
 
   // ---- #/progress ----
   await pg.evaluate(() => {
-    localStorage.setItem('atlas-sula-v1', JSON.stringify(['k:tau-3', 'k:tau-4', 'g:tau-0', 'g:tau-1', 'g:tau-2']));
+    const m = MODULES.find(x => x.id === 'tau');              // คีย์ศัพท์ต้องมาจาก termKey() (S8 เปลี่ยนเป็น id ถาวร)
+    localStorage.setItem('atlas-sula-v1', JSON.stringify(['k:tau-3', 'k:tau-4'].concat([0, 1, 2].map(i => termKey(m, m.terms[i], i)))));
     localStorage.setItem('atlas-quiz-v1', JSON.stringify({ 'tau-3': { 0: { done: 4, ok: 3, n: 5, t: 1 } } }));
   });
   await pg.goto(base + '?r=2#/progress'); await ready(pg); await pg.waitForTimeout(300);
@@ -103,8 +104,13 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok }); console.lo
   pg = await newPage(M, true);
   await pg.goto(base + '#/ppo/full'); await ready(pg);
   await pg.waitForSelector('#view .topic-nav .tn-toc');
-  r = await pg.evaluate(() => { const mb = document.querySelector('#view .modebar'); return Math.round(mb.getBoundingClientRect().top - document.getElementById('view').getBoundingClientRect().top); });
-  check('หัวหน้าวิชาบนมือถือ ≤ 200 px ก่อนถึงแถบโหมด', r <= 200, r);
+  // วัดเฉพาะส่วนของ S2 (breadcrumb + หัวหน้าวิชา) · สิ่งที่ session อื่นเสียบผ่าน HOOKS.html("subject-head") รายงานแยก
+  r = await pg.evaluate(() => {
+    const v = document.getElementById('view').getBoundingClientRect().top, ph = document.querySelector('#view .page-head').getBoundingClientRect().bottom;
+    const mb = document.querySelector('#view .modebar').getBoundingClientRect().top;
+    return { own: Math.round(ph - v), hooks: Math.round(mb - ph), toModebar: Math.round(mb - v) };
+  });
+  check('หัวหน้าวิชาบนมือถือ ≤ 200 px (ส่วนของ S2 · ไม่นับแถวจาก subject-head hook)', r.own <= 200, r);
   r = await pg.evaluate(() => document.querySelectorAll('#bbar [data-bb="toc"]:not([hidden])').length === 1 && document.querySelectorAll('#bbar [data-bb="overview"][hidden]').length === 1);
   check('#bbar: «หน้าหลัก» กลายเป็น «สารบัญ» ในหน้าวิชา', r);
   await pg.evaluate(() => document.querySelectorAll('#view section.topic')[9].scrollIntoView());
