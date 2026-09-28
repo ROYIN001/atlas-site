@@ -71573,6 +71573,7 @@ new MutationObserver(() => LIVE.forEach(d => d.draw && d.draw()))
    — แถบบนติดจออยู่แล้ว ผู้อ่านไม่เสียตำแหน่งที่อ่าน) · สารบัญ (แทน «หน้าหลัก» เมื่ออยู่ในหน้าวิชาที่มีเนื้อหาเต็ม) */
 document.querySelectorAll("#bbar button[data-bb]").forEach(b => b.addEventListener("click", () => {
   if (b.dataset.bb === "find") focusSearch();
+  else if (b.dataset.bb === "toc") openSheet();
 }));
 /* ---- v5: อ่านแบบออฟไลน์ (sw.js) ----
    ลงทะเบียนเฉพาะบนเว็บจริง ไม่ลงทะเบียนบน localhost/127.* (preview.bat, verify.py) กันไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย ?sw=1
@@ -71834,6 +71835,111 @@ function renderProgress() {
   });
 }
 registerPage("progress", { render: renderProgress, title: () => "ความก้าวหน้า" });
+
+/* ---- สารบัญแบบแผ่น (dialog.tsheet) — เปิดจากปุ่ม ☰ ซ้ายสุดของแถบชิป และปุ่ม «สารบัญ» ใน #bbar ---- */
+let TSHEET = null;
+const S2NAV = { cur: null, io: null, vis: new Set(), tn: null };
+function sheetEl() {
+  if (TSHEET) return TSHEET;
+  TSHEET = document.createElement("dialog");
+  TSHEET.className = "tsheet";
+  TSHEET.setAttribute("aria-labelledby", "tsTitle");
+  document.body.appendChild(TSHEET);
+  TSHEET.addEventListener("click", e => {
+    if (e.target === TSHEET) { TSHEET.close(); return; }          // แตะพื้นหลังนอกแผ่น
+    if (e.target.closest(".ts-x")) { TSHEET.close(); return; }
+    const it = e.target.closest("[data-ts]");
+    if (it) { TSHEET.close(); navTopic(it.dataset.ts); return; }
+    if (e.target.closest(".ts-weak button")) TSHEET.close();        // margWeak ผูกปุ่มของมันเอง (เปิดฉบับเต็มที่หัวข้อนั้น)
+  });
+  TSHEET.addEventListener("close", () => document.documentElement.classList.remove("s2-modal"));
+  return TSHEET;
+}
+function sheetList(items, full, groups) {
+  const P = practiceStore();
+  const gAt = i => { const g = groups.find(x => x[0] === i); return g ? '<li class="ts-g" aria-hidden="true">' + escT(g[1]) + '</li>' : ""; };
+  return '<ol class="ts-list">' + items.map((t, i) => {
+    const q = topicQuiz(t.id, P), done = full && DONE.has("k:" + t.id), cur = t.id === S2NAV.cur;
+    return gAt(i) + '<li><button type="button" data-ts="' + t.id + '" class="' + (cur ? 'cur' : '') + (done ? ' done' : '') + '"' + (cur ? ' aria-current="location"' : '') + '>' +
+      '<span class="st" aria-hidden="true">' + (full ? '✓' : '') + '</span>' +
+      '<span class="t">' + (full ? (i + 1) + '. ' : '') + escT(t.th) + (done ? '<span class="sr"> · ทบทวนแล้ว</span>' : '') + '</span>' +
+      '<span class="q' + (q ? (q.pct >= 80 ? ' ok' : ' low') : '') + '">' + (q ? q.pct + ' %' : '') + '</span></button></li>';
+  }).join("") + '</ol>';
+}
+function openSheet() {
+  if (state.v !== "subject" || !DEEP[state.id]) return;
+  const s = ALL_SUBJ.find(x => x.id === state.id), deep = DEEP[s.id], mode = curMode();
+  const tr = subjTrip(s);
+  const full = '<div class="ts-h">ฉบับเต็ม · ' + deep.topics.length + ' หัวข้อ</div>' +
+    sheetList(deep.topics, true, deep.topics.length >= 12 ? (TOCGROUPS[s.id] || autoGroups(deep.topics)) : []);
+  const sum = deep.summary && deep.summary.length ? '<div class="ts-h">สรุปทบทวน · ' + deep.summary.length + ' บล็อก</div>' + sheetList(deep.summary, false, []) : '';
+  const d = sheetEl();
+  d.innerHTML = '<div class="ts-head"><h2 id="tsTitle">' + (ICONS[s.id] ? '<span aria-hidden="true">' + ICONS[s.id] + '</span> ' : '') + escT(s.th) + '</h2>' +
+    '<button type="button" class="ts-x" aria-label="ปิดสารบัญ">✕</button></div>' +
+    '<div class="ts-stat"><span>อ่านแล้ว <b>' + tr.read + '/' + tr.total + '</b></span><span>ควิซ <b>' + (tr.quiz ? tr.quiz.pct + ' %' : '—') + '</b></span>' +
+    '<a href="#/progress">ความก้าวหน้า →</a></div>' +
+    '<div class="ts-body">' + (mode === "sum" ? sum + full : full + sum) +
+    '<div class="ts-h">จุดที่ยังอ่อน</div><div class="ts-weak"></div></div>';
+  if (TOCX.sid === s.id) { try { margWeak(d.querySelector(".ts-weak")); } catch (e) { d.querySelector(".ts-weak").remove(); } }
+  d.querySelector('.ts-stat a').addEventListener("click", () => d.close());
+  document.documentElement.classList.add("s2-modal");
+  document.documentElement.classList.remove("reading");
+  d.showModal();
+  const cur = d.querySelector(".ts-list .cur");
+  if (cur) { cur.scrollIntoView({ block: "center" }); cur.focus({ preventScroll: true }); }
+}
+
+/* ---- ชิปหัวข้อรู้ตำแหน่ง: IO ของตัวเอง (เส้นบาง ๆ ที่ 25 % ของจอ) → .on + เลื่อนชิปมากลางแถบ + ตัวเลข «10/32» ---- */
+function chipSet(id) {
+  const tn = S2NAV.tn;
+  if (!tn || !tn.isConnected) return;
+  S2NAV.cur = id;
+  const chips = [...tn.querySelectorAll("[data-jump]")];
+  let at = -1;
+  chips.forEach((b, i) => {
+    const on = b.dataset.jump === id;
+    b.classList.toggle("on", on);
+    if (on) { at = i; b.setAttribute("aria-current", "location"); } else b.removeAttribute("aria-current");
+  });
+  const pos = tn.querySelector(".tn-pos");
+  if (pos) pos.textContent = (at >= 0 ? at + 1 : "–") + "/" + chips.length;
+  if (at >= 0) {
+    const b = chips[at], lead = tn.querySelector(".tn-toc"), tail = pos;
+    const l0 = lead ? lead.offsetWidth : 0, r0 = tail ? tail.offsetWidth : 0;
+    const want = b.offsetLeft - l0 - (tn.clientWidth - l0 - r0 - b.offsetWidth) / 2;
+    tn.scrollTo({ left: Math.max(0, want), behavior: REDUCED ? "auto" : "smooth" });
+  }
+}
+function chipPick() {
+  let first = null;
+  S2NAV.vis.forEach(sec => { if (sec.isConnected && (!first || (first.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_PRECEDING))) first = sec; });
+  if (first && first.id !== S2NAV.cur) chipSet(first.id);
+}
+HOOKS.on("subject", (s, deep) => {
+  if (S2NAV.io) { S2NAV.io.disconnect(); S2NAV.io = null; }
+  S2NAV.vis.clear(); S2NAV.cur = null; S2NAV.tn = null;
+  const tn = view.querySelector(".topic-nav");
+  if (!deep || !tn) return;
+  S2NAV.tn = tn;
+  tn.setAttribute("aria-label", "หัวข้อในหน้านี้");
+  tn.insertAdjacentHTML("afterbegin", '<button type="button" class="tn-toc" aria-haspopup="dialog">☰ สารบัญ</button>');
+  tn.insertAdjacentHTML("beforeend", '<span class="tn-pos" aria-hidden="true"></span>');
+  tn.querySelector(".tn-toc").addEventListener("click", openSheet);
+  chipSet(null);
+  if (!window.IntersectionObserver) return;
+  S2NAV.io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) S2NAV.vis.add(e.target); else S2NAV.vis.delete(e.target); });
+    chipPick();
+  }, { rootMargin: "-25% 0px -74% 0px" });
+  view.querySelectorAll("section.topic[id]").forEach(sec => S2NAV.io.observe(sec));
+});
+HOOKS.on("clear", () => { if (S2NAV.io) { S2NAV.io.disconnect(); S2NAV.io = null; } S2NAV.vis.clear(); S2NAV.tn = null; if (TSHEET && TSHEET.open) TSHEET.close(); });
+
+HOOKS.on("go", st => {                                // «หน้าหลัก» ใน #bbar กลายเป็นปุ่ม «สารบัญ» ในหน้าวิชาที่มีเนื้อหาเต็ม
+  const toc = st.v === "subject" && !!DEEP[st.id];
+  document.querySelectorAll('#bbar [data-bb="overview"]').forEach(b => { b.hidden = toc; });
+  document.querySelectorAll('#bbar [data-bb="toc"]').forEach(b => { b.hidden = !toc; });
+});
 
 /* ---- #bbar: ไฮไลต์พื้นที่ที่อยู่ · ชี้ «ฝึกทบทวน» ไป #/practice เมื่อ S5 ลงทะเบียนหน้านั้นแล้ว ---- */
 const BB_AREA = { overview: "overview", subjects: "subjects", subject: "subjects", glossary: "subjects", sem: "subjects",
