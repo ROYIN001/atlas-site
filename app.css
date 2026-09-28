@@ -1763,17 +1763,18 @@
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     grid-template-columns: repeat(5, 1fr); gap: 4px;
   }
-  #bbar button {
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  #bbar > a, #bbar > button {                      /* S2: ปุ่มที่พาไปหน้าอื่นเป็น <a> · ค้นหา/สารบัญเป็น <button> — หน้าตาเดียวกัน */
+    display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
     background: none; border: 0; border-radius: 8px; padding: 6px 2px;
     font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif;
-    font-size: 10.5px; color: var(--ink-3);
+    font-size: 11px; line-height: 1.25; color: var(--ink-2); text-decoration: none; text-align: center;
+    -webkit-tap-highlight-color: transparent; cursor: pointer;
   }
-  #bbar button svg {
+  #bbar > a svg, #bbar > button svg {
     width: 21px; height: 21px; fill: none; stroke: currentColor;
     stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
   }
-  #bbar button.on { color: var(--accent); background: var(--wash); }
+  #bbar > .on { color: var(--accent); background: var(--wash); }
 
   /* ============ v2: flashcards ============ */
   .flash { max-width: 580px; }
@@ -3629,6 +3630,254 @@
 /* ===== SLOT S1 BEGIN ===== */
 /* ===== SLOT S1 END ===== */
 /* ===== SLOT S2 BEGIN ===== */
+/* S2 · เปลือกนำทาง: ลิงก์การ์ด · หน้าหลัก · #/subjects · #/progress · แถบชิป + สารบัญแบบแผ่น (dialog.tsheet) · แถบหลบตอนอ่าน · ท้ายหัวข้อ · ชุดอ่านง่าย */
+/* ลิงก์ที่หน้าตาเป็นปุ่ม/การ์ด */
+a.subj, a.nav-item, .s2-cta, .s2-more a, .s2-glist a, .tend a, .ts-stat a { text-decoration: none; }
+a.subj { color: inherit; }
+a.subj:focus-visible, .s2-cta:focus-visible { outline-offset: 3px; }
+
+/* ---- หน้าหลัก ---- */
+.s2-hero { padding: 22px 26px 20px; }
+.s2-hero .page-title { font-size: clamp(24px, 3vw, 32px); }
+.s2-hero .page-title-th { font-size: 15px; }
+.s2-cta {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 14px;
+  margin-top: 18px; padding: 14px 18px; border-radius: 10px; max-width: 640px;
+  background: var(--accent); color: var(--panel); box-shadow: var(--shadow);
+}
+.s2-cta:hover { filter: brightness(1.08); }
+.s2-cta .k {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--panel) 55%, transparent); border-radius: 99px; padding: 3px 9px; white-space: nowrap;
+}
+.s2-cta .v { min-width: 0; }
+.s2-cta .v b { display: block; font-size: 17px; font-weight: 600; line-height: 1.35; }
+.s2-cta .v span { display: block; font-size: 13.5px; line-height: 1.4; opacity: .92; overflow-wrap: anywhere; }
+.s2-cta .go { font-size: 22px; line-height: 1; }
+.s2-semline { margin: 12px 0 0; font-size: 13.5px; color: var(--ink-2); }
+.s2-semline span { color: var(--ink-3); }
+.s2-semline a, .s2-empty a { color: var(--accent); font-weight: 600; }
+.s2-sec { margin: 28px 0 8px; }
+.s2-sec .nowhead { flex-wrap: wrap; row-gap: 2px; margin-bottom: 12px; }
+.s2-sec .nowhead .year-note { margin-left: auto; }
+.s2-empty { color: var(--ink-2); font-size: 14px; margin: 0; padding: 12px 14px; border: 1px dashed var(--line-2); border-radius: var(--radius); }
+.s2-grid { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 9px; }
+.subj.s2-dc { gap: 6px; padding: 13px 15px 12px; }
+.s2-dc-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.s2-dc-top .ic { font-size: 22px; line-height: 1; }
+.s2-dc-top .nm b { display: block; font-weight: 600; font-size: 14.5px; line-height: 1.35; }
+.s2-dc-top .nm i { display: block; font-style: normal; font-size: 12.5px; color: var(--ink-2); line-height: 1.35; margin-top: 2px; }
+.s2-dc-top .ringwrap { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; color: var(--ink-2); }
+.s2-dc-meta { font-size: 12.5px; color: var(--ink-3); }
+.s2-trip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 2px; }
+.s2-trip > span { background: var(--panel-2); border-radius: 5px; padding: 5px 8px; min-width: 0; }
+.s2-trip i { display: block; font-style: normal; font-size: 11.5px; color: var(--ink-3); }
+.s2-trip b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.s2-more { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 8px; }
+.s2-more a {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; font-size: 13.5px;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 99px; color: var(--ink);
+}
+.s2-more a::after { content: "→"; color: var(--accent); }
+.s2-more a:hover { border-color: var(--accent); }
+.s2-more b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--accent); font-weight: 600; }
+
+/* ---- หน้า #/subjects ---- */
+.s2-box { margin: 4px 0 18px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.s2-box h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.s2-box p { margin: 0 0 10px; color: var(--ink-2); font-size: 13.5px; }
+.s2-box .mysem { margin: 0; }
+.s2-subjects .s2-more { margin: 0 0 18px; }
+.s2-filt {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 18px; padding: 10px 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 13.5px; color: var(--ink-2);
+}
+.s2-filt label { display: inline-flex; align-items: center; gap: 6px; }
+.s2-filt select {
+  font: inherit; font-size: 13.5px; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line-2); border-radius: var(--radius); padding: 7px 8px; max-width: 100%;
+}
+.s2-filt input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.s2-count { margin-left: auto; font-size: 13px; color: var(--ink-3); }
+.s2-count button, .s2-empty button { padding: 4px 10px; font-size: 12px; margin-left: 4px; }
+@media (max-width: 600px) {
+  .s2-hero { padding: 16px; }
+  .s2-cta { grid-template-columns: minmax(0, 1fr) auto; padding: 12px 14px; gap: 4px 10px; }
+  .s2-cta .k { grid-column: 1 / -1; justify-self: start; font-size: 10.5px; padding: 2px 8px; }
+  .s2-subjects .statbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+  .s2-subjects .stat { min-width: 0; padding: 8px; }
+  .s2-subjects .stat b { font-size: 16px; }
+  .s2-subjects .stat span { font-size: 11px; line-height: 1.3; display: block; }
+}
+
+/* ---- หน้า #/progress ---- */
+.s2-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.s2-kpi { display: flex; flex-direction: column; gap: 5px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.s2-kpi .l { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.s2-kpi b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 24px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.s2-kpi .s { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+.s2-pbar { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.s2-pbar span { display: block; height: 100%; background: var(--accent); }
+.s2-ptab { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.s2-prow {
+  display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 4px 12px; align-items: center;
+  padding: 9px 14px; border-top: 1px solid var(--line); font-size: 13.5px; font-variant-numeric: tabular-nums;
+}
+.s2-prow:first-child { border-top: 0; }
+.s2-phead { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+.s2-prow .nm a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.s2-prow .nm a:hover { color: var(--accent); }
+.s2-prow .nm i { font-style: normal; }
+.s2-prow > span > i { display: none; font-style: normal; color: var(--ink-3); font-size: 11.5px; }
+.s2-prow small { color: var(--ink-3); }
+.s2-prow .s2-pbar { margin-top: 4px; max-width: 120px; }
+.s2-glist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.s2-glist a { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); font-size: 13.5px; }
+.s2-glist b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--accent); }
+.s2-progress .backup { max-width: none; }
+@media (max-width: 600px) {
+  .s2-kpi { padding: 11px 14px; gap: 3px; }
+  .s2-kpi b { font-size: 20px; }
+  .s2-phead { display: none; }
+  .s2-prow { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px 12px; }
+  .s2-prow .nm { grid-column: 1 / -1; }
+  .s2-prow > span > i { display: block; }
+}
+
+/* ---- แถบชิปหัวข้อ: ☰ สารบัญ ติดซ้าย · ตำแหน่ง «10/32» ติดขวา · ชิปที่อ่านอยู่ (.on จากตัวสังเกตของ S2) ---- */
+.topic-nav { scroll-padding-inline: 110px 60px; }
+.topic-nav .tn-toc {
+  position: sticky; left: 0; z-index: 1; flex: none; font-weight: 600; color: var(--accent);
+  background: var(--panel); border-color: var(--accent); box-shadow: 8px 0 8px -6px var(--bg), -8px 0 0 var(--bg);
+}
+.topic-nav .tn-pos {
+  position: sticky; right: 0; z-index: 1; flex: none; margin-left: auto; align-self: center;
+  padding: 4px 2px 4px 10px; background: var(--bg); box-shadow: -8px 0 8px -6px var(--bg);
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.topic-nav [data-jump] { flex: none; max-width: min(calc(100vw - 190px), 320px); overflow: hidden; text-overflow: ellipsis; }   /* ชิปชื่อยาวเคยกว้าง 480 px — เกินแถบ */
+.topic-nav [data-jump].on { font-weight: 600; }
+
+/* ---- สารบัญแบบแผ่น ---- */
+dialog.tsheet {
+  width: min(560px, 100vw); max-width: 100vw; max-height: min(86vh, 900px); padding: 0; margin: auto;
+  border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); color: var(--ink);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, .5); overflow: hidden; flex-direction: column;
+}
+dialog.tsheet[open] { display: flex; }
+dialog.tsheet::backdrop { background: rgba(8, 14, 13, .45); }
+html.s2-modal { overflow: hidden; }
+.ts-head { display: flex; align-items: center; gap: 10px; padding: 12px 12px 8px 18px; border-bottom: 1px solid var(--line); }
+.ts-head h2 { margin: 0; font-size: 16px; font-weight: 600; flex: 1; min-width: 0; }
+.ts-x { width: 40px; height: 40px; padding: 0; flex: none; font-size: 15px; border-radius: 50%; }
+.ts-stat { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 8px 18px; font-size: 13px; color: var(--ink-2); background: var(--panel-2); border-bottom: 1px solid var(--line); }
+.ts-stat b { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ts-stat a { margin-left: auto; color: var(--accent); font-weight: 600; }
+.ts-body { overflow-y: auto; overscroll-behavior: contain; padding: 4px 10px 16px; }
+.ts-h { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-2); padding: 14px 8px 6px; }
+.ts-list { list-style: none; margin: 0; padding: 0; }
+.ts-list .ts-g { font-size: 12px; font-weight: 600; color: var(--ink-3); padding: 10px 8px 4px; }
+.ts-list button {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 44px;
+  text-align: left; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--ink);
+  font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 14.5px; line-height: 1.4;
+}
+.ts-list button:hover { background: var(--panel-2); }
+.ts-list button.cur { background: var(--wash); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.ts-list .st { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); color: transparent; font-size: 12px; }
+.ts-list button:not(.done) .st:empty { border-color: transparent; }
+.ts-list .done .st { background: var(--ok); border-color: var(--ok); color: #fff; }
+.ts-list .q { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.ts-list .q.ok { color: var(--ok); }
+.ts-list .q.low { color: var(--crit); }
+.ts-list .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ts-weak { padding: 0 8px; font-size: 13.5px; }
+.ts-weak .mcard { padding: 10px 12px; margin: 0 0 8px; background: var(--panel-2); border-radius: 8px; }
+.ts-weak .mcard-l { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.ts-weak .mcard:first-child .mcard-l { display: none; }          /* หัวการ์ดซ้ำกับหัวส่วน «จุดที่ยังอ่อน» */
+.ts-weak p { margin: 0 0 6px; color: var(--ink-2); }
+.ts-weak .weak { display: flex; flex-direction: column; gap: 6px; }
+.ts-weak .weak button, .ts-weak .go { text-align: left; font-family: inherit; font-size: 13.5px; min-height: 40px; }
+.ts-weak .weak i { display: block; font-style: normal; font-size: 12px; color: var(--ink-3); }
+@media (max-width: 900px) {
+  dialog.tsheet { margin: auto 0 0; width: 100vw; border-radius: 16px 16px 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ---- แถบหลบตอนอ่าน (html.reading ใส่โดย S2 เฉพาะจอ ≤ 900 px) ---- */
+@media (max-width: 900px) {
+  .topbar, #bbar { transition: transform .22s ease; }
+  .topic-nav { transition: top .22s ease; }
+  html.reading .topbar { transform: translateY(-100%); }
+  html.reading #bbar { transform: translateY(100%); }
+  html.reading .topic-nav { top: 0; }
+  html.reading #topBtn { bottom: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar, #bbar, .topic-nav { transition: none !important; }
+}
+
+/* ---- ท้ายหัวข้อ ---- */
+.tend { margin: 26px 0 6px; padding: 14px 0 4px; border-top: 1px dashed var(--line-2); font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; }
+.tend-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.tend-chk { display: inline-flex; align-items: center; gap: 9px; min-height: 42px; padding: 7px 14px 7px 8px; font-family: inherit; font-size: 14px; color: var(--ink); border-radius: 99px; }
+.tend-chk .b { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); color: transparent; font-size: 13px; }
+.tend-chk.done { border-color: var(--ok); }
+.tend-chk.done .b { background: var(--ok); border-color: var(--ok); color: #fff; }
+.tend-q { font-size: 13.5px; color: var(--ink-2); }
+.tend-q b { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink); }
+.tend-q small { color: var(--ink-3); font-size: 12.5px; }
+.tend-pr { font-size: 14px; font-weight: 600; color: var(--accent); padding: 8px 2px; }
+.tend-np { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.tend-np a { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.tend-np a:hover { border-color: var(--accent); }
+.tend-np a span { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.tend-np a b { font-weight: 500; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.tend-np a.next { text-align: right; grid-column: 2; }
+
+/* ---- ชุดอ่านง่าย ---- */
+:root { --s2-shade: rgba(16, 26, 24, .22); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s2-shade: rgba(0, 0, 0, .75); } }
+:root[data-theme="dark"] { --s2-shade: rgba(0, 0, 0, .75); }
+#view sub, #view sup { font-size: max(11.5px, .75em); }
+#view .tbody.s2-legacy { font-size: 16px; line-height: 1.7; }
+#view .tw.scrolls {                                  /* เงาบอกว่ายังมีคอลัมน์ซ่อนอยู่ขอบไหน — ชั้น local เลื่อนตามเนื้อหาไปบังเงา (scroll) เมื่อถึงขอบ */
+  background:
+    linear-gradient(to right, var(--panel) 30%, transparent) left center / 36px 100% no-repeat local,
+    linear-gradient(to left, var(--panel) 30%, transparent) right center / 36px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--s2-shade), transparent) left center / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--s2-shade), transparent) right center / 14px 100% no-repeat scroll,
+    var(--panel);
+}
+#view .tw-hint {
+  margin: 12px 0 -10px; text-align: right; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif;
+  font-size: 12.5px; line-height: 1.4; color: var(--accent-2); font-weight: 600; max-width: none;
+}
+a.nav-item:focus-visible, .ts-list button:focus-visible { outline-offset: -2px; }
+@media (max-width: 600px) {
+  .topic-check { width: 40px; height: 40px; }
+  .topic-check:not(.done) { color: var(--line-2); }   /* ปุ่มใหญ่ขึ้น — ให้เห็นว่าเป็นช่องติ๊ก ไม่ใช่กล่องว่าง */
+  .topic-nav { padding: 6px 0; gap: 6px; }
+  .topic-nav button { min-height: 40px; padding: 8px 12px; font-size: 12.5px; }
+  .g-grid .tick { width: 40px; height: 40px; top: 6px; right: 6px; }
+  .g-grid .bmark { width: 40px; height: 40px; top: 6px; right: 50px; }
+  .g-grid .card .ru { padding-right: 96px; }
+  /* หัวหน้าวิชาบนมือถือ ≤ 200 px ก่อนถึงแถบโหมด: ตัดสิ่งที่ซ้ำ/รอง · คำนำเหลือ 2 บรรทัด */
+  .crumb { padding-top: 4px; font-size: 12px; }
+  .crumb button { padding: 2px 0; }
+  .crumb > span:first-of-type, .crumb > b { display: none; }   /* ชื่อวิชาซ้ำกับบรรทัดชื่อไทยใต้หัวเรื่อง — เหลือแค่ลิงก์กลับ */
+  .crumb + .page-head .page-title-th .m { display: none; }
+  .crumb + .page-head { padding: 4px 0 6px; }
+  .crumb + .page-head .eyebrow { display: none; }
+  .crumb + .page-head h1.page-title { font-size: 19px; line-height: 1.22; }
+  .crumb + .page-head .page-title-th { font-size: 14px; margin-top: 4px; }
+  .crumb + .page-head .lede {
+    margin-top: 6px; font-size: 13.5px; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .crumb + .page-head > div[style] { display: none; }   /* แถบ «ทำเครื่องหมายทบทวนแล้ว %» — บนมือถือดูได้ในสารบัญ (อ่านแล้ว n/N) และตัวเลขท้ายแถบชิป */
+  .crumb + .page-head .offl { margin-top: 8px; }
+  .modebar { margin-top: 4px; }
+}
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* S3: แบบจำลองที่โหลด/ติดตั้งไม่สำเร็จ (demoFail ใน app.js) */
