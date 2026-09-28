@@ -1,0 +1,101 @@
+{
+ "_about": "บล็อกที่ประกอบอัตโนมัติจากต้นฉบับใน _work/ — ห้ามแก้ในบล็อกตรง ๆ · tests/blocks.test.cjs ตรวจ sha1 · หลังรันสคริปต์ประกอบจริง: python src/blocks.py --update <ชื่อ> · บล็อก v4 (_work/layout/patch_layout.py) ไม่มี marker จบ จึงยังไม่อยู่ในทะเบียน",
+ "blocks": {
+  "vhist-vocab": {
+   "file": "app.js",
+   "start": "/* ================= ВИ: словарь (vhist) BEGIN",
+   "end": "/* ВИ: словарь END */",
+   "source": "_work/vhist/ (คลังศัพท์ ВИ)",
+   "build": "python _work/vhist/tools/integrate.py",
+   "sha1": "ec24e775d829"
+  },
+  "hist-vocab": {
+   "file": "app.js",
+   "start": "/* ================= История: словарь (hist) BEGIN",
+   "end": "/* История: словарь END */",
+   "source": "ต้นทาง История (zip) → _work/hist/",
+   "build": "python _work/hist/integrate_hist.py",
+   "sha1": "8d8c184a9bd2"
+  },
+  "vhist-deep": {
+   "file": "app.js",
+   "start": "/* ================= ВИ: DEEP (vhist) BEGIN",
+   "end": "/* ВИ: DEEP END */",
+   "source": "_work/vhist/",
+   "build": "python _work/vhist/tools/integrate.py",
+   "sha1": "59adec17a26d"
+  },
+  "hist-deep": {
+   "file": "app.js",
+   "start": "/* ================= История: DEEP (hist) BEGIN",
+   "end": "/* История: DEEP END */",
+   "source": "ต้นทาง История (zip) → _work/hist/",
+   "build": "python _work/hist/integrate_hist.py",
+   "sha1": "1457dc10252c"
+  },
+  "tau-demos": {
+   "file": "app.js",
+   "start": "/* ===== ТАУ: демонстрации (window.TAUDEMOS) ===== */",
+   "end": "/* ===== /ТАУ: демонстрации ===== */",
+   "source": "_work/demos/tau-<theme>-<key>.js",
+   "build": "python _work/demos/assemble.py t6 t7 t8 t9 t10 t11",
+   "sha1": "46f1b62156d7"
+  },
+  "vhist-demos": {
+   "file": "app.js",
+   "start": "/* ================= ВИ: движок карт и виджеты (VHDEMOS) BEGIN",
+   "end": "/* ВИ: VHDEMOS END */",
+   "source": "_work/vhist/engine/ + maps/",
+   "build": "python _work/vhist/tools/integrate.py",
+   "sha1": "ce430e0be046"
+  },
+  "hist-demos": {
+   "file": "app.js",
+   "start": "/* ================= История: สื่อและวิดเจ็ต (window.IHDEMOS) BEGIN",
+   "end": "/* История: IHDEMOS END */",
+   "source": "ต้นทาง История shared/hist.js + hist-data.js",
+   "build": "tools/pack.py แล้ว python _work/hist/integrate_hist.py",
+   "sha1": "6b365531fe97"
+  },
+  "std2-js": {
+   "file": "app.js",
+   "start": "/* ===== STD2 JS BEGIN",
+   "end": "/* ===== STD2 JS END ===== */",
+   "source": "_work/std2/js/",
+   "build": "python3 _work/std2/tools/integrate.py",
+   "sha1": "f519fbc5a863"
+  },
+  "nav-demos": {
+   "file": "app.js",
+   "start": "/* ===== СН ЛА (ฉบับยกระดับ): демонстрации (window.NAVDEMOS)",
+   "end": "/* ===== /СН ЛА NAVDEMOS ===== */",
+   "source": "_work/navpilot/demos/<key>.js",
+   "build": "python _work/navpilot/build.py",
+   "sha1": "5128000575ef"
+  },
+  "vhist-css": {
+   "file": "app.css",
+   "start": "/* ===== ВИ CSS BEGIN",
+   "end": "/* ===== ВИ CSS END ===== */",
+   "source": "_work/vhist/engine/*.css",
+   "build": "python _work/vhist/tools/integrate.py",
+   "sha1": "7a84b699bf2f"
+  },
+  "std2-css": {
+   "file": "app.css",
+   "start": "/* ===== STD2 CSS BEGIN",
+   "end": "/* ===== STD2 CSS END ===== */",
+   "source": "_work/std2/std2.css",
+   "build": "python3 _work/std2/tools/integrate.py",
+   "sha1": "4644365b2ee8"
+  },
+  "hist-css": {
+   "file": "app.css",
+   "start": "/* ================= История: CSS ของสื่อ (namespace .ih) BEGIN",
+   "end": "/* ================= История: CSS ของสื่อ END ================= */",
+   "source": "ต้นทาง История shared/hist.css",
+   "build": "tools/pack.py แล้ว python _work/hist/integrate_hist.py",
+   "sha1": "a89b9d77e0f7"
+  }
+ }
+}

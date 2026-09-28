@@ -15,18 +15,13 @@ const { execFileSync } = require('node:child_process');
 const { test } = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..');
-const APP_MARKER = '/* ================= APP ================= */';
 const TAU_START = '/* ===== ТАУ: демонстрации (window.TAUDEMOS) ===== */';
 const TAU_END = '/* ===== /ТАУ: демонстрации ===== */';
-const MINIMUM = {
-  // 23.09.2026 ВИ (vhist): +1 วิชา · +23 หัวข้อ · +84 ฟังก์ชัน (39 แผนที่ + ซ้อมสอบ) · +78 ช่องเดโม · +90 รูป
-  // 23.09.2026 СН ЛА nav-7, nav-12 ในมาตรฐานกลาง v2 (.std2): +6 ฟังก์ชัน (แอนิเมชัน STEPS2 5 ตัว + ควิซ quiz2 ของบล็อก STD2) · ช่องเดโม 446 → 466
-  subjects: 11, topics: 261, demoFunctions: 398,
-  // 23.09.2026 СН ЛА นำร่อง: possurf/zenith ของ nav-7/nav-12 ย้ายจาก metadata ไปวางในเนื้อหา (metadata 24 → 22, html 361 → 368)
-  // 27.09.2026 СН ЛА ครบทุกหัวข้อในมาตรฐานกลาง v2: demo ระดับหัวข้อ 16 ช่องของ nav (topics + summary) ย้ายไปวางในเนื้อหา (metadata 22 → 6)
-  htmlDemoSlots: 466, metadataDemoSlots: 6,
-  figureSlots: 882, figureFiles: 743
-};
+// จำนวนขั้นต่ำต่อวิชา: src/counts-baseline.json (สร้างด้วย python src/counts.py --update — ห้ามแก้มือ)
+// แทน MINIMUM เดิมที่ค้างอยู่ที่ 11 วิชา/466 ช่องเดโม (ลบเดโมไป 800 ช่องเทสต์ก็ยังเขียว)
+const COUNTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'counts-baseline.json'), 'utf8'));
+const HTML_TOLERANCE = 0.05;   // html_kb ลดได้ไม่เกิน 5 % — ตรงกับ src/counts.py
+const { sourceRegistry, metaDemos } = require('../src/registry.cjs');
 const args = process.argv.slice(2);
 assert.ok(args.length === 0 || (args.length === 2 && args[0] === '--baseline-zip'),
   'Usage: node tests/audit-integrity.test.cjs [--baseline-zip /path/to/original.zip]');
@@ -52,33 +47,18 @@ function attrValues(html, attribute) {
     .map(match => match[2]);
 }
 
-function subjectScripts() {
-  const dir = path.join(ROOT, 'js', 'subj');
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter(name => name.endsWith('.js')).sort()
-    .map(name => ({ name, code: fs.readFileSync(path.join(dir, name), 'utf8') }));
+function lf(buffer) {
+  // CRLF → LF before hashing (Windows checkouts under .gitattributes text=auto) — same as lf() in src/build_data.py
+  return Buffer.from(buffer.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
 }
 
-function sourceRegistry(source) {
-  const boundary = source.indexOf(APP_MARKER);
-  assert.ok(boundary >= 0, 'Cannot find the boundary before browser application startup');
-  assert.equal(source.indexOf(APP_MARKER, boundary + APP_MARKER.length), -1,
-    'Application startup marker must be unique');
-  // Run only declarations and registration IIFEs from this trusted repository.
-  // No document, network, timers, filesystem, or browser APIs are supplied.
-  // The reduced-motion query is the one startup dependency in this prefix.
-  // This checks registered function values; it never invokes a demo function.
-  const context = vm.createContext({
-    window: { matchMedia: () => ({ matches: false }) }
-  }, { codeGeneration: { strings: false, wasm: false } });
-  // Per-subject files js/subj/<subject>.js register their demos into the same DEMOS
-  // registry (the browser loads them when that subject opens); run them after the prefix.
-  const result = vm.runInContext(source.slice(0, boundary) + '\n' + subjectScripts().map(f => f.code).join('\n;\n') + '\n' +
-    '({deep: DEEP, subjects: SUBJECTS, demoKeys: Object.keys(DEMOS),' +
-    ' invalidDemoKeys: Object.keys(DEMOS).filter(k => typeof DEMOS[k] !== "function")})',
-    context, { timeout: 3000, filename: 'app.js:declarations-and-registries' });
-  // Convert data out of the VM realm before comparing it with local JSON data.
-  return JSON.parse(JSON.stringify(result));
+function tagAttrs(html, name) {
+  // Same counting as tag_attrs() in src/counts.py: attributes of opening tags only,
+  // after dropping comments and <script> bodies (quiz/widget JSON).
+  const clean = html.replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/(<script\b[^>]*>)[\s\S]*?<\/script>/gi, '$1</script>');
+  const re = new RegExp(`(?<![\\w-])${name}\\s*=\\s*(["'])([\\s\\S]*?)\\1`, 'g');
+  return (clean.match(/<[A-Za-z][^>]*>/g) || []).flatMap(tag => [...tag.matchAll(re)].map(m => m[2]));
 }
 
 function metadataRows(registry) {
@@ -141,9 +121,61 @@ const htmlDemoSlots = [...topics.values()].flatMap(topic => attrValues(topic.htm
 const metadataDemoSlots = metadataDemos(rows);
 const figureSlots = [...topics.values()].flatMap(topic => attrValues(topic.html, 'data-fig'));
 
+function currentCounts() {
+  // Same metrics as count() in src/counts.py — change both together.
+  const figs = new Set(figureFiles.map(f => f.replace(/\.webp$/i, '')));
+  const meta = metaDemos(registry);
+  const subjects = {};
+  for (const [file, topic] of topics) {
+    const [sid, tid] = file.slice(0, -5).split('__');
+    const s = subjects[sid] || (subjects[sid] = { topics: 0, summary: 0, demo_slots: 0, meta_demos: 0,
+      demo_keys: new Set(), fig_slots: 0, fig_files: new Set(), ids: 0, html_kb: 0 });
+    s.topics++;
+    if (/^.+-s[1-4]$/.test(tid)) s.summary++;
+    const demos = tagAttrs(topic.html, 'data-demo'), fs_ = tagAttrs(topic.html, 'data-fig');
+    s.demo_slots += demos.length;
+    demos.forEach(k => s.demo_keys.add(k));
+    s.fig_slots += fs_.length;
+    fs_.filter(k => figs.has(k)).forEach(k => s.fig_files.add(k));
+    s.ids += tagAttrs(topic.html, 'id').length;
+    s.html_kb += Buffer.byteLength(topic.html, 'utf8');
+  }
+  for (const [sid, s] of Object.entries(subjects)) {
+    s.meta_demos = (meta[sid] || []).length;
+    (meta[sid] || []).forEach(k => s.demo_keys.add(k));
+    s.demo_keys = s.demo_keys.size;
+    s.fig_files = s.fig_files.size;
+    s.html_kb = Math.round(s.html_kb / 1024);
+  }
+  return { _site: { demo_functions: registry.demoKeys.length, fig_files: figureFiles.length }, subjects };
+}
+
+test('Per-subject counts are not below src/counts-baseline.json (content removed = fail)', t => {
+  const cur = currentCounts();
+  const manifest = parseJson(read('data/manifest.json'), 'data/manifest.json');
+  const bad = [], grew = [];
+  for (const sid of Object.keys(manifest.subjects)) {
+    if (!COUNTS.subjects[sid]) bad.push(`${sid}: in manifest but not in src/counts-baseline.json (new subject? run python src/counts.py --update)`);
+  }
+  for (const sid of Object.keys(COUNTS.subjects)) {
+    if (!cur.subjects[sid]) bad.push(`${sid}: in baseline but has no files in data/t`);
+  }
+  const rowsToCheck = [['_site', cur._site, COUNTS._site], ...Object.entries(cur.subjects).map(([sid, v]) => [sid, v, COUNTS.subjects[sid]])];
+  for (const [sid, v, b] of rowsToCheck) {
+    if (!b) continue;
+    for (const [k, x] of Object.entries(v)) {
+      if (typeof b[k] !== 'number') continue;
+      const low = k === 'html_kb' ? b[k] * (1 - HTML_TOLERANCE) : b[k];
+      if (x < low) bad.push(`${sid}: ${k} dropped ${b[k]} → ${x}`);
+      else if (x > b[k]) grew.push(`${sid}.${k} ${b[k]}→${x}`);
+    }
+  }
+  if (grew.length) t.diagnostic('above baseline (run python src/counts.py --update to tighten): ' + grew.join(', '));
+  assert.deepEqual(bad, [], 'Content counts fell below src/counts-baseline.json — if intentional, run python src/counts.py --update and commit the baseline');
+});
+
 test('JavaScript parses; all topic JSON objects contain non-empty HTML', () => {
   new vm.Script(source, { filename: 'app.js' });
-  assert.ok(topicFiles.length >= MINIMUM.topics, 'Topic/summary files were removed');
   for (const [file, topic] of topics) {
     assert.equal(typeof topic.html, 'string', `${file}: html must be a string`);
     assert.ok(topic.html.trim().length > 0, `${file}: html must not be empty`);
@@ -151,7 +183,6 @@ test('JavaScript parses; all topic JSON objects contain non-empty HTML', () => {
 });
 
 test('DEEP metadata and topic files match exactly, with no missing or orphan topics', () => {
-  assert.ok(Object.keys(registry.deep).length >= MINIMUM.subjects);
   assert.equal(new Set(registry.subjects.map(subject => subject.id)).size,
     registry.subjects.length, 'Duplicate subject ID');
   const subjectIds = new Set(registry.subjects.map(subject => subject.id));
@@ -195,13 +226,38 @@ test('Per-subject JS/CSS files are listed in the manifest with their current has
   for (const name of files) {
     const [subject, ext] = [name.replace(/\.(js|css)$/, ''), name.split('.').pop()];
     assert.ok(manifest.subjects[subject], `js/subj/${name}: subject has no topics in data/t`);
-    const hash = crypto.createHash('sha1').update(fs.readFileSync(path.join(dir, name))).digest('hex').slice(0, 10);
+    const hash = crypto.createHash('sha1').update(lf(fs.readFileSync(path.join(dir, name)))).digest('hex').slice(0, 10);
     assert.equal(manifest.subjects[subject][ext], hash, `js/subj/${name}: stale manifest; run python src/build_data.py`);
   }
   for (const [subject, entry] of Object.entries(manifest.subjects)) {
     for (const ext of ['js', 'css']) {
       if (entry[ext]) assert.ok(files.includes(`${subject}.${ext}`), `manifest lists missing js/subj/${subject}.${ext}`);
     }
+  }
+});
+
+test('Cache versions: index.html app.css?v= / app.js?v= and DATA_VERSION equal the build hash; manifest v per subject', () => {
+  // Same formula as build_version() / subject_version() in src/build_data.py.
+  const crypto = require('node:crypto');
+  const RUN = 'รัน python src/build_data.py (เลขเวอร์ชันแคชไม่ตรงกับไฟล์ปัจจุบัน)';
+  const DV = /(const DATA_VERSION = ")[^"]*(";)/g;
+  const dv = [...source.matchAll(DV)];
+  assert.equal(dv.length, 1, 'app.js must declare const DATA_VERSION = "…"; exactly once');
+  const expected = crypto.createHash('sha1')
+    .update(lf(Buffer.from(source.replace(DV, '$1$2'), 'utf8'))).update('\0')
+    .update(lf(read('app.css'))).update('\0')
+    .update(lf(read('data/manifest.json'))).digest('hex').slice(0, 10);
+  const html = read('index.html').toString('utf8');
+  const token = re => { const m = [...html.matchAll(re)]; assert.equal(m.length, 1, `index.html must contain ${re.source} exactly once`); return m[0][1]; };
+  const got = { 'app.css?v=': token(/app\.css\?v=([^"'&\s>]+)/g), 'app.js?v=': token(/app\.js\?v=([^"'&\s>]+)/g),
+    DATA_VERSION: source.match(/const DATA_VERSION = "([^"]*)";/)[1] };
+  assert.deepEqual(got, { 'app.css?v=': expected, 'app.js?v=': expected, DATA_VERSION: expected }, RUN);
+  const manifest = parseJson(read('data/manifest.json'), 'data/manifest.json');
+  for (const subject of Object.keys(manifest.subjects)) {
+    const h = crypto.createHash('sha1');
+    topicFiles.filter(file => file.startsWith(`${subject}__`))
+      .forEach((file, i) => h.update((i ? '\n' : '') + topics.get(file).html, 'utf8'));
+    assert.equal(manifest.subjects[subject].v, h.digest('hex').slice(0, 10), `${subject}: manifest v — ${RUN}`);
   }
 });
 
@@ -235,9 +291,6 @@ test('In-content links (#/subject/topic[/id] and #id) point at existing pages an
 
 test('Every HTML and metadata demo slot has a registered function', () => {
   assert.deepEqual(registry.invalidDemoKeys, [], 'Registry contains a non-function');
-  assert.ok(registry.demoKeys.length >= MINIMUM.demoFunctions, 'Registered demos were removed');
-  assert.ok(htmlDemoSlots.length >= MINIMUM.htmlDemoSlots, 'HTML demo slots were removed');
-  assert.ok(metadataDemoSlots.length >= MINIMUM.metadataDemoSlots, 'Metadata demo slots were removed');
   const keys = new Set(registry.demoKeys);
   const unknown = [...new Set([...htmlDemoSlots, ...metadataDemoSlots])]
     .filter(key => !keys.has(key));
@@ -245,8 +298,6 @@ test('Every HTML and metadata demo slot has a registered function', () => {
 });
 
 test('Every figure reference resolves to a non-empty WebP; media counts are retained', () => {
-  assert.ok(figureFiles.length >= MINIMUM.figureFiles, 'Figure files were removed');
-  assert.ok(figureSlots.length >= MINIMUM.figureSlots, 'Figure slots were removed');
   const files = new Set(figureFiles);
   for (const key of new Set(figureSlots)) {
     assert.match(key, /^[A-Za-z0-9_.-]+$/, `Unsafe figure ID: ${key}`);

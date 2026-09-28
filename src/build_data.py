@@ -9,6 +9,9 @@
 
 สคริปต์จะเขียนใหม่เฉพาะ data/ix/*.json กับ data/manifest.json
 ไม่แตะเนื้อหาใน data/t/ · ถ้ามี js/subj/<วิชา>.js หรือ .css จะบันทึก hash ของไฟล์ลง manifest ด้วย
+· manifest.subjects.<วิชา>.v = hash ของเนื้อหาวิชานั้น — app.js ใช้เป็น ?v= ของ data/t และ data/ix ของวิชา
+· เลขเวอร์ชันแคช (hash ของ app.js + app.css + manifest) เขียนทับ «เฉพาะโทเคน» app.css?v= / app.js?v=
+  ใน index.html และ DATA_VERSION ใน app.js — ไม่ต้องแก้มืออีก (tests ตรวจว่าตรงกัน)
 """
 import json, glob, os, re, pathlib, shutil, collections, hashlib
 
@@ -44,30 +47,40 @@ def _script_text(m):
 plain = lambda h: re.sub(r'\s+', ' ', ent.sub(' ', tag.sub(' ', script.sub(_script_text, h)))).strip()
 
 bysubj = collections.defaultdict(list)
+HTML = {}                                  # (วิชา, หัวข้อ) → html
 for f in sorted(glob.glob(str(DATA / "t" / "*.json"))):
     name = os.path.basename(f)[:-5]
     if "__" not in name:
         print(f"  ข้าม {name} — ชื่อไฟล์ไม่มี '__'")
         continue
     sid, tid = name.split("__", 1)
-    html = json.load(open(f, encoding="utf-8")).get("html", "")
+    html = HTML[sid, tid] = json.load(open(f, encoding="utf-8")).get("html", "")
     bysubj[sid].append({"id": tid, "hay": plain(html).lower()})
 
 (DATA / "ix").mkdir(parents=True, exist_ok=True)
 for _f in (DATA / "ix").glob("*.json"):
     _f.unlink()
 
+def subject_version(sid, rows):
+    """sha1 10 ตัวของ html ทุกหัวข้อของวิชา (เรียงตามชื่อไฟล์ คั่นด้วย \\n) — ตรงกับ tests/audit-integrity"""
+    h = hashlib.sha1()
+    for i, r in enumerate(rows):
+        h.update((("\n" if i else "") + HTML[sid, r["id"]]).encode("utf-8"))
+    return h.hexdigest()[:10]
+
+
 manifest = {}
 SUBJ = ROOT / "js" / "subj"          # ไฟล์ JS/CSS แยกรายวิชา (ถ้ามี) — app.js โหลดเมื่อเปิดวิชานั้น
 for sid, rows in sorted(bysubj.items()):
     json.dump({"rows": rows}, open(DATA / "ix" / f"{sid}.json", "w", encoding="utf-8"),
               ensure_ascii=False)
-    manifest[sid] = {"n": len(rows)}
+    # ?v= ของวิชา: เปลี่ยนเมื่อเนื้อหาวิชานี้เปลี่ยนเท่านั้น (แก้วิชาเดียว แคชของวิชาอื่นยังใช้ได้)
+    manifest[sid] = {"n": len(rows), "v": subject_version(sid, rows)}
     extra = ""
     for ext in ("js", "css"):         # hash ของไฟล์ใช้เป็น ?v= — ไฟล์เปลี่ยนเมื่อไร เบราว์เซอร์โหลดใหม่เอง
         f = SUBJ / f"{sid}.{ext}"
         if f.is_file():
-            manifest[sid][ext] = hashlib.sha1(f.read_bytes()).hexdigest()[:10]
+            manifest[sid][ext] = hashlib.sha1(f.read_bytes().replace(b"\r\n", b"\n")).hexdigest()[:10]   # CRLF ของ Windows = ไฟล์เดียวกัน
             extra += f" + {sid}.{ext}"
     print(f"  {sid:8} {len(rows):>3} หัวข้อ{extra}")
 for f in sorted(SUBJ.glob("*.*")) if SUBJ.is_dir() else []:
@@ -77,6 +90,56 @@ for f in sorted(SUBJ.glob("*.*")) if SUBJ.is_dir() else []:
 json.dump({"subjects": manifest}, open(DATA / "manifest.json", "w", encoding="utf-8"),
           ensure_ascii=False)
 print(f"เขียนดัชนีใหม่ {len(manifest)} วิชา รวม {sum(len(v) for v in bysubj.values())} หัวข้อ")
+
+# ---------- เลขเวอร์ชันแคช: index.html (app.css?v= · app.js?v=) + DATA_VERSION ใน app.js ----------
+# hash = sha1(app.js ที่ค่า DATA_VERSION เป็น "" + \0 + app.css + \0 + data/manifest.json)[:10] หลังแปลง \r\n เป็น \n
+# · ตัดค่า DATA_VERSION ออกก่อน ไม่งั้นเขียนค่าใหม่แล้ว hash เปลี่ยนตามไม่รู้จบ
+# · \r\n → \n: เครื่อง Windows (GitHub Desktop) อาจ checkout เป็น CRLF (.gitattributes text=auto) ต้องได้ค่าเดียวกับ CI
+# สูตรเดียวกับ buildVersion() ใน tests/audit-integrity · แทนที่เฉพาะโทเคน ห้ามเขียน index.html ทั้งไฟล์ (CLAUDE.md หัวข้อ 12)
+DV = re.compile(r'(const DATA_VERSION = ")[^"]*(";)')
+TOKENS = [re.compile(r'(app\.css\?v=)[^"\'&\s>]+'), re.compile(r'(app\.js\?v=)[^"\'&\s>]+')]
+
+
+def rd(path):                                     # อ่านแบบไม่แปลงปลายบรรทัด
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def lf(b):
+    return b.replace(b"\r\n", b"\n")
+
+
+def build_version():
+    app = rd(ROOT / "app.js")
+    assert len(DV.findall(app)) == 1, 'app.js ต้องมี const DATA_VERSION = "…"; ที่เดียว'
+    norm = DV.sub(r"\g<1>\g<2>", app).encode("utf-8")
+    return hashlib.sha1(lf(norm) + b"\0" + lf((ROOT / "app.css").read_bytes()) + b"\0"
+                        + lf((DATA / "manifest.json").read_bytes())).hexdigest()[:10]
+
+
+def stamp(path, fix):
+    old = rd(path)
+    new = fix(old)
+    if new != old:
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(new)
+        return path.name
+    return None
+
+
+VERSION = build_version()
+
+
+def _index(html):
+    for t in TOKENS:
+        assert len(t.findall(html)) == 1, f"index.html ต้องมีโทเคน {t.pattern} ที่เดียว"
+        html = t.sub(lambda m: m.group(1) + VERSION, html)
+    return html
+
+
+_changed = [n for n in (stamp(ROOT / "app.js", lambda s: DV.sub(lambda m: m.group(1) + VERSION + m.group(2), s)),
+                        stamp(ROOT / "index.html", _index)) if n]
+print(f"เวอร์ชันแคช {VERSION}" + (f" — อัปเดต {' '.join(_changed)}" if _changed else " (ไม่เปลี่ยน)"))
 
 # ---------- ขั้นตอน build เพิ่มเติม (src/build_steps/*.py) ----------
 # แต่ละ session/ความสามารถมีไฟล์ของตัวเอง มีฟังก์ชัน run(ctx) เขียนผลลง data/<ชื่อของตัวเอง>/ หรือ data/<ชื่อ>.json
