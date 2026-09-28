@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "d9b1bc4a13";
+const DATA_VERSION = "99175ba428";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -73423,6 +73423,472 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
 })();
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
+/* S7 — ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · เครื่องมือส่วนตัวของผู้อ่าน (CLAUDE.md 14.7)
+   ทุกอย่างเสียบผ่าน HOOKS ไม่แก้ฟังก์ชันร่วม · ส่วน «PURE» ข้างล่างไม่แตะ DOM — tests/links.test.cjs รันส่วนนั้นใน vm */
+
+/* ---- S7 PURE BEGIN ---- */
+/* 1) «บรรยายที่ N» / «Лекция N» / «Т.N» ในบล็อกสรุปและแผนที่วิชา → ลิงก์ไปหัวข้อของบรรยายนั้น
+   เลขบรรยาย → หัวข้อ มาจาก DEEP ตอนบูต: ชื่อรัสเซีย «Лекция N…» (หรือ «Тема N…» สำหรับ «Т.N») ก่อน แล้วจึง id แบบ <prefix>-N / <prefix>-tN
+   บางวิชาเลขบรรยายไม่ตรงกับ id — แก้ไว้ใน S7_LECFIX (ตรวจกับตารางบรรยายในแผนที่วิชาและบรรทัดที่มาของแต่ละหัวข้อแล้ว 28 ก.ย. 2026)
+   หัวข้อใน DEEP ใส่ lec: N หรือ lec: [N, M] ได้เอง (ชนะทุกอย่าง) — วิชาใหม่ที่ชื่อหัวข้อไม่ขึ้นต้นด้วย «Лекция N» ให้ใส่ฟิลด์นี้
+   L = บรรยาย (บรรยายที่/Лекция/Л.) · T = หัวข้อของหลักสูตร (Т.) · L2 = บรรยายชุดที่สอง (ข้อความตามหลังมี «ชุดที่สอง»/«2-я») · {} = ไม่ลิงก์
+   strict = ถ้าตามหลังเลขมีชื่อบรรยาย (— ชื่อ / . ชื่อ / «ชื่อ») ที่ไม่มีคำร่วมกับชื่อหัวข้อปลายทางเลย ไม่ลิงก์ (กันรายการของอีกชุดบรรยาย) */
+const S7_LECFIX = {
+  // ASU: บรรยาย 1–2 ไม่มีสไลด์ รวมเป็น asu-1 · บรรยาย N (3–15) = asu-(N−1)
+  asu: { L: { 1: "asu-1", 2: "asu-1", 3: "asu-2", 4: "asu-3", 5: "asu-4", 6: "asu-5", 7: "asu-6", 8: "asu-7", 9: "asu-8",
+    10: "asu-9", 11: "asu-10", 12: "asu-11", 13: "asu-12", 14: "asu-13", 15: "asu-14" } },
+  // ТЭ: สไลด์สองชุดนับเลขใหม่ — ชุดแรก 1–13, 15–18 · ชุดที่สอง 8–12 (ตาราง «Полный перечень 22 лекций» ใน te-map)
+  teh_el: { strict: true,
+    L: { 1: "te-1", 2: "te-2", 3: ["te-3", "te-4"], 4: "te-5", 5: "te-6", 6: "te-7", 7: "te-8", 8: "te-9", 9: "te-10", 10: "te-11",
+      11: "te-12", 12: "te-13", 13: "te-14", 15: "te-15", 16: "te-17", 17: "te-18", 18: "te-19" },
+    L2: { 8: "te-16", 9: "te-20", 10: "te-20", 11: "te-21", 12: "te-21" } },
+  // ТАУ: «Т.N» = หัวข้อ (тема) ของหลักสูตร — Т.6–Т.11 มีหัวข้อฉบับเต็มตรงตัว · Т.1–Т.5 กลั่นรวมใน tau-1…tau-5 ไม่ตรงตัว ไม่ลิงก์ · เลขบรรยาย 1–48 ไม่ตรงกับหัวข้อ
+  tau: { L: {}, T: { 6: "tau-6", 7: "tau-7", 8: "tau-t8", 9: "tau-t9", 10: "tau-t10", 11: "tau-t11" } },
+  // วิชาที่หัวข้อเรียงตามเรื่อง ไม่ใช่ตามบรรยาย
+  surn: { L: {} }, toe: { L: {} },
+};
+/* คำขึ้นต้น + เลข (+ ช่วง «–M») · คำรัสเซียต้องไม่ติดท้ายอักษรอื่น (กัน «сл.» «т. е.» ฯลฯ) · ภาษาไทยไม่เว้นวรรคจึงไม่ตรวจ */
+const S7_LEC_RX = /(บรรยายที่|(?<![А-Яа-яЁёA-Za-z0-9])(?:Лекци[яи]|Л\.|Т\.))\s?№?\s?(\d{1,2})(?!\d)(?:\s?[–-]\s?(\d{1,2})(?!\d))?/dgu;
+const S7_SERIES2 = /ชุดที่\s?สอง|2-я|втор(?:ой|ая)\s+сер/;
+const S7_TITLE = /^\s*(?:[—–:.]\s*|«)([А-Яа-яЁё][^»(·;]{3,})/;
+const s7Stems = s => (String(s).toLowerCase().replace(/ё/g, "е").match(/[а-я]{5,}/g) || []).map(w => w.slice(0, 5));
+function s7LecIndex(deep, fix) {
+  fix = fix || {};
+  const idx = {}, arr = v => [].concat(v);
+  for (const sid of Object.keys(deep)) {
+    const topics = deep[sid].topics || [], f = fix[sid] || {};
+    const base = { L: {}, T: {} }, byId = { L: {}, T: {} }, titles = {}, own = {};
+    const add = (m, n, tid) => { const a = m[n] = m[n] || []; if (!a.includes(tid)) a.push(tid); };
+    topics.forEach(t => {
+      titles[t.id] = t.ru || "";
+      if (t.lec != null) arr(t.lec).forEach(n => add(own, +n, t.id));
+      let m = /^\s*(Лекция|Тема)\s*№?\s*(\d+)/.exec(t.ru || "");
+      if (m) add(base[m[1] === "Тема" ? "T" : "L"], +m[2], t.id);
+      else if ((m = /-(t?)(\d+)$/.exec(t.id))) add(byId[m[1] ? "T" : "L"], +m[2], t.id);
+    });
+    const X = { titles, strict: !!f.strict };
+    for (const k of ["L", "T"]) {
+      X[k] = Object.assign({}, byId[k], base[k]);                  // ชื่อ «Лекция N» ชนะ id
+      if (f[k]) { X[k] = {}; for (const n in f[k]) X[k][n] = arr(f[k][n]); }
+    }
+    Object.assign(X.L, own);                                         // lec ใน DEEP ชนะทุกอย่าง
+    X.L2 = {};
+    if (f.L2) for (const n in f.L2) X.L2[n] = arr(f.L2[n]);
+    idx[sid] = X;
+  }
+  return idx;
+}
+/* หาจุดที่จะเป็นลิงก์ในข้อความหนึ่งก้อน → [{ i, j, n, tids }] (ตำแหน่งตัวอักษรใน text) */
+function s7LecScan(text, sid, idx) {
+  const X = idx[sid], out = [];
+  if (!X) return out;
+  S7_LEC_RX.lastIndex = 0;
+  let m;
+  while ((m = S7_LEC_RX.exec(text))) {
+    const end = m.index + m[0].length, rest = text.slice(end, end + 90);
+    const kind = m[1] === "Т." ? "T" : "L";
+    const near = rest.slice(0, 30).split(/บรรยายที่|Лекци|Л\.|Т\./)[0];     // ข้อความถึงคำขึ้นต้นถัดไป
+    const map = kind === "L" && S7_SERIES2.test(near) ? X.L2 : X[kind];
+    let a = (map[+m[2]] || []).slice();
+    if (!a.length) continue;
+    const tm = S7_TITLE.exec(rest);
+    if (tm) {                                                        // ตามด้วยชื่อบรรยาย — เลือกปลายทางที่ชื่อตรงที่สุด
+      const w = s7Stems(tm[1]);
+      const sc = a.map(tid => { const t = s7Stems(X.titles[tid]); return w.filter(x => t.includes(x)).length; });
+      const best = Math.max(...sc);
+      if (best > 0) a = a.filter((_, k) => sc[k] === best);
+      else if (X.strict) continue;
+    }
+    out.push({ i: m.index, j: m.indices[2][1], n: +m[2], tids: a });
+    const b = m[3] && +m[3] > +m[2] ? map[+m[3]] || [] : [];        // ช่วง «N–M» → ลิงก์ที่ M ด้วย (ถ้าไปหัวข้ออื่น)
+    if (b.some(tid => !a.includes(tid))) out.push({ i: m.indices[3][0], j: m.indices[3][1], n: +m[3], tids: b.slice() });
+  }
+  return out;
+}
+/* 2) หัวข้อที่เกี่ยวข้อง — data/rel.json (src/build_steps/rel.py) · entry = rel.t[<หัวข้อ>] · own = DEEP.topics[i].rel (ใส่มือ ชนะเสมอ)
+   own: ["<หัวข้อ>" (วิชาเดียวกัน) | "<วิชา>/<หัวข้อ>", …] · ค่าอัตโนมัติ: วิชาเดียวกัน 2 อันดับแรก + ข้ามวิชาคะแนน ≥ 0.10 → [{ sid, tid, cross }] */
+const S7_REL_SAME = 2, S7_REL_CROSS = 0.10;
+function s7RelPick(entry, own, sid) {
+  if (Array.isArray(own)) return own.map(x => { const p = String(x).split("/"); return p.length > 1 ? { sid: p[0], tid: p[1], cross: p[0] !== sid } : { sid, tid: p[0], cross: false }; });
+  if (!entry) return [];
+  return (entry.same || []).slice(0, S7_REL_SAME).map(([tid]) => ({ sid, tid, cross: false }))
+    .concat((entry.cross || []).filter(x => x[2] >= S7_REL_CROSS).map(([s, tid]) => ({ sid: s, tid, cross: true })));
+}
+/* 7) ป้ายสถานะเนื้อหา — ฟิลด์เสริมในหัวข้อของ DEEP (หรือที่ระดับวิชา DEEP[<วิชา>] ใช้เป็นค่าเริ่มต้นของทุกหัวข้อ):
+     rev: "2026-09-26"  วันที่ปรับปรุงเนื้อหาครั้งล่าสุด
+     chk: true | false  ผ่านการตรวจทานทั้ง tech-reviewer และ lang-reviewer แล้วหรือยัง
+     src: "…"           ต้นทางสั้น ๆ (เช่น «สไลด์ Л5–Л6 ปี 2025 + ตำรา Лучко»)
+   ไม่มีทั้ง rev และ chk → ไม่แสดงป้าย (ยังไม่รู้สถานะ — ไม่เดาแทนเจ้าของงาน) */
+const S7_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+function s7RevTxt(rev) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(rev || ""));
+  return m && +m[2] >= 1 && +m[2] <= 12 ? +m[3] + " " + S7_MON[+m[2] - 1] + " " + m[1] : "";
+}
+function s7Status(t, subj) {
+  const pick = k => (t && t[k] !== undefined ? t[k] : subj ? subj[k] : undefined);
+  const rev = s7RevTxt(pick("rev")), chk = pick("chk"), src = pick("src");
+  let cls = "", text = "";
+  if (chk === true) { cls = "ok"; text = "✓ ตรวจทานแล้ว" + (rev ? " · " + rev : ""); }
+  else if (chk === false) { cls = "wip"; text = "ยังไม่ตรวจทาน" + (rev ? " · ปรับปรุง " + rev : ""); }
+  else if (rev) { cls = "rev"; text = "ปรับปรุง " + rev; }
+  return text || src ? { cls, text, src: typeof src === "string" ? src : "" } : null;
+}
+/* ---- S7 PURE END ---- */
+
+const S7_IDX = s7LecIndex(DEEP, S7_LECFIX);
+const s7Topic = (sid, tid) => topicsOf(sid).find(t => t.id === tid);
+const s7Esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const s7Plain = s => String(s || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+/* หัวข้อที่ใส่ลิงก์บรรยายอัตโนมัติ: บล็อกสรุปทบทวน + แผนที่วิชา (*-map) — หัวข้อฉบับเต็มเขียนลิงก์เองได้อยู่แล้ว */
+const s7AutoOn = (sid, tid) => /-map$/.test(tid) || !!(DEEP[sid] && (DEEP[sid].summary || []).some(t => t.id === tid));
+const S7_SKIP = "a,button,summary .qa-n,math,svg,canvas,script,style,textarea,input,select,code,[data-demo],[data-jump2],.rel,.s7-bar";
+function s7Autolink(el, sid) {
+  const nodes = [];
+  const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => /บรรยายที่|Лекци|Л\.|Т\./.test(n.data) && !n.parentElement.closest(S7_SKIP) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  for (let n = tw.nextNode(); n; n = tw.nextNode()) nodes.push(n);
+  let count = 0;
+  nodes.forEach(node => {
+    const hits = s7LecScan(node.data, sid, S7_IDX);
+    if (!hits.length) return;
+    const frag = document.createDocumentFragment(), txt = node.data;
+    let at = 0;
+    hits.forEach(h => {
+      if (h.i > at) frag.appendChild(document.createTextNode(txt.slice(at, h.i)));
+      h.tids.forEach((tid, k) => {
+        const t = s7Topic(sid, tid), a = document.createElement("a");
+        a.className = k ? "lk lk-alt" : "lk";
+        a.href = "#/" + sid + "/" + tid;
+        a.title = t ? s7Plain(t.th) : tid;
+        if (k) { a.textContent = "⁽" + "²³⁴⁵"[k - 1] + "⁾"; a.setAttribute("aria-label", "อีกหัวข้อของบรรยายเดียวกัน: " + a.title); }
+        else a.textContent = txt.slice(h.i, h.j);
+        frag.appendChild(a);
+        count++;
+      });
+      at = h.j;
+    });
+    if (at < txt.length) frag.appendChild(document.createTextNode(txt.slice(at)));
+    node.replaceWith(frag);
+  });
+  return count;
+}
+HOOKS.on("fill", (el, t, sid) => { if (s7AutoOn(sid, t.id)) s7Autolink(el, sid); });
+
+/* ---- 2) หัวข้อที่เกี่ยวข้อง: ชิปท้ายหัวข้อ ---- */
+const S7_REL_URL = "data/rel.json?v=" + DATA_VERSION;
+let S7_REL = null;
+const s7RelGet = () => S7_REL || (S7_REL = fetch(S7_REL_URL).then(r => r.ok ? r.json() : null)
+  .catch(() => null).then(j => { if (!j) S7_REL = null; return j; }));      // โหลดไม่ได้ชั่วคราว — ครั้งหน้าลองใหม่
+function s7Foot(el) {                                // กล่องท้ายหัวข้อของ S7 (หัวข้อเกี่ยวข้อง → บันทึกส่วนตัว) — ลำดับคงที่แม้ข้อมูลมาทีหลัง
+  let f = el.querySelector(":scope > .s7-foot");
+  if (!f) { f = document.createElement("div"); f.className = "s7-foot"; el.appendChild(f); }
+  return f;
+}
+function s7RelChips(el, t, sid) {
+  const box = document.createElement("nav");
+  box.className = "rel";
+  box.setAttribute("aria-label", "หัวข้อที่เกี่ยวข้อง");
+  box.hidden = true;
+  s7Foot(el).appendChild(box);
+  const draw = rel => {
+    const list = s7RelPick(rel && rel.t && rel.t[t.id], t.rel, sid)
+      .map(x => Object.assign(x, { t: s7Topic(x.sid, x.tid), s: ALL_SUBJ.find(y => y.id === x.sid) })).filter(x => x.t && x.s);
+    if (!list.length || !box.isConnected) return;
+    const chip = x => '<a class="chip" href="#/' + x.sid + '/' + x.tid + '" title="' + s7Esc(s7Plain(x.t.ru)) + '">' +
+      (x.cross ? '<b>' + (ICONS[x.sid] || "📘") + ' ' + s7Esc(x.s.th) + '</b> ' : '') + s7Esc(s7Plain(x.t.th)) + '</a>';
+    const same = list.filter(x => !x.cross), cross = list.filter(x => x.cross);
+    box.innerHTML = '<p class="rel-h">อ่านต่อที่เกี่ยวข้อง</p>' +
+      (same.length ? '<div class="chiprow"><span class="rel-l">ในวิชานี้</span>' + same.map(chip).join("") + '</div>' : '') +
+      (cross.length ? '<div class="chiprow"><span class="rel-l">วิชาอื่น</span>' + cross.map(chip).join("") + '</div>' : '');
+    box.hidden = false;
+  };
+  if (Array.isArray(t.rel)) draw(null); else s7RelGet().then(draw);
+}
+HOOKS.on("fill", (el, t, sid) => s7RelChips(el, t, sid));
+HOOKS.on("offline", () => [S7_REL_URL]);
+
+/* ---- 3) ประวัติการอ่านล่าสุด (atlas-recent-v1 = [{ sid, tid, t }] ใหม่สุดก่อน ≤ 12) ---- */
+const S7_RECENT = "atlas-recent-v1", S7_RECENT_N = 12;
+function s7Load(key, def) { try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; } catch (e) { return def; } }
+function s7Save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch (e) { return false; } }
+function s7Recent() { const a = s7Load(S7_RECENT, []); return Array.isArray(a) ? a.filter(x => x && s7Topic(x.sid, x.tid)) : []; }
+function s7Visit(sid, tid) {
+  if (!sid || !tid || !s7Topic(sid, tid)) return;
+  const a = s7Recent();
+  if (a[0] && a[0].sid === sid && a[0].tid === tid) return;
+  s7Save(S7_RECENT, [{ sid, tid, t: Date.now() }].concat(a.filter(x => !(x.sid === sid && x.tid === tid))).slice(0, S7_RECENT_N));
+}
+HOOKS.on("go", st => { if (st.v === "subject" && st.topic) s7Visit(st.id, st.topic); });
+let S7_SCROLL_T = 0;
+window.addEventListener("scroll", () => {           // เลื่อนอ่านไปหัวข้ออื่น — state.topic ถูกตั้งโดย writeScrollState (หน่วง 400 ms) จึงรอ 1 วินาที
+  clearTimeout(S7_SCROLL_T);
+  S7_SCROLL_T = setTimeout(() => { if (state.v === "subject" && state.topic) s7Visit(state.id, state.topic); }, 1000);
+}, { passive: true });
+const s7Date = d => d.getDate() + " " + S7_MON[d.getMonth()] + " " + d.getFullYear();
+function s7Ago(t) {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "เมื่อสักครู่";
+  if (m < 60) return m + " นาทีที่แล้ว";
+  if (m < 60 * 24) return Math.round(m / 60) + " ชั่วโมงที่แล้ว";
+  return s7Date(new Date(t));
+}
+const s7Chip = (x, extra) => { const t = s7Topic(x.sid, x.tid);
+  return '<a class="chip" href="#/' + x.sid + '/' + x.tid + '" title="' + s7Esc(s7Plain(t.ru)) + '"><span aria-hidden="true">' + (ICONS[x.sid] || "📘") + '</span> ' +
+    s7Esc(s7Plain(t.th)) + (extra || "") + '</a>'; };
+/* หน้าแรก: แถวชิปสั้น ๆ ใต้การ์ดหลักสูตร — ปักไว้ (ข้อ 4) + อ่านล่าสุด */
+HOOKS.html("overview-top", () => {
+  const pins = s7Pins(), rec = s7Recent().slice(0, 6);
+  if (!pins.length && !rec.length) return "";
+  return '<section class="s7-strip" aria-labelledby="s7RecH"><div class="nowhead"><h2 id="s7RecH">' +
+    (rec.length ? "อ่านล่าสุด" : "หัวข้อที่ปักไว้") + '</h2><a class="year-note" href="#/progress">ดูทั้งหมด</a></div>' +
+    (pins.length ? '<div class="chiprow s7-pins"><span class="s7-row-l" aria-label="ปักไว้">★</span>' + pins.map(x => s7Chip(x)).join("") + '</div>' : '') +
+    (rec.length ? '<div class="chiprow">' + rec.map(x => s7Chip(x)).join("") + '</div>' : '') + '</section>';
+});
+/* หน้าความก้าวหน้า #/progress (S2): รายการเต็มพร้อมเวลา */
+HOOKS.html("progress", () => {
+  const rec = s7Recent();
+  return '<section class="s7-card" aria-labelledby="s7RecAll"><h2 id="s7RecAll">ประวัติการอ่าน</h2>' +
+    (rec.length ? '<ol class="s7-list">' + rec.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">' + s7Ago(x.t) + '</span></li>').join("") + '</ol>' +
+      '<button type="button" class="s7-clear" data-s7-clear="recent">ล้างประวัติการอ่าน</button>'
+      : '<p class="m">ยังไม่มี — เปิดหัวข้อไหนก็ตาม หัวข้อนั้นจะมาอยู่ที่นี่ (เก็บในเครื่องนี้เท่านั้น)</p>') + '</section>';
+});
+HOOKS.on("go", st => {
+  if (st.v !== "progress") return;
+  const b = view.querySelector('[data-s7-clear="recent"]');
+  if (b) b.addEventListener("click", () => { if (confirm("ล้างประวัติการอ่านทั้งหมดในเครื่องนี้?")) { s7Save(S7_RECENT, []); go({ v: "progress" }, { replace: true }); } });
+});
+
+/* ---- 4) ปักหัวข้อ ☆ (atlas-pins-v1 = [{ sid, tid, t }] ใหม่สุดก่อน) · คัดลอกลิงก์ตรงจุด ⧉ · ไฮไลต์ปลายทางของลิงก์ ---- */
+const S7_PINS = "atlas-pins-v1";
+function s7Pins() { const a = s7Load(S7_PINS, []); return Array.isArray(a) ? a.filter(x => x && s7Topic(x.sid, x.tid)) : []; }
+const s7Pinned = (sid, tid) => s7Pins().some(x => x.sid === sid && x.tid === tid);
+function s7PinToggle(sid, tid) {
+  const a = s7Pins(), on = !a.some(x => x.sid === sid && x.tid === tid);
+  s7Save(S7_PINS, on ? [{ sid, tid, t: Date.now() }].concat(a) : a.filter(x => !(x.sid === sid && x.tid === tid)));
+  return on;
+}
+const s7Url = (sid, tid, id) => location.origin + location.pathname + "#/" + sid + "/" + tid + (id ? "/" + encodeURIComponent(id) : "");
+let S7_TOAST_T = 0;
+function s7Toast(msg) {
+  let t = document.getElementById("s7toast");
+  if (!t) { t = document.createElement("div"); t.id = "s7toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(S7_TOAST_T);
+  S7_TOAST_T = setTimeout(() => t.classList.remove("on"), msg.length > 60 ? 6500 : 3200);
+}
+async function s7Copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  const ta = document.createElement("textarea");             // เบราว์เซอร์เก่า / http ธรรมดา
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) {}
+  ta.remove();
+  return ok;
+}
+/* มือถือ (จอสัมผัส) ใช้แผงแชร์ของเครื่อง · คอมคัดลอกลงคลิปบอร์ด (แผงแชร์บนคอมไม่ใช่สิ่งที่ผู้อ่านคาดหวังจากปุ่ม «คัดลอกลิงก์») */
+async function s7ShareLink(url, title) {
+  if (navigator.share && window.matchMedia && matchMedia("(pointer: coarse)").matches) {
+    try { await navigator.share({ title, url }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  if (await s7Copy(url)) s7Toast("คัดลอกลิงก์แล้ว — วางส่งต่อได้เลย");
+  else window.prompt("คัดลอกลิงก์นี้", url);
+}
+/* ปุ่มของ S7: ใน .demo-head ใช้ <span role="button"> เพราะแบบจำลองหลายตัววนแก้ «.demo-head button» ทุกปุ่ม (ข้อความ/สไตล์/ลำดับ) */
+function s7Btn(cls, label, aria, fn, span) {
+  const b = document.createElement(span ? "span" : "button");
+  if (span) { b.setAttribute("role", "button"); b.tabIndex = 0; } else b.type = "button";
+  b.className = "s7-b " + cls;
+  b.textContent = label;
+  b.title = aria;
+  b.setAttribute("aria-label", aria);
+  const run = e => { e.preventDefault(); e.stopPropagation(); fn(b, e); };
+  b.addEventListener("click", run);
+  if (span) b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") run(e); });
+  return b;
+}
+const s7TopicName = (sid, tid) => { const t = s7Topic(sid, tid), s = ALL_SUBJ.find(x => x.id === sid);
+  return (t ? s7Plain(t.th) : tid) + (s ? " — " + s.th : ""); };
+/* แถบเครื่องมือใต้ชื่อหัวข้อ (ใน .topic-head) — ข้อ 6/7 เติมปุ่ม/ป้ายต่อในแถบเดียวกัน */
+function s7HeadBar(el, t, sid) {
+  const sec = el.closest("section.topic"), head = sec && sec.querySelector(":scope > .topic-head");
+  const title = head && head.querySelector(":scope > div");
+  if (!title || title.querySelector(".s7-bar")) return null;
+  const bar = document.createElement("div");
+  bar.className = "s7-bar";
+  bar.addEventListener("click", e => e.stopPropagation());   // คลิกในแถบไม่ย่อ/ขยายหัวข้อ
+  const pin = s7Btn("s7-pin", "", "", b => { const on = s7PinToggle(sid, t.id); paint(); s7Toast(on ? "ปักหัวข้อนี้ไว้แล้ว — ดูได้ที่หน้าแรก" : "เลิกปักแล้ว"); });
+  const paint = () => { const on = s7Pinned(sid, t.id); pin.textContent = on ? "★" : "☆"; pin.classList.toggle("on", on);
+    pin.setAttribute("aria-pressed", String(on)); const l = on ? "เลิกปักหัวข้อนี้" : "ปักหัวข้อนี้ไว้ที่หน้าแรก"; pin.title = l; pin.setAttribute("aria-label", l); };
+  paint();
+  bar.appendChild(pin);
+  bar.appendChild(s7Btn("s7-cp", "⧉", "คัดลอกลิงก์ของหัวข้อนี้", () => s7ShareLink(s7Url(sid, t.id), s7TopicName(sid, t.id))));
+  title.appendChild(bar);
+  return bar;
+}
+/* ปุ่ม ⧉ ของคำถามปากเปล่า (details.qa ที่มี id) และแบบจำลอง (.demo-head)
+   กล่อง [data-demo] ที่ไม่มี id ได้ <หัวข้อ>-dm<ลำดับ> ตอนเติมหัวข้อ (ลิงก์ถึงแบบจำลองใช้ได้ก่อนแบบจำลองติดตั้ง)
+   แบบจำลองติดตั้งเมื่อเลื่อนเข้าใกล้จอ (S3 demoMount) → เฝ้าลูกชั้นแรกของกล่องทีละกล่อง พอ .demo-head โผล่ก็ใส่ปุ่มแล้วเลิกเฝ้า
+   (ไม่เฝ้าทั้ง subtree — แบบจำลองเขียน readout ใหม่ทุกเฟรม) · ข้อ 6 เพิ่มปุ่ม ⚑ ผ่าน S7_DEMO_TOOLS */
+const S7_DEMO_TOOLS = [];
+let S7_MO = [];
+S7_DEMO_TOOLS.push((h, host, t, sid) => h.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของแบบจำลองนี้",
+  () => s7ShareLink(s7Url(sid, t.id, host.id), s7TopicName(sid, t.id)), true)));
+function s7DemoHead(host, t, sid) {                    // true = มีหัวแล้ว (ใส่ปุ่มแล้วหรือเพิ่งใส่)
+  const h = [...host.querySelectorAll(".demo-head")].find(x => x.closest("[data-demo]") === host);
+  if (!h) return false;
+  if (!h.querySelector(".s7-mini")) S7_DEMO_TOOLS.forEach(fn => fn(h, host, t, sid));
+  return true;
+}
+function s7ElemTools(el, t, sid) {
+  el.querySelectorAll("details.qa[id] > summary").forEach(sm => {
+    if (sm.querySelector(".s7-cp")) return;
+    const id = sm.parentElement.id;
+    sm.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของคำถามนี้", () => s7ShareLink(s7Url(sid, t.id, id), s7TopicName(sid, t.id))));
+  });
+  el.querySelectorAll("[data-demo]").forEach((host, i) => {
+    if (!host.id) host.id = t.id + "-dm" + (i + 1);
+    if (s7DemoHead(host, t, sid)) return;
+    const mo = new MutationObserver(() => { if (!host.isConnected || s7DemoHead(host, t, sid)) { mo.disconnect(); S7_MO = S7_MO.filter(x => x !== mo); } });
+    mo.observe(host, { childList: true });
+    S7_MO.push(mo);
+  });
+}
+HOOKS.on("fill", (el, t, sid) => { s7HeadBar(el, t, sid); s7ElemTools(el, t, sid); });
+HOOKS.on("clear", () => { S7_MO.forEach(mo => mo.disconnect()); S7_MO = []; });
+/* เปิดลิงก์ที่ชี้องค์ประกอบ (#/<วิชา>/<หัวข้อ>/<id>) → ไฮไลต์เป้าหมาย 2 วินาทีหลังเลื่อนไปถึง */
+let S7_HL = 0;
+function s7Hl(id) {
+  const job = ++S7_HL, t0 = Date.now();
+  (function look() {
+    if (job !== S7_HL) return;
+    const e = document.getElementById(id);
+    if (e && view.contains(e) && !e.closest(".tbody[data-lazy]")) {
+      setTimeout(() => {
+        if (job !== S7_HL) return;
+        e.classList.remove("s7-hl"); void e.offsetWidth; e.classList.add("s7-hl");
+        setTimeout(() => e.classList.remove("s7-hl"), 2200);
+      }, 350);
+    } else if (Date.now() - t0 < 9000) setTimeout(look, 120);
+  })();
+}
+HOOKS.on("go", st => { if (st.v === "subject" && st.anchor) s7Hl(st.anchor); });
+document.addEventListener("click", e => {               // ลิงก์ภายในวิชาเดียวกัน (router เลื่อนไปเองโดยไม่เรียก hook "go")
+  const a = e.target.closest && e.target.closest('a[href^="#/"]');
+  if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const st = parseRoute(a.getAttribute("href"));
+  if (st && st.v === "subject" && st.anchor) s7Hl(st.anchor);
+});
+window.addEventListener("popstate", () => { const st = parseRoute(location.hash); if (st && st.anchor) s7Hl(st.anchor); });
+/* หน้าความก้าวหน้า: หัวข้อที่ปักไว้ทั้งหมด */
+HOOKS.html("progress", () => {
+  const pins = s7Pins();
+  return '<section class="s7-card" aria-labelledby="s7PinAll"><h2 id="s7PinAll">หัวข้อที่ปักไว้ ★</h2>' +
+    (pins.length ? '<ol class="s7-list">' + pins.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">ปักเมื่อ ' + s7Ago(x.t) + '</span></li>').join("") + '</ol>'
+      : '<p class="m">ยังไม่มี — กด ☆ ใต้ชื่อหัวข้อไหนก็ได้ หัวข้อนั้นจะมาอยู่ที่นี่และที่หน้าแรก</p>') + '</section>';
+});
+
+/* ---- 5) บันทึกส่วนตัวท้ายหัวข้อ (atlas-notes-v1 = { <หัวข้อ>: { sid, text, t } }) — อยู่ในเครื่องนี้ · เข้าไฟล์สำรองความคืบหน้าเอง (คีย์ atlas-*) ---- */
+const S7_NOTES = "atlas-notes-v1";
+function s7Notes() { const o = s7Load(S7_NOTES, {}); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; }
+function s7NoteSave(sid, tid, text) {
+  const o = s7Notes();
+  if (text.trim()) o[tid] = { sid, text, t: Date.now() }; else delete o[tid];
+  return s7Save(S7_NOTES, o);
+}
+let S7_NOTE_N = 0;
+function s7NoteBox(el, t, sid) {
+  const foot = s7Foot(el);
+  if (foot.querySelector(".mynote")) return;
+  const cur = s7Notes()[t.id], id = "s7note-" + (++S7_NOTE_N);
+  const d = document.createElement("details");
+  d.className = "mynote";
+  if (cur) d.open = true;
+  d.innerHTML = '<summary>📝 บันทึกของฉัน<span class="mn-st">' + (cur ? " · มีบันทึก" : "") + '</span></summary>' +
+    '<label class="m" for="' + id + '">จดสิ่งที่อยากจำ คำถามที่จะถามอาจารย์ หรือจุดที่ยังไม่เข้าใจ — เก็บในเครื่องนี้เท่านั้น ไม่มีใครเห็น (ติดไปกับไฟล์สำรองความคืบหน้า)</label>' +
+    '<textarea id="' + id + '" rows="4" spellcheck="false"></textarea><span class="mn-saved m" role="status"></span>';
+  const ta = d.querySelector("textarea"), st = d.querySelector(".mn-st"), saved = d.querySelector(".mn-saved");
+  ta.value = cur ? cur.text : "";
+  let tm = 0;
+  const flush = () => {
+    clearTimeout(tm);
+    if (!s7NoteSave(sid, t.id, ta.value)) { saved.textContent = "บันทึกไม่สำเร็จ — พื้นที่เก็บในเบราว์เซอร์เต็มหรือถูกปิด"; return; }
+    const has = !!ta.value.trim();
+    st.textContent = has ? " · มีบันทึก" : "";
+    saved.textContent = has ? "บันทึกแล้ว " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : "";
+  };
+  ta.addEventListener("input", () => { clearTimeout(tm); tm = setTimeout(flush, 500); });
+  ta.addEventListener("blur", () => { if (tm) flush(); });
+  ta.addEventListener("keydown", e => e.stopPropagation());    // «/» ในบันทึกไม่กระโดดไปช่องค้นหา
+  foot.appendChild(d);
+}
+HOOKS.on("fill", (el, t, sid) => s7NoteBox(el, t, sid));
+/* หน้าความก้าวหน้า: บันทึกทั้งหมด */
+HOOKS.html("progress", () => {
+  const o = s7Notes();
+  const list = Object.keys(o).map(tid => Object.assign({ tid }, o[tid])).filter(x => x.sid && s7Topic(x.sid, x.tid)).sort((a, b) => b.t - a.t);
+  return '<section class="s7-card" aria-labelledby="s7NoteAll"><h2 id="s7NoteAll">บันทึกของฉัน 📝</h2>' +
+    (list.length ? '<ol class="s7-list s7-notes">' + list.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">' + s7Ago(x.t) + '</span>' +
+      '<p>' + s7Esc(x.text.length > 220 ? x.text.slice(0, 220) + "…" : x.text) + '</p></li>').join("") + '</ol>'
+      : '<p class="m">ยังไม่มี — ท้ายทุกหัวข้อมีช่อง «บันทึกของฉัน» ให้จดสั้น ๆ</p>') + '</section>';
+});
+
+/* ---- 6) แจ้งจุดผิด — ไม่มีเซิร์ฟเวอร์รับ จึงคัดลอกข้อความสำเร็จรูปให้ผู้อ่านไปวางในกลุ่ม LINE ของรุ่นเอง ----
+   ถ้าเจ้าของงานเพิ่มไฟล์ data/feedback.json = { "url": "https://…" } (เช่นแบบฟอร์ม) จะเปิดลิงก์นั้นให้ด้วย · โหลดไฟล์นี้เมื่อกดปุ่มเท่านั้น */
+let S7_SEL = "";
+document.addEventListener("pointerdown", e => {          // จำข้อความที่เลือกไว้ก่อนการกดปุ่มจะล้างการเลือก
+  if (e.target.closest && e.target.closest(".s7-rep")) { const s = window.getSelection && String(window.getSelection() || "").trim(); if (s) S7_SEL = s; }
+}, true);
+let S7_FB = null;
+const s7Feedback = () => S7_FB || (S7_FB = fetch("data/feedback.json?v=" + DATA_VERSION, { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null).then(j => j && typeof j.url === "string" && /^https:\/\//.test(j.url) ? j.url : null).catch(() => null));
+function s7ReportText(sid, tid, id, sel) {
+  const s = ALL_SUBJ.find(x => x.id === sid), t = s7Topic(sid, tid);
+  return ["แจ้งจุดผิด · Study Program",
+    "วิชา: " + (s ? s.th + " (" + s.ru + ")" : sid),
+    "หัวข้อ: " + (t ? s7Plain(t.th) + " (" + s7Plain(t.ru) + ")" : tid),
+    "ลิงก์: " + s7Url(sid, tid, id),
+    sel ? "ข้อความที่เลือก: «" + (sel.length > 500 ? sel.slice(0, 500) + "…" : sel) + "»" : "",
+    "รุ่นข้อมูล: " + DATA_VERSION,
+    "ผิดตรงไหน / ที่ถูกควรเป็น: "].filter(Boolean).join("\n");
+}
+async function s7Report(sid, tid, id) {
+  const cur = window.getSelection ? String(window.getSelection() || "").trim() : "";
+  const sel = cur || S7_SEL;
+  S7_SEL = "";
+  const text = s7ReportText(sid, tid, id, sel);
+  const ok = await s7Copy(text);
+  const url = await s7Feedback();
+  let opened = false;
+  if (url) { try { opened = !!window.open(url, "_blank", "noopener"); } catch (e) {} }
+  if (!ok) { window.prompt("คัดลอกข้อความนี้ไปแจ้งจุดผิด", text.replace(/\n/g, " · ")); return; }
+  s7Toast("คัดลอกข้อความแจ้งจุดผิดแล้ว" + (sel ? " (รวมข้อความที่คุณเลือก)" : "") + " — วางในกลุ่ม LINE ของรุ่น แล้วพิมพ์ต่อว่าผิดตรงไหน" +
+    (url && !opened ? " · เปิดแบบฟอร์มแจ้งจุดผิดได้จากลิงก์ในไฟล์ data/feedback.json" : opened ? " · หรือกรอกในแบบฟอร์มที่เปิดขึ้น" : ""));
+}
+HOOKS.on("fill", (el, t, sid) => {
+  const bar = el.closest("section.topic") && el.closest("section.topic").querySelector(":scope > .topic-head .s7-bar");
+  if (bar && !bar.querySelector(".s7-rep")) {
+    const b = s7Btn("s7-rep", "⚑ แจ้งจุดผิด", "แจ้งจุดผิดในหัวข้อนี้ — เลือกข้อความที่ผิดก่อนกดได้", () => s7Report(sid, t.id));
+    b.textContent = "⚑ แจ้งจุดผิด";
+    bar.appendChild(b);
+  }
+});
+S7_DEMO_TOOLS.push((h, host, t, sid) => h.appendChild(s7Btn("s7-rep s7-mini", "⚑", "แจ้งจุดผิดในแบบจำลองนี้", () => s7Report(sid, t.id, host.id), true)));
+
+/* ---- 7) ป้ายสถานะเนื้อหาในหัวหัวข้อ (ฟิลด์ rev / chk / src ของ DEEP — ดู s7Status ในส่วน PURE) ---- */
+HOOKS.on("fill", (el, t, sid) => {
+  const sec = el.closest("section.topic"), bar = sec && sec.querySelector(":scope > .topic-head .s7-bar");
+  const st = s7Status(t, DEEP[sid]);
+  if (!bar || !st || bar.querySelector(".s7-st")) return;
+  const tip = st.cls === "ok" ? "ผ่านการตรวจทานเชิงเทคนิคและภาษาแล้ว" : st.cls === "wip"
+    ? "เนื้อหานี้ยังไม่ผ่านการตรวจทาน — ถ้าเจอจุดผิด กด «แจ้งจุดผิด»" : "วันที่ปรับปรุงเนื้อหาครั้งล่าสุด";
+  const b = document.createElement("span");
+  b.className = "s7-st" + (st.cls ? " " + st.cls : "");
+  b.innerHTML = (st.text ? '<span class="s7-badge" title="' + tip + '">' + s7Esc(st.text) + '</span>' : '') +
+    (st.src ? '<span class="s7-src" title="' + s7Esc(st.src) + '">ที่มา: ' + s7Esc(st.src) + '</span>' : '');
+  bar.insertBefore(b, bar.firstChild);
+});
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
 /* ข้อมูลผู้เรียนปลอดภัย — ตัวเขียน store() กับทะเบียนคีย์ LEARNER อยู่ต้นส่วน APP (ค้น «S8: ตัวเขียนเดียว»)
