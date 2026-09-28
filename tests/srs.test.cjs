@@ -154,3 +154,19 @@ test('quiz2 block result → grade: 100 % = 5 · ≥ 80 = 4 · ≥ 60 = 3 · ≥
   const rows = [[5, 5, 5], [4, 5, 4], [3, 5, 3], [2, 5, 2], [1, 5, 1], [0, 5, 0], [13, 16, 4], [9, 16, 2], [0, 0, 0]];
   for (const [ok, total, g] of rows) assert.equal(core.srsQuizGrade(ok, total), g, `${ok}/${total}`);
 });
+
+test('exam plan category: quota = ceil(backlog / days left); last 48 h puts most-lapsed first', () => {
+  const recs = {
+    a: { due: day(-3), lapses: 0 }, b: { due: day(-1), lapses: 4 }, c: { due: day(5), lapses: 9 },  // c ยังไม่ครบกำหนด
+    d: { due: day(0), lapses: 2 },
+  };
+  const get = k => recs[k] || null;
+  const keys = ['a', 'b', 'c', 'd', 'e', 'f'];                 // e, f ยังไม่เคยทวน
+  const norm = x => JSON.parse(JSON.stringify(x));
+  assert.deepEqual(norm(core.srsPlanCat(keys, get, T0, 3, false)), { pending: 5, quota: 2, today: ['a', 'b'] });
+  assert.deepEqual(norm(core.srsPlanCat(keys, get, T0, 1, true)), { pending: 5, quota: 5, today: ['b', 'd', 'a', 'e', 'f'] });
+  assert.deepEqual(norm(core.srsPlanCat(keys, get, T0, 10, false)), { pending: 5, quota: 1, today: ['a'] });
+  assert.deepEqual(norm(core.srsPlanCat(keys, get, T0, 0, false)), { pending: 5, quota: 5, today: ['a', 'b', 'd', 'e', 'f'] }, 'exam today: everything');
+  assert.deepEqual(norm(core.srsPlanCat([], get, T0, 4, false, 30)), { pending: 30, quota: 8, today: [] }, 'unseen oral questions count too');
+  assert.deepEqual(norm(core.srsPlanCat(['c'], get, T0, 4, false)), { pending: 0, quota: 0, today: [] });
+});

@@ -3637,6 +3637,18 @@
 /* ===== SLOT S5 BEGIN ===== */
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 BEGIN ===== */
+/* S6 · แถบทวน/วันสอบใต้หัวหน้าวิชา (.s6-head) */
+.s6-head { margin: 14px 0 6px; font-size: 13px; }
+.s6-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.s6-ex label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink-2); }
+.s6-ex input[type="date"], .s6-ex select { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); padding: 3px 6px; max-width: 100%; }
+.s6-left { font-size: 12.5px; font-weight: 600; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--ink-2); display: inline-block; }
+.s6-left.near { border-color: var(--crit); color: var(--crit); }
+.s6-clr { font-size: 11.5px; padding: 3px 8px; }
+.s6-plan { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; font-size: 12.5px; color: var(--ink-2); }
+.s6-plan b { color: var(--ink); }
+.s6-plan .s6-pl { font-weight: 600; color: var(--accent-2); }
+.s6-plan .s6-pend { color: var(--ink-3); }
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 BEGIN ===== */
 /* ===== SLOT S7 END ===== */

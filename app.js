@@ -71735,6 +71735,16 @@ const srsQuizGrade = (ok, total) => {
   const p = total ? 100 * ok / total : 0;
   return p >= 100 ? 5 : p >= 80 ? 4 : p >= 60 ? 3 : p >= 40 ? 2 : p > 0 ? 1 : 0;
 };
+/* หมวดหนึ่งของแผนสอบ: keys = ของที่ต้องพร้อมก่อนสอบ · ค้าง = ยังไม่เคยทวนตามกำหนด หรือครบกำหนดแล้ว (+ unseen = ข้อที่นับได้แต่ยังไม่มีคีย์)
+   โควตาวันนี้ = ceil(ค้าง / วันที่เหลือ) · 48 ชม.สุดท้าย เรียงลืมบ่อย (lapses) ก่อน · ไม่งั้นเรียงครบกำหนดก่อน ที่ไม่เคยทวนต่อท้าย */
+function srsPlanCat(keys, get, now, days, final, unseen) {
+  const due = x => (x.r && x.r.due) || Infinity, lap = x => (x.r && x.r.lapses) || 0;
+  const rows = keys.map(k => ({ k, r: get(k) })).filter(x => !x.r || x.r.due <= now);
+  rows.sort(final ? (a, b) => lap(b) - lap(a) || due(a) - due(b) : (a, b) => due(a) - due(b));
+  const pending = rows.length + Math.max(0, unseen || 0);
+  const quota = pending ? Math.ceil(pending / Math.max(1, days)) : 0;
+  return { pending, quota, today: rows.slice(0, quota).map(x => x.k) };
+}
 /* ---- S6 core END ---- */
 
 (function () {
@@ -71824,6 +71834,69 @@ const srsQuizGrade = (ok, total) => {
   }
   HOOKS.on("subject", () => startSeen());
   HOOKS.on("clear", () => stopSeen());
+
+  /* ---- วันสอบ + แผนสอบ: D วันที่เหลือ → โควตาวันนี้ = ceil(ค้าง / D) แยก หัวข้อ / ปากเปล่า / ศัพท์ ---- */
+  const KINDS = { exam: "Экзамен · สอบ", zach: "Зачёт", zacho: "Зачёт с оценкой" };
+  const deepTopics = sid => (DEEP[sid] ? DEEP[sid].topics : []).filter(t => !/-map$/.test(t.id));
+  const modTerms = sid => { const m = MODULES.find(x => x.id === modOf(sid)); return m ? m.terms.map((t, i) => termKey(m, t, i)) : []; };
+  function examPlan(sid, now) {
+    now = now == null ? Date.now() : +now;
+    const e = EXAMS[sid], day = examDay(sid);
+    if (!e || day == null) return null;                                             // ไม่ตั้งวัน = ไม่มีแผน
+    const days = srsDays(now, day);
+    const plan = { sid, date: e.date, kind: KINDS[e.kind] ? e.kind : "exam", days, past: days < 0 };
+    if (plan.past) return plan;
+    const D = Math.max(1, days);
+    plan.final = day + 9 * 36e5 - now <= 48 * 36e5;                                   // 48 ชม.สุดท้าย (สอบเริ่มราว 9 โมงเช้าของวันสอบ)
+    const qKeys = Object.keys(SRS.all()).filter(k => k.startsWith("q:" + sid + "/"));
+    plan.topics = srsPlanCat(deepTopics(sid).map(t => "k:" + t.id), SRS.get, now, D, plan.final);
+    plan.oral = srsPlanCat(qKeys, SRS.get, now, D, plan.final, e.qa ? e.qa - qKeys.length : 0);
+    plan.oral.known = !!e.qa || qKeys.length > 0;                                   // จำนวนคำถามทั้งหมดรู้หลังเปิด #/cram ครั้งแรก
+    plan.terms = srsPlanCat(modTerms(sid), SRS.get, now, D, plan.final);
+    return plan;
+  }
+  window.examPlan = examPlan;
+  const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const fmtDate = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? +m[3] + " " + MONTHS[+m[2] - 1] + " " + m[1] : ""; };
+  const leftTxt = d => d === 0 ? "สอบวันนี้" : d === 1 ? "สอบพรุ่งนี้" : "อีก " + d + " วัน";
+  function planHtml(p) {
+    if (!p) return "";
+    if (p.past) return '<p class="s6-plan">วันสอบที่ตั้งไว้ผ่านไปแล้ว — เปลี่ยนวันหรือกดล้างวันสอบ</p>';
+    const part = (n, lab) => '<span><b>' + n + '</b> ' + lab + '</span>';
+    return '<p class="s6-plan"><span class="s6-pl">' + (p.final ? "48 ชม.สุดท้าย · ข้อที่ลืมบ่อยขึ้นก่อน" : "วันนี้ควรทวน") + '</span>' +
+      part(p.topics.quota, "หัวข้อ") +
+      (p.oral.known ? part(p.oral.quota, "ข้อปากเปล่า") : '<span>ปากเปล่า — เปิด<a href="#/cram/' + p.sid + '">โหมดคืนก่อนสอบ</a>หนึ่งครั้งเพื่อนับคำถาม</span>') +
+      (p.terms.pending ? part(p.terms.quota, "คำศัพท์") : "") +
+      '<span class="s6-pend">ค้างทั้งหมด ' + (p.topics.pending + p.oral.pending + p.terms.pending) + ' · แบ่งเท่า ๆ กันจนถึงวันสอบ</span></p>';
+  }
+
+  /* ---- หน้าวิชา: แถบของ S6 ใต้หัวหน้าวิชา (HOOKS.html "subject-head") ---- */
+  function headInner(sid) {
+    const now = Date.now(), e = EXAMS[sid] || {}, d = daysLeft(sid, now);
+    return '<div class="s6-row s6-ex"><label>สอบวันที่ <input type="date" data-s6date value="' + escT(e.date || "") + '"></label>' +
+      '<select data-s6kind aria-label="ชนิดการสอบ">' + Object.keys(KINDS).map(k => '<option value="' + k + '"' + ((e.kind || "exam") === k ? ' selected' : '') + '>' + KINDS[k] + '</option>').join("") + '</select>' +
+      (d != null && d >= 0 ? '<span class="s6-left' + (d <= 3 ? ' near' : '') + '">' + leftTxt(d) + '</span>' : '') +
+      (e.date ? '<button type="button" class="s6-clr" data-s6clr>ล้างวันสอบ</button>' : '') + '</div>' +
+      planHtml(examPlan(sid, now));
+  }
+  HOOKS.html("subject-head", ctx => ctx && ctx.deep ? '<div class="s6-head" data-s6sid="' + ctx.s.id + '">' + headInner(ctx.s.id) + '</div>' : "");
+  function bindHead(box, sid) {
+    const refresh = () => { box.innerHTML = headInner(sid); bindHead(box, sid); };
+    const date = box.querySelector("[data-s6date]"), kind = box.querySelector("[data-s6kind]"), clr = box.querySelector("[data-s6clr]");
+    const save = () => {
+      if (date.value) EXAMS[sid] = Object.assign({}, EXAMS[sid], { date: date.value, kind: kind.value });
+      else delete EXAMS[sid];
+      saveExams();
+      refresh();
+    };
+    date.addEventListener("change", save);
+    kind.addEventListener("change", () => { if (date.value) save(); });
+    if (clr) clr.addEventListener("click", () => { date.value = ""; save(); });
+  }
+  HOOKS.on("subject", (s, deep) => {
+    const box = deep && view.querySelector('.s6-head[data-s6sid="' + s.id + '"]');
+    if (box) bindHead(box, s.id);
+  });
 })();
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
