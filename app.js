@@ -72009,6 +72009,51 @@ HOOKS.html("progress", () => {
     (pins.length ? '<ol class="s7-list">' + pins.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">ปักเมื่อ ' + s7Ago(x.t) + '</span></li>').join("") + '</ol>'
       : '<p class="m">ยังไม่มี — กด ☆ ใต้ชื่อหัวข้อไหนก็ได้ หัวข้อนั้นจะมาอยู่ที่นี่และที่หน้าแรก</p>') + '</section>';
 });
+
+/* ---- 5) บันทึกส่วนตัวท้ายหัวข้อ (atlas-notes-v1 = { <หัวข้อ>: { sid, text, t } }) — อยู่ในเครื่องนี้ · เข้าไฟล์สำรองความคืบหน้าเอง (คีย์ atlas-*) ---- */
+const S7_NOTES = "atlas-notes-v1";
+function s7Notes() { const o = s7Load(S7_NOTES, {}); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; }
+function s7NoteSave(sid, tid, text) {
+  const o = s7Notes();
+  if (text.trim()) o[tid] = { sid, text, t: Date.now() }; else delete o[tid];
+  return s7Save(S7_NOTES, o);
+}
+let S7_NOTE_N = 0;
+function s7NoteBox(el, t, sid) {
+  const foot = s7Foot(el);
+  if (foot.querySelector(".mynote")) return;
+  const cur = s7Notes()[t.id], id = "s7note-" + (++S7_NOTE_N);
+  const d = document.createElement("details");
+  d.className = "mynote";
+  if (cur) d.open = true;
+  d.innerHTML = '<summary>📝 บันทึกของฉัน<span class="mn-st">' + (cur ? " · มีบันทึก" : "") + '</span></summary>' +
+    '<label class="m" for="' + id + '">จดสิ่งที่อยากจำ คำถามที่จะถามอาจารย์ หรือจุดที่ยังไม่เข้าใจ — เก็บในเครื่องนี้เท่านั้น ไม่มีใครเห็น (ติดไปกับไฟล์สำรองความคืบหน้า)</label>' +
+    '<textarea id="' + id + '" rows="4" spellcheck="false"></textarea><span class="mn-saved m" role="status"></span>';
+  const ta = d.querySelector("textarea"), st = d.querySelector(".mn-st"), saved = d.querySelector(".mn-saved");
+  ta.value = cur ? cur.text : "";
+  let tm = 0;
+  const flush = () => {
+    clearTimeout(tm);
+    if (!s7NoteSave(sid, t.id, ta.value)) { saved.textContent = "บันทึกไม่สำเร็จ — พื้นที่เก็บในเบราว์เซอร์เต็มหรือถูกปิด"; return; }
+    const has = !!ta.value.trim();
+    st.textContent = has ? " · มีบันทึก" : "";
+    saved.textContent = has ? "บันทึกแล้ว " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : "";
+  };
+  ta.addEventListener("input", () => { clearTimeout(tm); tm = setTimeout(flush, 500); });
+  ta.addEventListener("blur", () => { if (tm) flush(); });
+  ta.addEventListener("keydown", e => e.stopPropagation());    // «/» ในบันทึกไม่กระโดดไปช่องค้นหา
+  foot.appendChild(d);
+}
+HOOKS.on("fill", (el, t, sid) => s7NoteBox(el, t, sid));
+/* หน้าความก้าวหน้า: บันทึกทั้งหมด */
+HOOKS.html("progress", () => {
+  const o = s7Notes();
+  const list = Object.keys(o).map(tid => Object.assign({ tid }, o[tid])).filter(x => x.sid && s7Topic(x.sid, x.tid)).sort((a, b) => b.t - a.t);
+  return '<section class="s7-card" aria-labelledby="s7NoteAll"><h2 id="s7NoteAll">บันทึกของฉัน 📝</h2>' +
+    (list.length ? '<ol class="s7-list s7-notes">' + list.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">' + s7Ago(x.t) + '</span>' +
+      '<p>' + s7Esc(x.text.length > 220 ? x.text.slice(0, 220) + "…" : x.text) + '</p></li>').join("") + '</ol>'
+      : '<p class="m">ยังไม่มี — ท้ายทุกหัวข้อมีช่อง «บันทึกของฉัน» ให้จดสั้น ๆ</p>') + '</section>';
+});
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
 /* ===== SLOT S8 END ===== */
