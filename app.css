@@ -3755,7 +3755,7 @@ a.subj:focus-visible, .s2-cta:focus-visible { outline-offset: 3px; }
   padding: 4px 2px 4px 10px; background: var(--bg); box-shadow: -8px 0 8px -6px var(--bg);
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.topic-nav [data-jump] { flex: none; max-width: min(64vw, 320px); overflow: hidden; text-overflow: ellipsis; }   /* ชิปชื่อยาวเคยกว้าง 480 px — เกินแถบ */
+.topic-nav [data-jump] { flex: none; max-width: min(calc(100vw - 190px), 320px); overflow: hidden; text-overflow: ellipsis; }   /* ชิปชื่อยาวเคยกว้าง 480 px — เกินแถบ */
 .topic-nav [data-jump].on { font-weight: 600; }
 
 /* ---- สารบัญแบบแผ่น ---- */

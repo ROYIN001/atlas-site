@@ -110,12 +110,14 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok }); console.lo
   await pg.evaluate(() => document.querySelectorAll('#view section.topic')[9].scrollIntoView());
   await pg.waitForTimeout(1200);
   await pg.evaluate(() => document.querySelectorAll('#view section.topic')[9].scrollIntoView());
-  const chipOk = () => {
+  // หัวข้อด้านบนเติมเป็นช่วง ๆ (S3) เส้น IO จึงขยับไปมาราว 1–2 วินาที และชิปเลื่อนแบบนุ่ม — รอจนเงื่อนไขจริงต่อเนื่อง 800 ms ไม่ใช่แค่ชั่วขณะเดียว
+  await pg.waitForFunction(() => {
     const on = document.querySelectorAll('#view .topic-nav [data-jump].on'), tn = document.querySelector('#view .topic-nav');
-    const b = on[0] && on[0].getBoundingClientRect(), t = tn.getBoundingClientRect();
-    return on.length === 1 && b.left >= t.left - 1 && b.right <= t.right + 1 && b.top >= 0 && b.bottom <= innerHeight;
-  };
-  await pg.waitForFunction(chipOk, null, { timeout: 4000 }).catch(() => {});      // ชิปเลื่อนมากลางแถบแบบนุ่ม — รอให้นิ่ง
+    const b = on[0] && on[0].getBoundingClientRect(), t = tn.getBoundingClientRect(), now = performance.now();
+    const ok = on.length === 1 && b.left >= t.left - 1 && b.right <= t.right + 1 && b.top >= 0 && b.bottom <= innerHeight;
+    if (!ok) window.__chipOk = 0; else if (!window.__chipOk) window.__chipOk = now;
+    return ok && now - window.__chipOk > 800;
+  }, null, { timeout: 8000, polling: 100 }).catch(() => {});
   r = await pg.evaluate(() => {
     const on = document.querySelectorAll('#view .topic-nav [data-jump].on'), tn = document.querySelector('#view .topic-nav');
     const b = on[0] && on[0].getBoundingClientRect(), t = tn.getBoundingClientRect();

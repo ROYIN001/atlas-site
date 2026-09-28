@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "ee7e07b68a";
+const DATA_VERSION = "1423e6fad3";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -72045,7 +72045,7 @@ registerPage("progress", { render: renderProgress, title: () => "ความก
 
 /* ---- สารบัญแบบแผ่น (dialog.tsheet) — เปิดจากปุ่ม ☰ ซ้ายสุดของแถบชิป และปุ่ม «สารบัญ» ใน #bbar ---- */
 let TSHEET = null;
-const S2NAV = { cur: null, io: null, vis: new Set(), tn: null };
+const S2NAV = { cur: null, io: null, vis: new Set(), tn: null, settle: 0 };
 function sheetEl() {
   if (TSHEET) return TSHEET;
   TSHEET = document.createElement("dialog");
@@ -72110,11 +72110,17 @@ function chipSet(id) {
   });
   const pos = tn.querySelector(".tn-pos");
   if (pos) pos.textContent = (at >= 0 ? at + 1 : "–") + "/" + chips.length;
+  clearTimeout(S2NAV.settle);
   if (at >= 0) {
     const b = chips[at], lead = tn.querySelector(".tn-toc"), tail = pos;
     const l0 = lead ? lead.offsetWidth : 0, r0 = tail ? tail.offsetWidth : 0;
-    const want = b.offsetLeft - l0 - (tn.clientWidth - l0 - r0 - b.offsetWidth) / 2;
-    tn.scrollTo({ left: Math.max(0, want), behavior: REDUCED ? "auto" : "smooth" });
+    const want = () => Math.max(0, b.offsetLeft - l0 - (tn.clientWidth - l0 - r0 - b.offsetWidth) / 2);
+    tn.scrollTo({ left: want(), behavior: REDUCED ? "auto" : "smooth" });
+    S2NAV.settle = setTimeout(() => {                // เลื่อนนุ่มหลายครั้งติดกัน (หัวข้อเติมเป็นช่วง ๆ เส้น IO ขยับบ่อย) อาจหยุดกลางทาง — ถ้าชิปยังไม่อยู่ในแถบ ให้วางตรงที่ทันที
+      if (!b.isConnected || !tn.isConnected) return;
+      const r = b.getBoundingClientRect(), t = tn.getBoundingClientRect();
+      if (r.left < t.left + l0 - 1 || r.right > t.right - r0 + 1) tn.scrollTo({ left: want(), behavior: "auto" });
+    }, 600);
   }
 }
 function chipPick() {
