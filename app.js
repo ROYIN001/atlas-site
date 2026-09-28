@@ -71871,17 +71871,55 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
   }
 
   /* ---- หน้าวิชา: แถบของ S6 ใต้หัวหน้าวิชา (HOOKS.html "subject-head") ---- */
+  const subjDue = (sid, now) => SRS.due("", now).filter(r => sidOf(r.key) === sid);
+  const weakTopics = sid => deepTopics(sid).filter(t => { const r = quizOfTopic(t.id); return r && (r.pct < 80 || !r.full); });
   function headInner(sid) {
     const now = Date.now(), e = EXAMS[sid] || {}, d = daysLeft(sid, now);
-    return '<div class="s6-row s6-ex"><label>สอบวันที่ <input type="date" data-s6date value="' + escT(e.date || "") + '"></label>' +
+    return '<div class="s6-row"><button type="button" class="s6-due" data-s6open aria-expanded="false" aria-controls="s6panel">' +
+      'ครบกำหนดทวน <b>' + subjDue(sid, now).length + '</b> · ยังอ่อน <b>' + weakTopics(sid).length + '</b> <span aria-hidden="true">▾</span></button></div>' +
+      '<div class="s6-panel" id="s6panel" hidden></div>' +
+      '<div class="s6-row s6-ex"><label>สอบวันที่ <input type="date" data-s6date value="' + escT(e.date || "") + '"></label>' +
       '<select data-s6kind aria-label="ชนิดการสอบ">' + Object.keys(KINDS).map(k => '<option value="' + k + '"' + ((e.kind || "exam") === k ? ' selected' : '') + '>' + KINDS[k] + '</option>').join("") + '</select>' +
       (d != null && d >= 0 ? '<span class="s6-left' + (d <= 3 ? ' near' : '') + '">' + leftTxt(d) + '</span>' : '') +
       (e.date ? '<button type="button" class="s6-clr" data-s6clr>ล้างวันสอบ</button>' : '') + '</div>' +
       planHtml(examPlan(sid, now));
   }
   HOOKS.html("subject-head", ctx => ctx && ctx.deep ? '<div class="s6-head" data-s6sid="' + ctx.s.id + '">' + headInner(ctx.s.id) + '</div>' : "");
+  function panelHtml(sid) {                                                        // รายการครบกำหนดของวิชา (รวมต่อหัวข้อ) + «จุดที่ยังอ่อน» ของบล็อก v4
+    const byTopic = new Map();
+    subjDue(sid, Date.now()).forEach(r => {
+      const m = /^[kz]:([^/:]+)/.exec(r.key) || /^q:[^/]+\/([^/]+)\//.exec(r.key);
+      const tid = m && topicMeta(m[1]) ? m[1] : r.key.startsWith("q:") ? "oral" : r.key.startsWith("g:") ? "terms" : "";
+      if (!byTopic.has(tid)) byTopic.set(tid, []);
+      byTopic.get(tid).push(r.key);
+    });
+    const n = [...byTopic.values()].reduce((a, x) => a + x.length, 0);
+    let h = '<div class="mcard"><div class="mcard-l">ครบกำหนดทวน · ' + n + '</div>';
+    if (!n) h += '<p>ยังไม่มีอะไรครบกำหนด — ติ๊ก ✓ หัวข้อที่อ่านแล้วหรือทำควิซให้ครบบล็อก ระบบจะนัดทวนให้เอง (1 วัน → 3 วัน → ห่างขึ้นตามที่จำได้)</p>';
+    else h += '<ul class="s6-dl">' + [...byTopic].map(([tid, keys]) => {
+      const t = topicMeta(tid);
+      const name = t ? escT(t.th) : tid === "oral" ? "คำถามปากเปล่า" : tid === "terms" ? "คำศัพท์" : "หัวข้อที่ติ๊กไว้";
+      const href = t ? "#/" + sid + "/" + tid : tid === "oral" ? oralHref(sid) : tid === "terms" ? "#/flash" : "#/" + sid;
+      return '<li><a href="' + href + '">' + name + '</a><small>' + keys.length + ' รายการ</small>' +
+        '<button type="button" data-s6g="4" data-s6k="' + escT(keys.join(" ")) + '">ทวนแล้ว ✓</button></li>';
+    }).join("") + '</ul>';
+    return h + '</div><div class="s6-weak"></div>';
+  }
   function bindHead(box, sid) {
-    const refresh = () => { box.innerHTML = headInner(sid); bindHead(box, sid); };
+    const refresh = open => { box.innerHTML = headInner(sid); bindHead(box, sid); if (open) box.querySelector("[data-s6open]").click(); };
+    const btn = box.querySelector("[data-s6open]"), panel = box.querySelector(".s6-panel");
+    btn.addEventListener("click", () => {
+      const open = btn.getAttribute("aria-expanded") !== "true";
+      btn.setAttribute("aria-expanded", String(open));
+      panel.hidden = !open;
+      if (!open) { panel.innerHTML = ""; return; }
+      panel.innerHTML = panelHtml(sid);
+      if (TOCX.sid === sid) { try { margWeak(panel.querySelector(".s6-weak")); } catch (e) { /* ของบล็อก v4 — เรียกอ่านอย่างเดียว */ } }
+      panel.querySelectorAll("[data-s6g]").forEach(b => b.addEventListener("click", () => {
+        b.dataset.s6k.split(" ").forEach(k => SRS.grade(k, +b.dataset.s6g));
+        refresh(true);
+      }));
+    });
     const date = box.querySelector("[data-s6date]"), kind = box.querySelector("[data-s6kind]"), clr = box.querySelector("[data-s6clr]");
     const save = () => {
       if (date.value) EXAMS[sid] = Object.assign({}, EXAMS[sid], { date: date.value, kind: kind.value });
@@ -71896,6 +71934,140 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
   HOOKS.on("subject", (s, deep) => {
     const box = deep && view.querySelector('.s6-head[data-s6sid="' + s.id + '"]');
     if (box) bindHead(box, s.id);
+  });
+
+  /* ---- หน้าแรก: การ์ด «วันนี้ทวนอะไร» (HOOKS.html "overview-top") — รายการพร้อมเหตุผล + ปุ่มไปทำเลย + ชิปวันสอบ ---- */
+  const oralHref = sid => PAGE_DEFS.oral ? "#/oral/" + sid : "#/cram/" + sid;
+  const subjLab = sid => { const s = ALL_SUBJ.find(x => x.id === sid); return (ICONS[sid] ? ICONS[sid] + " " : "") + (s ? s.ru : sid); };
+  function todayItems(now) {
+    const map = new Map();
+    const item = (id, base) => { if (!map.has(id)) map.set(id, Object.assign({ id, why: [], keys: [], score: 0 }, base)); return map.get(id); };
+    const topicItem = tid => {
+      const sid = topicSid(tid), t = topicMeta(tid);
+      return sid && t ? item("t:" + tid, { sid, title: t.th, sub: subjLab(sid), href: "#/" + sid + "/" + tid }) : null;
+    };
+    const late = r => { const d = srsDays(r.due, now); return d >= 1 ? " · เลยมา " + d + " วัน" : ""; };
+    const oral = {}, rough = {}, terms = [];
+    SRS.due("", now).forEach(r => {                                                // 1) ครบกำหนดตาม SRS
+      const k = r.key;
+      if (k.startsWith("q:")) { const sid = sidOf(k); if (sid) (oral[sid] = oral[sid] || []).push(k); return; }
+      if (k.startsWith("g:")) { terms.push(k); return; }
+      const m = /^[kz]:([^/:]+)(:\d+)?/.exec(k);
+      if (!m) return;
+      if (m[2]) { (rough[m[1]] = rough[m[1]] || []).push(k); return; }
+      const it = topicItem(m[1]);
+      if (!it) return;
+      it.keys.push(k);
+      const w = k[0] === "z" ? "ควิซครบกำหนดทวน" : "ครบกำหนด SRS";
+      if (!it.why.some(x => x.startsWith(w))) it.why.push(w + late(r));
+      it.score = Math.max(it.score, 40 + srsDays(r.due, now) + 3 * r.lapses);
+    });
+    Object.keys(oral).forEach(sid => {
+      const it = item("q:" + sid, { sid, title: "ซ้อมปากเปล่า " + oral[sid].length + " ข้อ", sub: subjLab(sid), href: oralHref(sid), keys: oral[sid] });
+      it.why.push("ครบกำหนด SRS");
+      it.score = 38 + Math.min(10, oral[sid].length);
+    });
+    Object.keys(rough).forEach(sid => {
+      const it = item("s:" + sid, { sid, title: "หัวข้อที่ติ๊กไว้ " + rough[sid].length + " หัวข้อ", sub: subjLab(sid), href: "#/" + sid, keys: rough[sid] });
+      it.why.push("ครบกำหนด SRS");
+      it.score = 36;
+    });
+    if (terms.length) {
+      const it = item("g", { title: "คำศัพท์ " + terms.length + " คำ", sub: "Flashcard", href: "#/flash", keys: terms });
+      it.why.push("ครบกำหนด SRS");
+      it.score = 35 + Math.min(10, terms.length);
+    }
+    Object.keys(QUIZ).forEach(tid => {                                             // 2) ควิซยังอ่อน (อ่านผลเดิมใน atlas-quiz-v1)
+      const r = quizOfTopic(tid);
+      if (!r || (r.full && r.pct >= 80)) return;
+      const it = topicItem(tid);
+      if (!it) return;
+      it.why.unshift(r.full ? "ควิซ " + r.pct + " %" : "ควิซยังไม่ครบ " + r.done + "/" + r.n);
+      it.score = Math.max(it.score, 30 + (100 - r.pct) / 4);
+    });
+    DONE.forEach(k => {                                                            // 3) ติ๊กแล้วแต่ไม่ได้เปิดนาน (≥ 10 วัน)
+      const m = /^k:([^:]+)$/.exec(k);
+      if (!m) return;
+      const s = SEEN[m[1]], r = SRS.get(k), last = Math.max((s && s.t) || 0, (r && r.last) || 0);
+      const d = last ? srsDays(last, now) : 0;
+      if (d < 10) return;
+      const it = topicItem(m[1]);
+      if (!it) return;
+      it.why.push("ติ๊กแล้ว " + d + " วันไม่ได้เปิด");
+      if (!it.keys.includes(k)) it.keys.push(k);
+      it.score = Math.max(it.score, 20 + d / 2);
+    });
+    Object.keys(EXAMS).forEach(sid => {                                            // 4) สอบใกล้ (≤ 21 วัน): ของวิชานั้นขึ้นก่อน + แถวแผนสอบ
+      const p = examPlan(sid, now), s = ALL_SUBJ.find(x => x.id === sid);
+      if (!p || p.past || p.days > 21 || !s) return;
+      map.forEach(it => { if (it.sid === sid) it.score += 30 - p.days; });
+      if (!(p.topics.quota + p.oral.quota + p.terms.quota)) return;
+      const it = item("e:" + sid, { sid, title: "แผนสอบ: " + s.th, sub: subjLab(sid), href: "#/cram/" + sid, plan: true });
+      it.why.push(leftTxt(p.days) + " · วันนี้ หัวข้อ " + p.topics.quota + (p.oral.known ? " · ปากเปล่า " + p.oral.quota : "") + (p.terms.pending ? " · ศัพท์ " + p.terms.quota : ""));
+      it.score = 100 - p.days;
+    });
+    return [...map.values()].filter(it => it.why.length).sort((a, b) => b.score - a.score);
+  }
+  function examChips(now) {
+    return Object.keys(EXAMS).map(sid => ({ sid, d: daysLeft(sid, now), s: ALL_SUBJ.find(x => x.id === sid) }))
+      .filter(x => x.s && x.d != null && x.d >= 0).sort((a, b) => a.d - b.d)
+      .map(x => '<a class="s6-chip' + (x.d <= 3 ? ' near' : '') + '" href="#/' + x.sid + '">' + (ICONS[x.sid] ? '<span aria-hidden="true">' + ICONS[x.sid] + '</span> ' : '') +
+        escT(x.s.th) + ' · <b>' + leftTxt(x.d) + '</b></a>').join("");
+  }
+  const SHOW = 5;
+  function todayHtml() {
+    const now = Date.now(), items = todayItems(now), chips = examChips(now);
+    if (!items.length && !chips) return "";                                        // ผู้อ่านใหม่ยังไม่มีข้อมูล — ไม่ต้องมีการ์ด
+    const btns = it => it.keys.length
+      ? '<button type="button" data-s6g="4" data-s6k="' + escT(it.keys.join(" ")) + '" title="ทวนแล้ว — เลื่อนกำหนดครั้งถัดไป">ทวนแล้ว ✓</button>' +
+        '<button type="button" data-s6g="2" data-s6k="' + escT(it.keys.join(" ")) + '" title="ยังไม่แม่น — นัดทวนอีกพรุ่งนี้">ยังไม่แม่น</button>' : '';
+    const li = (it, i) => '<li class="s6-it' + (i >= SHOW ? ' more' : '') + (it.plan ? ' plan' : '') + '"' + (i >= SHOW ? ' hidden' : '') + '>' +
+      '<div class="s6-what"><b>' + escT(it.title) + '</b><small>' + escT(it.sub || "") + '</small>' +
+      '<span class="s6-why">' + it.why.map(w => '<i>' + escT(w) + '</i>').join("") + '</span></div>' +
+      '<div class="s6-acts"><a class="s6-go" href="' + it.href + '">ไปทำเลย →</a>' + btns(it) + '</div></li>';
+    return '<section class="s6-today" aria-labelledby="s6tH"><div class="nowhead"><h2 id="s6tH">วันนี้ทวนอะไร</h2>' +
+      '<span class="year-note">' + (items.length ? items.length + ' รายการ · จากที่ติ๊ก ผลควิซ และกำหนดทวนในเครื่องนี้' : 'วันนี้ยังไม่มีอะไรครบกำหนด') + '</span></div>' +
+      (chips ? '<div class="s6-chips" aria-label="วันสอบที่ตั้งไว้">' + chips + '</div>' : '') +
+      (items.length ? '<ol class="s6-list">' + items.map(li).join("") + '</ol>' : '') +
+      (items.length > SHOW ? '<button type="button" class="s6-more" data-s6more aria-expanded="false">ดูทั้งหมด (' + items.length + ')</button>' : '') +
+      '</section>';
+  }
+  function bindToday() {
+    const sec = view.querySelector(".s6-today");
+    if (!sec) return;
+    sec.querySelectorAll("[data-s6g]").forEach(b => b.addEventListener("click", () => {
+      b.dataset.s6k.split(" ").forEach(k => SRS.grade(k, +b.dataset.s6g));
+      const tmp = document.createElement("div");
+      tmp.innerHTML = todayHtml();
+      if (tmp.firstElementChild) { sec.replaceWith(tmp.firstElementChild); bindToday(); }
+      else sec.remove();
+    }));
+    const more = sec.querySelector("[data-s6more]");
+    if (more) more.addEventListener("click", () => {
+      const open = more.getAttribute("aria-expanded") !== "true";
+      sec.querySelectorAll(".s6-it.more").forEach(li => { li.hidden = !open; });
+      more.setAttribute("aria-expanded", String(open));
+      more.textContent = open ? "ย่อ" : "ดูทั้งหมด (" + sec.querySelectorAll(".s6-it").length + ")";
+    });
+  }
+  HOOKS.html("overview-top", todayHtml);
+  HOOKS.on("overview", bindToday);
+
+  /* ---- หน้าความก้าวหน้า #/progress: การ์ดสรุปกำหนดทวน (HOOKS.html "progress") ---- */
+  HOOKS.html("progress", () => {
+    const now = Date.now(), all = SRS.all(), keys = Object.keys(all), wk = srsAddDays(now, 8);
+    const cnt = (pre, f) => keys.filter(k => k.startsWith(pre) && f(all[k])).length;
+    const row = (lab, pre) => '<tr><th scope="row">' + lab + '</th><td>' + cnt(pre, r => r.due <= now) + '</td><td>' +
+      cnt(pre, r => r.due > now && r.due < wk) + '</td><td>' + cnt(pre, () => true) + '</td></tr>';
+    const ex = Object.keys(EXAMS).map(sid => ({ sid, p: examPlan(sid, now), s: ALL_SUBJ.find(x => x.id === sid) }))
+      .filter(x => x.s && x.p && !x.p.past).sort((a, b) => a.p.days - b.p.days);
+    return '<section class="s6-prog" aria-labelledby="s6pH"><h3 id="s6pH">กำหนดทวน</h3>' +
+      (keys.length ? '<div class="tw"><table class="s6-tab"><thead><tr><th scope="col">ชนิด</th><th scope="col">ครบวันนี้</th><th scope="col">7 วันข้างหน้า</th><th scope="col">อยู่ในตาราง</th></tr></thead><tbody>' +
+        row("หัวข้อ", "k:") + row("ควิซ", "z:") + row("ปากเปล่า", "q:") + row("คำศัพท์", "g:") + '</tbody></table></div>'
+        : '<p>ยังไม่มีอะไรในตารางทวน — ติ๊ก ✓ หัวข้อที่อ่านแล้ว ทำควิซให้ครบบล็อก หรือกด «จำได้ / ยังไม่ได้» ในโหมดคืนก่อนสอบ</p>') +
+      (ex.length ? '<ul class="s6-exl">' + ex.map(x => '<li><a href="#/' + x.sid + '">' + escT(x.s.th) + '</a> · ' + KINDS[x.p.kind].split(" · ")[0] + ' ' +
+        fmtDate(x.p.date) + ' · ' + leftTxt(x.p.days) + '</li>').join("") + '</ul>' : '') +
+      '</section>';
   });
 })();
 /* ===== SLOT S6 END ===== */
