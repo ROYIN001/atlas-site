@@ -48,34 +48,7 @@ test('search heading text escapes HTML-sensitive characters without altering lan
   assert.equal(search.escapeText(42), '42');
 });
 
-test('late full-text index completion refreshes only an active search and invalidates cache', async () => {
-  for (const activeView of ['search', 'subject']) {
-    let refreshed = 0, fetched = 0;
-    const sandbox = {
-      IX_LOADED: false, IX_READY: false, IX_DONE: 0, IX_TOTAL: 0, INDEX_BUILT: true, INDEX: [{ stale: true }], IXHAY: {},
-      state: { v: activeView },
-      fetch: async () => { fetched++; return { ok: true, json: async () => ({ subjects: { tau: {} } }) }; },
-      dbGet: async (kind, sid) => {
-        assert.equal(kind, 'ix'); assert.equal(sid, 'tau');
-        return { rows: [{ id: 'tau-t11', hay: 'фильтр калмана' }] };
-      },
-      renderSearch: () => { refreshed++; }
-    };
-    const load = vm.runInNewContext(
-      section('const DATA_VERSION =', 'const DBCACHE =') +
-      section('async function loadIndex(', 'function buildIndex(') + '\nloadIndex;', sandbox
-    );
-    await load();
-    assert.equal(sandbox.IXHAY['tau__tau-t11'], 'фильтр калмана');
-    assert.equal(sandbox.IX_READY, true);
-    assert.equal(sandbox.IX_DONE, sandbox.IX_TOTAL, 'progress counter reaches the subject count');
-    assert.equal(sandbox.INDEX.length, 0);
-    assert.equal(sandbox.INDEX_BUILT, false);
-    assert.equal(refreshed, activeView === 'search' ? 1 : 0);
-    await load();
-    assert.equal(fetched, 1, 'successful index loading is idempotent');
-  }
-});
+// Staged full-text index loading (data/ix) is covered by tests/search.test.cjs.
 
 function rowsOf(html) {
   return [...html.matchAll(/<tr><th scope="row">([^<]+)<\/th>((?:<td>[^<]+<\/td>){4})<\/tr>/g)]
