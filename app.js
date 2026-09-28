@@ -71230,13 +71230,13 @@ function renderGlossary() {
   const unk = document.getElementById("unkBtn");
   unk.addEventListener("click", () => { onlyUnknown = !onlyUnknown; unk.classList.toggle("on", onlyUnknown); filterGloss(); });
 
-  function filterGloss() {
-    const q = (searchEl.value || "").trim().toLowerCase();
+  function filterGloss() {                       // กติกาเดียวกับหน้าค้นหา: ชื่อพ้อง (Kalman = Калман = คาลมาน) · ё = е · ทุกคำในวลี
+    const raw = (searchEl.value || "").trim(), qs = raw ? searchQueries(raw) : null;
     let shown = 0;
     MODULES.forEach(m => {
       let n = 0;
       view.querySelectorAll('[data-grid="' + m.id + '"] .card').forEach(c => {
-        const ok = (!q || c.dataset.hay.includes(q)) && (!onlyUnknown || !DONE.has(c.dataset.k)) && (!onlyBM || BM.has(c.dataset.k));
+        const ok = (!qs || textMatch(normS(c.dataset.hay), qs)) && (!onlyUnknown || !DONE.has(c.dataset.k)) && (!onlyBM || BM.has(c.dataset.k));
         c.classList.toggle("hidden", !ok);
         if (ok) n++;
       });
@@ -71504,7 +71504,8 @@ function searchRefresh() {
   document.getElementById("sxScope").innerHTML =
     chip("data-scope", "all", SX.scope === "all", "ทุกวิชา") +
     (SX.from ? chip("data-scope", "subj", SX.scope === "subj", "วิชานี้ · " + escapeText(ixName(SX.from))) : "") +
-    chip("data-scope", "gloss", SX.scope === "gloss", "คลังศัพท์");
+    chip("data-scope", "gloss", SX.scope === "gloss", "คลังศัพท์") +
+    (cnt.term ? '<a class="sx-gl" href="#/glossary/' + escapeText(encodeURIComponent(searchEl.value.trim() || q)) + '">ดูในคลังศัพท์ (' + cnt.term + ' คำ) →</a>' : "");
   const kbar = document.getElementById("sxKind");
   kbar.hidden = SX.scope === "gloss" || !all.length;
   kbar.innerHTML = SX_KINDS.map(([k, label]) => chip("data-kind", k, kind === k, label, cnt[k], k !== "all" && !cnt[k] && kind !== k)).join("");
@@ -71743,6 +71744,7 @@ function renderQuiz() {
 
 /* ---- search box ---- */
 let searchTimer;
+const SEARCH_PH = searchEl.getAttribute("placeholder") || "";
 searchEl.addEventListener("focus", () => {                          // โฟกัส = เตรียมเฉพาะวิชาที่เปิดอยู่ · ทุกวิชาโหลดเมื่อเริ่มพิมพ์
   const sid = state.v === "subject" ? state.id : state.v === "search" ? state.sid : "";
   if (sid) ixPrime([sid]);
@@ -71769,6 +71771,11 @@ document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== searchEl) { e.preventDefault(); searchEl.focus(); }
   else if (e.key === "Escape" && document.activeElement === searchEl) { searchEl.value = ""; searchEl.blur(); if (state.v === "search") go({ v: "overview" }, { replace: true }); }
 });
+function searchPlaceholder(st) {                  // ช่องเดียวกันทำสองหน้าที่ — บอกให้ชัดว่าตอนนี้ค้นหาหรือกรอง
+  const gl = st.v === "glossary";
+  searchEl.placeholder = gl ? "กรองคลังศัพท์: Калман, คาลมาน, Kalman …" : SEARCH_PH;
+  searchEl.setAttribute("aria-label", gl ? "กรองคลังศัพท์" : "ค้นหาทุกวิชา");
+}
 document.getElementById("quizBtn").addEventListener("click", () => go({ v: "quiz" }));
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => LIVE.forEach(d => d.draw && d.draw()));
 new MutationObserver(() => LIVE.forEach(d => d.draw && d.draw()))
@@ -71879,6 +71886,7 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
+HOOKS.on("go", searchPlaceholder);
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
 /* ===== SLOT S5 END ===== */
