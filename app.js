@@ -70027,13 +70027,20 @@ const semZe = n => runningIn(n).reduce((a, s) => a + s.ze / Math.max(1, semsOf(s
 const unassigned = () => SUBJECTS.filter(s => !semsOf(s).length);
 const byNum = (a, b) => a.n - b.n;
 
+/* S2: เมนูหลัก 5 พื้นที่ (ชื่อเดียวกับแถบล่างมือถือ #bbar) — หน้าหลัก · รายวิชา · ฝึกทบทวน · ค้นหา · ความก้าวหน้า
+   รายการที่พาไปหน้าอื่นเป็น <a href="#/…"> (คัดลอกลิงก์/เปิดแท็บใหม่ได้ · ตัวจับคลิกของ router เรียก go ให้) · ค้นหาเป็น <button> */
+const practiceHref = (sid, tid) => PAGE_DEFS.practice ? "#/practice" + (sid ? "/" + sid + (tid ? "/" + tid : "") : "") : "#/flash";
+function focusSearch() {
+  document.documentElement.classList.remove("reading");
+  searchEl.focus();
+}
 function buildNav() {
-  const mk = (label, tag, on, attrs, parent) => {
-    const b = document.createElement("button");
+  const mk = (label, tag, href, attrs, parent) => {
+    const b = document.createElement(href ? "a" : "button");
     b.className = "nav-item";
+    if (href) b.href = href; else b.type = "button";
     b.innerHTML = '<span>' + label + '</span><span class="tag">' + (tag || "") + '</span>';
     Object.entries(attrs || {}).forEach(([k, v]) => b.setAttribute(k, v));
-    b.addEventListener("click", on);
     (parent || navEl).appendChild(b);
     return b;
   };
@@ -70051,14 +70058,16 @@ function buildNav() {
     const run = semRun(s);
     const cont = run ? ' <span class="nnum span">' + run + '</span>' : '';
     const b = mk('<span class="nnum">' + s.n + '</span> ' + s.ru + cont, "0%",
-      () => go({ v: "subject", id: s.id }), { "data-nav-subj": s.id, title: s.th + (run ? " · ภาค " + run : "") }, parent);
+      "#/" + s.id, { "data-nav-subj": s.id, title: s.th + (run ? " · ภาค " + run : "") }, parent);
     if (DEEP[s.id]) b.classList.add("deep");
     return b;
   };
   const mkFold = (key, headHtml, cls) => {
     const open = RAILOPEN.has(key);
     const gs = document.createElement("button");
+    gs.type = "button";
     gs.className = cls + (open ? " open" : "");
+    gs.setAttribute("aria-expanded", String(open));
     gs.innerHTML = '<i class="rcaret">▸</i>' + headHtml;
     const body = document.createElement("div");
     body.className = "sem-body" + (open ? " open" : "");
@@ -70067,6 +70076,7 @@ function buildNav() {
       const on = !body.classList.contains("open");
       body.classList.toggle("open", on);
       gs.classList.toggle("open", on);
+      gs.setAttribute("aria-expanded", String(on));
       if (on) RAILOPEN.add(key); else RAILOPEN.delete(key);
       saveRail();
     });
@@ -70074,12 +70084,20 @@ function buildNav() {
     navEl.appendChild(body);
     return body;
   };
-  mk("ภาพรวมหลักสูตร", "", () => go({ v: "overview" }), { "data-nav": "overview" });
-  YEARS.forEach(y => {
+  const grp = txt => {
     const g = document.createElement("div");
-    g.className = "rail-group";
-    g.textContent = y.year + " курс · ชั้นปีที่ " + y.year;
+    g.className = "rail-group"; g.textContent = txt;
     navEl.appendChild(g);
+  };
+  navEl.innerHTML = "";
+  grp("Меню · เมนูหลัก");
+  mk("หน้าหลัก", "", "#/", { "data-nav": "overview" });
+  mk("รายวิชา", SUBJECTS.length, "#/subjects", { "data-nav": "subjects" });
+  mk("ฝึกทบทวน", "", practiceHref(), { "data-nav": "practice" });
+  mk("ค้นหา", "/", null, { "data-nav": "find" }).addEventListener("click", focusSearch);
+  mk("ความก้าวหน้า", "", "#/progress", { "data-nav": "progress" });
+  YEARS.forEach(y => {
+    grp(y.year + " курс · ชั้นปีที่ " + y.year);
     y.sems.forEach(n => {
       const list = runningIn(n).sort(byNum);
       const cont = list.filter(s => semFirst(s) < n).length;
@@ -70090,20 +70108,17 @@ function buildNav() {
   });
   const un0 = unassigned().sort(byNum);
   if (un0.length) {
-    const gu = document.createElement("div");
-    gu.className = "rail-group"; gu.textContent = "ยังไม่ระบุภาคเรียน";
-    navEl.appendChild(gu);
+    grp("ยังไม่ระบุภาคเรียน");
     const body = mkFold("un", 'Без семестра<span>' + un0.length + ' วิชา</span>', "rail-sem");
     un0.forEach(s => navSubj(s, body));
   }
-  const g2 = document.createElement("div");
-  g2.className = "rail-group"; g2.textContent = "Инструменты · เครื่องมือ";
-  navEl.appendChild(g2);
+  grp("Инструменты · เครื่องมือ");
   const un = unassigned().length;
-  if (ADMIN) mk("ปรับภาคเรียน", un ? un + " ค้าง" : "", () => go({ v: "sem" }), { "data-nav": "sem" });
-  mk("Словарь · คลังศัพท์", "0%", () => go({ v: "glossary" }), { "data-nav": "glossary" });
-  mk("Карточки · Flashcard", "", () => go({ v: "flash" }), { "data-nav": "flash" });
-  mk("Тренажёр · ควิซ", "", () => go({ v: "quiz" }), { "data-nav": "quiz" });
+  mk("Словарь · คลังศัพท์", "0%", "#/glossary", { "data-nav": "glossary" });
+  mk("Карточки · Flashcard", "", "#/flash", { "data-nav": "flash" });
+  mk("Тренажёр · ควิซคำศัพท์", "", "#/quiz", { "data-nav": "quiz" });
+  if (ADMIN) mk("ปรับภาคเรียน", un ? un + " ค้าง" : "", "#/sem", { "data-nav": "sem" });
+  document.querySelectorAll('#bbar [data-bb="practice"]').forEach(a => { a.href = practiceHref(); });
 }
 
 /* ---- v5: สำรอง/นำเข้าความคืบหน้า — ทุกคีย์ atlas-* ใน localStorage (ยกเว้นโหมดผู้ดูแล) เป็นไฟล์ JSON ---- */
@@ -71561,14 +71576,10 @@ new MutationObserver(() => LIVE.forEach(d => d.draw && d.draw()))
   .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 /* ---- v2: แถบล่างมือถือ + ปุ่มขึ้นบน + จำตำแหน่งอ่าน ---- */
-document.querySelectorAll("#bbar [data-bb]").forEach(b => b.addEventListener("click", () => {
-  const v = b.dataset.bb;
-  if (v === "find") {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    searchEl.focus();
-    return;
-  }
-  go({ v });
+/* S2: ปุ่มที่พาไปหน้าอื่นเป็น <a href> (ตัวจับคลิกของ router จัดการ) · เหลือแค่ปุ่มกระทำ: ค้นหา (โฟกัสช่องค้นหาโดยไม่เลื่อนหน้า
+   — แถบบนติดจออยู่แล้ว ผู้อ่านไม่เสียตำแหน่งที่อ่าน) · สารบัญ (แทน «หน้าหลัก» เมื่ออยู่ในหน้าวิชาที่มีเนื้อหาเต็ม) */
+document.querySelectorAll("#bbar button[data-bb]").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.bb === "find") focusSearch();
 }));
 /* ---- v5: อ่านแบบออฟไลน์ (sw.js) ----
    ลงทะเบียนเฉพาะบนเว็บจริง ไม่ลงทะเบียนบน localhost/127.* (preview.bat, verify.py) กันไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย ?sw=1
@@ -71661,6 +71672,25 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S1 (ด่านอัตโนมัติของ build) BEGIN ===== */
 /* ===== SLOT S1 END ===== */
 /* ===== SLOT S2 (มือถือ: สารบัญ ชิปหัวข้อ แถบหลบ ชุดอ่านง่าย) BEGIN ===== */
+/* S2 · เปลือกนำทาง — ของที่อยู่ในช่องนี้ (ส่วนที่แก้ในฟังก์ชันของ S2 เอง: buildNav · renderOverview · subjCard · ตัวจัดการ #bbar)
+   หน้า #/subjects (แค็ตตาล็อก 54 วิชา + ตัวกรอง + ภาคของผู้อ่าน) · หน้า #/progress (สามตัวเลขแยกกัน + ต่อวิชา + HOOKS.html("progress") + สำรอง)
+   · สารบัญแบบแผ่น dialog.tsheet (มือถือ/จอ < 1400 · ห้ามใช้คลาส .toc ซึ่งบล็อก v4 ใช้ค้น) · ชิปหัวข้อรู้ตำแหน่ง (IO ของตัวเอง ไม่แตะ SPY_IO)
+   · แถบหลบตอนอ่าน (html.reading ≤ 900 px) · ท้ายหัวข้อ (✓ ผลควิซ ฝึกเรื่องนี้ ก่อนหน้า/ถัดไป) · ชุดอ่านง่าย (ตาราง .tw เลื่อนได้ · ข้อความวิชารูปแบบเดิม)
+   คีย์ในเครื่อง: atlas-ui-v1 = { subjF: {sem, status, deep} } (ตัวกรองหน้ารายวิชา) */
+/* ---- #bbar: ไฮไลต์พื้นที่ที่อยู่ · ชี้ «ฝึกทบทวน» ไป #/practice เมื่อ S5 ลงทะเบียนหน้านั้นแล้ว ---- */
+const BB_AREA = { overview: "overview", subjects: "subjects", subject: "subjects", glossary: "subjects", sem: "subjects",
+  practice: "practice", flash: "practice", quiz: "practice", oral: "practice", cram: "practice", search: "find", progress: "progress" };
+HOOKS.on("go", st => {
+  const area = BB_AREA[st.v] || "";
+  document.querySelectorAll("#bbar [data-bb]").forEach(b => {
+    const on = b.dataset.bb === area;
+    b.classList.toggle("on", on);
+    if (b.tagName === "A") { if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
+  });
+  const ph = practiceHref();                          // S5 ลงทะเบียน #/practice ทีหลังช่องนี้ — ชี้ปุ่มใหม่ทุกครั้งที่เปลี่ยนหน้า
+  document.querySelectorAll('#bbar [data-bb="practice"], #nav [data-nav="practice"]').forEach(a => { if (a.getAttribute("href") !== ph) a.href = ph; });
+});
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ===== SLOT S3 END ===== */

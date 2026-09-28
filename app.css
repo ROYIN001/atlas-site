@@ -1763,17 +1763,18 @@
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     grid-template-columns: repeat(5, 1fr); gap: 4px;
   }
-  #bbar button {
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  #bbar > a, #bbar > button {                      /* S2: ปุ่มที่พาไปหน้าอื่นเป็น <a> · ค้นหา/สารบัญเป็น <button> — หน้าตาเดียวกัน */
+    display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
     background: none; border: 0; border-radius: 8px; padding: 6px 2px;
     font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif;
-    font-size: 10.5px; color: var(--ink-3);
+    font-size: 11px; line-height: 1.25; color: var(--ink-2); text-decoration: none; text-align: center;
+    -webkit-tap-highlight-color: transparent; cursor: pointer;
   }
-  #bbar button svg {
+  #bbar > a svg, #bbar > button svg {
     width: 21px; height: 21px; fill: none; stroke: currentColor;
     stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
   }
-  #bbar button.on { color: var(--accent); background: var(--wash); }
+  #bbar > .on { color: var(--accent); background: var(--wash); }
 
   /* ============ v2: flashcards ============ */
   .flash { max-width: 580px; }
@@ -3629,6 +3630,12 @@
 /* ===== SLOT S1 BEGIN ===== */
 /* ===== SLOT S1 END ===== */
 /* ===== SLOT S2 BEGIN ===== */
+/* S2 · เปลือกนำทาง: ลิงก์การ์ด · หน้าหลัก · #/subjects · #/progress · แถบชิป + สารบัญแบบแผ่น (dialog.tsheet) · แถบหลบตอนอ่าน · ท้ายหัวข้อ · ชุดอ่านง่าย */
+/* ลิงก์ที่หน้าตาเป็นปุ่ม/การ์ด */
+a.subj, a.nav-item, .s2-cta, .s2-more a, .s2-glist a, .tend a, .ts-stat a { text-decoration: none; }
+a.subj { color: inherit; }
+a.subj:focus-visible, .s2-cta:focus-visible { outline-offset: 3px; }
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* ===== SLOT S3 END ===== */
