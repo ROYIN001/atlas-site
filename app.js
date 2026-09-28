@@ -71807,8 +71807,8 @@ function s7Autolink(el, sid) {
         const t = s7Topic(sid, tid), a = document.createElement("a");
         a.className = k ? "lk lk-alt" : "lk";
         a.href = "#/" + sid + "/" + tid;
-        a.title = t ? t.th : tid;
-        if (k) { a.textContent = "⁽" + "²³⁴⁵"[k - 1] + "⁾"; a.setAttribute("aria-label", "อีกหัวข้อของบรรยายเดียวกัน: " + (t ? t.th : tid)); }
+        a.title = t ? s7Plain(t.th) : tid;
+        if (k) { a.textContent = "⁽" + "²³⁴⁵"[k - 1] + "⁾"; a.setAttribute("aria-label", "อีกหัวข้อของบรรยายเดียวกัน: " + a.title); }
         else a.textContent = txt.slice(h.i, h.j);
         frag.appendChild(a);
         count++;

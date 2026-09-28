@@ -3703,6 +3703,7 @@
 .s7-st.ok .s7-badge { color: var(--ok); border-color: var(--ok); background: var(--panel); }
 .s7-st.wip .s7-badge { color: var(--accent-2); border-color: var(--accent-2); background: var(--wash-2); }
 .s7-src { font-size: 12px; color: var(--ink-3); overflow-wrap: anywhere; }
+@media print { .s7-b, #s7toast, .s7-strip, #view .rel, #view .mynote:not([open]) { display: none !important; } }
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 BEGIN ===== */
 /* ===== SLOT S8 END ===== */
