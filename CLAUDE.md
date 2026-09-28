@@ -415,10 +415,22 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 (ยังไม่ทำ)
 
 #### 14.6 S6 — SRS/วันสอบ/คืนก่อนสอบ
-(ยังไม่ทำ)
+- โค้ดทั้งหมดอยู่ในช่อง SLOT S6 (app.js/app.css) · ส่วนคำนวณล้วนอยู่ระหว่าง `/* ---- S6 core BEGIN` … `END` (`srsCore` `srsPlanCat` `srsSidOf` `srsQuizGrade`) ซึ่ง `tests/srs.test.cjs` รันใน vm — ห้ามแตะ DOM ในส่วนนั้น
+- **`atlas-srs-v1`** `{ <คีย์>: {due, ivl, ef, reps, lapses, last} }` · due/last = ms (due = เที่ยงคืนเวลาท้องถิ่นของวันครบกำหนด) · SM-2 ตัดทอน: ivl 1 → 3 → round(ivl×ef ก่อนปรับ) · ef เริ่ม 2.5 ต่ำสุด 1.3 · g < 3 = reps 0, lapses +1, ivl 1 · ivl ≤ 365 และ ≤ วันก่อนสอบของวิชา · **`atlas-exam-v1`** `{ <วิชา>: {date "YYYY-MM-DD", kind exam|zach|zacho, qa?} }` (qa = จำนวนคำถามปากเปล่าที่ #/cram นับได้) · **`atlas-seen-v1`** `{ <หัวข้อ>: {read, t} }` (read = จำนวนครั้งที่หัวข้อค้างกลางจอ > 20 วินาที)
+- **API:** `window.SRS.grade(key, 0–5, now?)` · `.due(prefix, now?)` (เรียงครบกำหนดก่อน แล้ว lapses มากก่อน) · `.get(key)` · `.all()` · `.reload()` · ทุกครั้งที่ให้คะแนนยิง `document` เหตุการณ์ `srs:grade` `{key, rec}` · `window.examPlan(sid, now?)` → `{days, final, topics|oral|terms: {pending, quota, today:[คีย์]}}` หรือ null ถ้าไม่ตั้งวันสอบ
+- **session อื่นป้อนคะแนน:** `window.SRS && SRS.grade(key, g)` — Flashcard/ควิซศัพท์ใช้ `termKey()` · ปากเปล่า `q:<วิชา>/<หัวข้อ>/<id>` (id เดิม หรือ `"qa-" + stableId(innerHTML ของ .qa-q หรือ summary)`) · แนะนำ จำได้ = 4 ลังเล = 3 ไม่ได้ = 1 · ที่ S6 ป้อนเอง: ติ๊ก ✓ หัวข้อ/สารบัญ/คลังศัพท์ = 4 · quiz2 ตอบครบบล็อก → `z:<หัวข้อ>/<data-id หรือลำดับ quiz2>` ตาม % (100 = 5 · ≥ 80 = 4 · ≥ 60 = 3 · ≥ 40 = 2)
+- ที่เสียบไว้: `overview-top` การ์ด «วันนี้ทวนอะไร» + ชิป «อีก N วัน» · `subject-head` (เฉพาะวิชาเนื้อหาเต็ม) «ครบกำหนดทวน n · ยังอ่อน m» (ขยายแล้วเรียก `margWeak()` เดิม) + ปุ่ม ☾ โหมดคืนก่อนสอบ + ช่องวันสอบ/แผนวันนี้ · `progress` ตารางกำหนดทวน · หน้า `#/cram/<วิชา>` (registerPage) · hooks `subject` `fill` `clear` `overview`
+- `#/cram` คัด `header.sec-h .k-sum .k-trap details.qa` + `.call` ที่ป้ายมี «กับดัก/ออกสอบ» จาก `DEEP[sid].topics` (ไม่รวมบล็อกสรุป) · CSS แบบแน่นของกล่อง STD2 อยู่ใต้ `.cram` · vhist ทั้งวิชา ~55 000 px ที่ 1280 px · ถ้าเพิ่มชนิดกล่องสรุปใหม่ใน STD2 ให้เพิ่มใน `CR_SEL`
+- `tests/srs.test.cjs` มีเทสต์เบราว์เซอร์ (Playwright ของ Python · ~15 วินาที · ข้ามเองถ้าไม่มี) — `page.clock` มีผลทั้ง context จึงเปิด context ใหม่ที่คัดลอก localStorage มาสำหรับ «+8 วัน»
 
 #### 14.7 S7 — ลิงก์/ส่วนตัว/สถานะเนื้อหา
 (ยังไม่ทำ)
 
 #### 14.8 S8 — ข้อมูลผู้เรียน
-(ยังไม่ทำ)
+- **คีย์ศัพท์ถาวร:** `termKey(m, t, i)` = `"g:" + m.id + "-" + stableId(t.ru)` (คำรัสเซียซ้ำในกลุ่ม → `-2`, `-3` ตามลำดับที่พบ) — เพิ่ม/ย้ายคำใน MODULES ได้ เครื่องหมายไม่เลื่อน · **แก้คำรัสเซียของคำเดิม = คีย์ใหม่** (เครื่องหมายของคำนั้นหาย) ถ้าจำเป็นต้องแก้ ให้เขียนขั้นย้ายคีย์เพิ่มใน `learnerStart()`
+- **`atlas-meta-v1` = `{schema, created, lastActive}`** · `SCHEMA = 2` · `learnerStart()` (ต่อจาก `termKey` — รันก่อนช่อง SLOT เพราะ S6 อ่าน `atlas-srs-v1` ตอนเริ่ม) ย้ายคีย์ `g:<กลุ่ม>-<ลำดับ>` ใน DONE/BM/`atlas-srs-v1` ครั้งเดียวเมื่อ schema < 2 (เขียนไม่สำเร็จ → schema ไม่ขยับ ย้ายใหม่ครั้งหน้า) · เปลี่ยนความหมายคีย์ใดอีก → เพิ่ม SCHEMA + ขั้นย้ายใน `learnerStart()`
+- **`store(key, value)`** (ต้นส่วน APP) = ตัวเขียนเดียวของข้อมูลผู้เรียน: สตริงเขียนตรง · `undefined` ลบ · อื่น ๆ JSON · คืน true/false · ล้ม → `STORE_ERR` + แถบ «บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม» ครั้งเดียวพร้อมลิงก์ `#/progress` — **คีย์ใหม่ของทุก session เขียนผ่าน `store()`** · `saveQuiz` (บล็อก v4) เปลี่ยนเป็น `store(QKEY, QUIZ)` แล้ว ต้องแก้ `_work/layout/layout.js` ในเครื่องตามก่อนรัน patch_layout ครั้งหน้า
+- **ทะเบียนคีย์ `learnerKey(key, {kind: "set"|"obj"|"any"|"raw", re, label, count(v), temp})`** — ใช้ตรวจไฟล์สำรองและสรุปก่อนนำเข้า · session อื่นเรียกได้ที่ระดับบนสุดของช่องตัวเอง (ไม่ลงทะเบียน = นำเข้าได้แต่ขึ้น «ไม่รู้จัก n รายการ») · `temp: true` = ปุ่ม «ล้างข้อมูลชั่วคราว» ลบได้ (ตอนนี้ `atlas-last-v1` `atlas-rail-v1` + `atlas-backup-prev` ถามแยก)
+- **ไฟล์สำรองรุ่น 2** `{app: "atlas-site", v: 2, schema, saved, data: {คีย์ atlas-*: สตริงดิบ}}` ไม่รวม `atlas-admin-v1` `atlas-backup-prev` · รับรุ่น 1 ได้ (schema 1 → ย้ายหลังโหลดใหม่) · รุ่นไฟล์/ข้อมูลใหม่กว่า/คีย์ผิดรูปแบบ → ปฏิเสธ ไม่แตะข้อมูล
+- นำเข้า = `importPlan()` (ตรวจ+สรุป) → `confirm` → `applyLearnerData()` เก็บชุดปัจจุบันลง **`atlas-backup-prev`** `{saved, why, data}` ก่อน (เก็บไม่ได้ = ยกเลิก) → เขียน · ล้มกลางทางคืนชุดเดิมทีละคีย์ · `restorePrev()` = ปุ่ม «กู้คืนชุดก่อนนำเข้า» (สลับชุด กดซ้ำย้อนกลับ) · `progressImport(file)` ยังเรียกแบบเดิม (throw = เหตุผล · ยกเลิก = false)
+- การ์ด «พื้นที่เก็บในเครื่องนี้» + «ชุดก่อนนำเข้า» ผ่าน `HOOKS.html("progress")` · **หน้า `#/progress` สำรอง** ลงทะเบียนเฉพาะเมื่อยังไม่มี `PAGES`/`PAGE_DEFS.progress` — เมื่อ S2 ทำหน้าจริงแล้ว ตัวสำรองไม่ทำงานเอง (S9 ลบได้) · tests: `tests/learner-data.test.cjs`
