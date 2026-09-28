@@ -944,17 +944,41 @@ function FIGS_LOAD() {
    เลื่อนไปถึงหัวข้อนั้นจริง ๆ ส่วนรูปเป็นไฟล์ .webp แยกที่เบราว์เซอร์
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
-const DATA_VERSION = "20260926-terms1";
-const DBCACHE = new Map();
+// DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
+const DATA_VERSION = "a1beb6b538";
+const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
+const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
+
+/* ?v= ของไฟล์ข้อมูล: data/t กับ data/ix ใช้ manifest.subjects[<วิชา>].v (hash ของเนื้อหาวิชานั้น) — แก้เนื้อหาวิชาเดียว
+   แคชของวิชาอื่นยังใช้ได้ · manifest โหลดไม่ได้หรือไม่มี v ใช้ DATA_VERSION (เปลี่ยนทุกครั้งที่อะไรก็ตามเปลี่ยน จึงไม่เก่า) */
+function dbVer(coll, name) {
+  if (coll !== "t" && coll !== "ix") return Promise.resolve(DATA_VERSION);
+  let man = null;
+  try { man = manifestGet(); } catch (e) {}          // manifestGet ประกาศทีหลัง (ส่วน js/subj) — ก่อนนั้นใช้ DATA_VERSION
+  const sid = name.split("__")[0];
+  return Promise.resolve(man).then(m => (m && m.subjects && m.subjects[sid] && m.subjects[sid].v) || DATA_VERSION,
+    () => DATA_VERSION);
+}
+function dbUrl(coll, name) {
+  return dbVer(coll, name).then(v => "data/" + coll + "/" + name + ".json?v=" + v);
+}
 
 function dbGet(coll, name) {
   const key = coll + "/" + name;
-  if (DBCACHE.has(key)) return DBCACHE.get(key);
-  const p = fetch("data/" + coll + "/" + name + ".json?v=" + DATA_VERSION)
+  if (DBCACHE.has(key)) {
+    const hit = DBCACHE.get(key);
+    DBCACHE.delete(key); DBCACHE.set(key, hit);        // LRU: ย้ายไปท้ายสุด = ใช้ล่าสุด
+    return hit;
+  }
+  const p = dbUrl(coll, name).then(url => fetch(url))
     .then(r => r.ok ? r.json() : null)
     .catch(() => { DB_FAILED = true; return null; });
   DBCACHE.set(key, p);
+  if (coll === "t") {                                  // เกิน DB_KEEP หัวข้อ ทิ้งหัวข้อที่ไม่ได้ใช้นานที่สุด (ดัชนี ix ไม่นับ)
+    const topics = [...DBCACHE.keys()].filter(k => k.startsWith("t/"));
+    for (let i = 0; i < topics.length - DB_KEEP; i++) DBCACHE.delete(topics[i]);
+  }
   return p;
 }
 
