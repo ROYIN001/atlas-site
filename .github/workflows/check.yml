@@ -1,0 +1,130 @@
+# ด่านอัตโนมัติ (CLAUDE.md หัวข้อ 4 และ 14 — ของ S1)
+# · ทุก PR และทุก push เข้า main: node --test tests/*.test.cjs + src/verify.py รายวิชาแบบ matrix
+#   PR = เฉพาะวิชาที่ไฟล์ใน diff แตะ + toe เป็นตัวแทนโครงเว็บส่วนกลาง (src/ci_subjects.py) · main = ครบทุกวิชา
+# · กลางคืน: verify --mobile (จอ 360 px ไม่มีอะไรล้นจอ) ทั้งเว็บ
+# repo เป็น public จึงไม่มีโควตานาทีของ Actions
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 22 * * *"        # 01:23 น. เวลามอสโก
+  workflow_dispatch:
+    inputs:
+      mobile:
+        description: "ตรวจจอมือถือ 360 px ด้วย (--mobile)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests:
+    name: tests (node --test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: node --test tests/*.test.cjs
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test --test-reporter=spec tests/*.test.cjs 2>&1 | tee tests.log
+      - name: เนื้อหาเทียบ counts-baseline
+        if: always()
+        shell: bash
+        run: python src/counts.py | tee counts.log
+      - name: สรุปผล
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### tests"
+            echo '```'
+            grep -E '^ℹ (tests|pass|fail|skipped)' tests.log || tail -n 20 tests.log
+            grep -E '^\s*✖' tests.log | head -n 40 || true
+            echo '```'
+            echo "### จำนวนเนื้อหาต่อวิชา (src/counts.py)"
+            echo '```'
+            cat counts.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  plan:
+    name: เลือกวิชา
+    runs-on: ubuntu-latest
+    outputs:
+      subjects: ${{ steps.pick.outputs.subjects }}
+      mobile: ${{ steps.pick.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        shell: bash
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            subjects=$(git diff --name-only "$BASE...$HEAD" | python src/ci_subjects.py)
+          else
+            subjects=$(python src/ci_subjects.py --all)
+          fi
+          mobile=false
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.mobile }}" = "true" ]; then mobile=true; fi
+          echo "subjects=$subjects" >> "$GITHUB_OUTPUT"
+          echo "mobile=$mobile" >> "$GITHUB_OUTPUT"
+          echo "วิชาที่ตรวจ: $subjects · mobile=$mobile" >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: verify ${{ matrix.subject }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        subject: ${{ fromJSON(needs.plan.outputs.subjects) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: ติดตั้ง Playwright + Chromium
+        shell: bash
+        run: |
+          pip install "$(grep -i '^playwright' requirements.txt)"
+          python -m playwright install chromium --with-deps
+      - name: python src/verify.py --subject ${{ matrix.subject }}
+        shell: bash
+        run: |
+          set -o pipefail
+          extra=""
+          if [ "${{ needs.plan.outputs.mobile }}" = "true" ]; then extra="--mobile"; fi
+          python src/verify.py --no-throttle --timeout 240 --subject "${{ matrix.subject }}" $extra 2>&1 | tee verify.log
+      - name: สรุปผล
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### verify ${{ matrix.subject }}"
+            echo '```'
+            grep -E '^(home ready|id |${{ matrix.subject }} |mobile|search|SUMMARY|total)|^\s+(!|✗|full:|sum:)' verify.log | head -n 60 || tail -n 30 verify.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
