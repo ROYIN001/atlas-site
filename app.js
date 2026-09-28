@@ -71876,7 +71876,8 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
   function headInner(sid) {
     const now = Date.now(), e = EXAMS[sid] || {}, d = daysLeft(sid, now);
     return '<div class="s6-row"><button type="button" class="s6-due" data-s6open aria-expanded="false" aria-controls="s6panel">' +
-      'ครบกำหนดทวน <b>' + subjDue(sid, now).length + '</b> · ยังอ่อน <b>' + weakTopics(sid).length + '</b> <span aria-hidden="true">▾</span></button></div>' +
+      'ครบกำหนดทวน <b>' + subjDue(sid, now).length + '</b> · ยังอ่อน <b>' + weakTopics(sid).length + '</b> <span aria-hidden="true">▾</span></button>' +
+      '<a class="s6-cram" href="#/cram/' + sid + '"' + (CRAM_OK.has(sid) ? '' : ' hidden') + '>☾ โหมดคืนก่อนสอบ</a></div>' +
       '<div class="s6-panel" id="s6panel" hidden></div>' +
       '<div class="s6-row s6-ex"><label>สอบวันที่ <input type="date" data-s6date value="' + escT(e.date || "") + '"></label>' +
       '<select data-s6kind aria-label="ชนิดการสอบ">' + Object.keys(KINDS).map(k => '<option value="' + k + '"' + ((e.kind || "exam") === k ? ' selected' : '') + '>' + KINDS[k] + '</option>').join("") + '</select>' +
@@ -71931,10 +71932,33 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     kind.addEventListener("change", () => { if (date.value) save(); });
     if (clr) clr.addEventListener("click", () => { date.value = ""; save(); });
   }
+  /* ปุ่มโหมดคืนก่อนสอบเห็นเฉพาะวิชาที่มี .k-sum หรือ details.qa — รู้จากหัวข้อที่เติมแล้ว (hook fill)
+     หรือดูไฟล์หัวข้อต้น ๆ ของวิชาหลังเปิดหน้า 1,5 วินาที (แคช dbGet เดียวกับตัวเติมหัวข้อ ไม่โหลดซ้ำ) */
+  const CRAM_OK = new Set(), HAS_CRAM = /class="[^"]*\b(k-sum|qa)\b/;
+  const showCram = sid => {
+    CRAM_OK.add(sid);
+    const a = view.querySelector('.s6-head[data-s6sid="' + sid + '"] .s6-cram');
+    if (a) a.hidden = false;
+  };
+  let PROBE_T = 0;
   HOOKS.on("subject", (s, deep) => {
     const box = deep && view.querySelector('.s6-head[data-s6sid="' + s.id + '"]');
-    if (box) bindHead(box, s.id);
+    if (!box) return;
+    bindHead(box, s.id);
+    if (CRAM_OK.has(s.id)) return;
+    clearTimeout(PROBE_T);
+    PROBE_T = setTimeout(async () => {
+      for (const t of deep.topics.slice(0, 4)) {
+        if (CRAM_OK.has(s.id) || state.id !== s.id) return;
+        const d = await dbGet("t", s.id + "__" + t.id);
+        if (d && HAS_CRAM.test(d.html || "")) { showCram(s.id); return; }
+      }
+    }, 1500);
   });
+  HOOKS.on("fill", (el, t, sid) => {                                               // นับเฉพาะหัวข้อฉบับเต็ม (หน้า #/cram ใช้ DEEP[sid].topics)
+    if (sid && !CRAM_OK.has(sid) && DEEP[sid] && DEEP[sid].topics.includes(t) && el.querySelector(".k-sum, details.qa")) showCram(sid);
+  });
+  HOOKS.on("clear", () => clearTimeout(PROBE_T));
 
   /* ---- หน้าแรก: การ์ด «วันนี้ทวนอะไร» (HOOKS.html "overview-top") — รายการพร้อมเหตุผล + ปุ่มไปทำเลย + ชิปวันสอบ ---- */
   const oralHref = sid => PAGE_DEFS.oral ? "#/oral/" + sid : "#/cram/" + sid;
@@ -72068,6 +72092,161 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
       (ex.length ? '<ul class="s6-exl">' + ex.map(x => '<li><a href="#/' + x.sid + '">' + escT(x.s.th) + '</a> · ' + KINDS[x.p.kind].split(" · ")[0] + ' ' +
         fmtDate(x.p.date) + ' · ' + leftTxt(x.p.days) + '</li>').join("") + '</ul>' : '') +
       '</section>';
+  });
+
+  /* ---- หน้า #/cram/<วิชา> — คืนก่อนสอบ: หัวส่วน · สรุป 1 นาที · กับดัก · คำถามปากเปล่า ของทุกหัวข้อในหน้าเดียว
+     ดึงไฟล์หัวข้อด้วย dbGet → template (ไม่รันสคริปต์ ไม่โหลดรูป) → คัดเฉพาะกล่องเหล่านี้ ถอดแบบจำลอง/รูป/สคริปต์ → ไม่มี canvas
+     วิชารูปแบบเดิม: details.qa + กล่อง .call ที่ป้ายมีคำว่า «กับดัก»/«ออกสอบ» · เรียงหัวข้อ ยังอ่อน > ครบกำหนด > ยังไม่อ่าน ขึ้นก่อน ---- */
+  let CRAM_JOB = 0;
+  HOOKS.on("clear", () => { CRAM_JOB++; });
+  const CR_SEL = "header.sec-h, .k-sum, .k-trap, details.qa, .call";
+  const CR_STRIP = "[data-demo], figure, script, canvas, video, audio, iframe, img, details.deep, .k-exp";
+  const trapCall = el => { const l = el.querySelector(":scope > .lbl"); return !!l && /กับดัก|ออกสอบ/.test(l.textContent); };
+  const qaIdOf = d => {                                                            // ข้อตกลงร่วม: id เดิม หรือ "qa-" + stableId(คำถาม)
+    if (d.id) return d.id;
+    const s = d.querySelector(":scope > summary"), q = s && (s.querySelector(".qa-q") || s);
+    return "qa-" + stableId(q ? q.innerHTML : "");
+  };
+  const anchorOf = el => { for (let x = el; x; x = x.parentElement) if (x.id) return x.id; return ""; };
+  const nextTxt = r => r ? "ทวนครั้งหน้า " + new Date(r.due).toLocaleDateString("th-TH", { day: "numeric", month: "short" }) : "";
+  function topicState(sid, t, dueKeys) {
+    const why = [], r = quizOfTopic(t.id);
+    let score = 0;
+    if (r && (r.pct < 80 || !r.full)) { why.push(r.full ? "ควิซ " + r.pct + " %" : "ควิซยังไม่ครบ " + r.done + "/" + r.n); score += 4; }
+    const n = dueKeys.filter(k => k === "k:" + t.id || k.startsWith("z:" + t.id + "/") || k.startsWith("q:" + sid + "/" + t.id + "/")).length;
+    if (n) { why.push("ครบกำหนดทวน " + n); score += 2; }
+    if (!DONE.has("k:" + t.id) && !SRS.get("k:" + t.id) && !SEEN[t.id]) { why.push("ยังไม่อ่าน"); score += 1; }
+    return { why, score };
+  }
+  function cramExtract(sid, t, html) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html;
+    const root = tpl.content;
+    const top = root.children.length === 1 && root.firstElementChild.tagName === "DIV" ? root.firstElementChild.className : "";
+    const picked = [...root.querySelectorAll(CR_SEL)].filter(el => !el.matches(".call") || trapCall(el));
+    const items = picked.filter(el => !picked.some(p => p !== el && p.contains(el)));
+    const now = Date.now();
+    let h = "", qa = 0, lastSec = "";
+    items.forEach(el => {
+      const a = anchorOf(el) || lastSec;                                             // id ที่มีจริงในไฟล์หัวข้อ (ตัวเอง บรรพบุรุษ หรือหัวส่วนก่อนหน้า)
+      const more = '<a class="cr-more" href="#/' + sid + '/' + t.id + (a ? "/" + encodeURIComponent(a) : "") + '">อ่านเต็ม ›</a>';
+      if (el.matches("header.sec-h")) {
+        if (el.id) lastSec = el.id;
+        const no = el.querySelector(".sec-no"), tt = el.querySelector(".sec-t"), th = el.querySelector(".sec-th");
+        h += '<div class="cr-it cr-sec"><b lang="ru">' + escT(((no ? no.textContent + " " : "") + (tt || el).textContent).replace(/\s+/g, " ").trim()) + '</b>' +
+          (th ? '<span>' + escT(th.textContent.trim()) + '</span>' : '') + more + '</div>';
+        return;
+      }
+      const c = el.cloneNode(true);
+      c.querySelectorAll(CR_STRIP).forEach(x => x.remove());
+      [c, ...c.querySelectorAll("[id]")].forEach(x => x.removeAttribute("id"));
+      if (el.matches("details.qa")) {
+        qa++;
+        const key = "q:" + sid + "/" + t.id + "/" + qaIdOf(el), r = SRS.get(key);
+        c.classList.add("cr-q");
+        if (r) c.classList.add(r.due <= now ? "cr-due" : "cr-okq");
+        c.setAttribute("data-srs", key);
+        const g = document.createElement("div");
+        g.className = "cr-qg";
+        g.innerHTML = '<button type="button" data-crg="4">จำได้</button><button type="button" data-crg="1">ยังไม่ได้</button>' +
+          '<span class="cr-qs" role="status">' + nextTxt(r) + '</span>' + more;
+        c.appendChild(g);
+        h += '<div class="cr-it cr-qa">' + c.outerHTML + '</div>';
+        return;
+      }
+      const lab = c.querySelector(":scope > .blk-l, :scope > .lbl");                // «อ่านเต็ม» อยู่ในแถวป้ายของกล่อง ไม่เพิ่มบรรทัด
+      if (lab) lab.insertAdjacentHTML("beforeend", more);
+      h += '<div class="cr-it cr-' + (el.matches(".k-sum") ? "sum" : "trap") + '">' + c.outerHTML + (lab ? '' : '<p class="cr-src">' + more + '</p>') + '</div>';
+    });
+    return { html: h ? '<div class="cr-b' + (top ? " " + escT(top) : "") + '">' + h + '</div>' : "", qa };
+  }
+  function cramRender(st) {
+    const sid = (st.seg || [])[0], s = ALL_SUBJ.find(x => x.id === sid), deep = DEEP[sid];
+    const job = ++CRAM_JOB;
+    if (!s || !deep) {
+      view.innerHTML = '<div class="wrap cram"><div class="page-head"><p class="eyebrow">Перед экзаменом</p><h1 class="page-title">โหมดคืนก่อนสอบ</h1>' +
+        '<p class="lede">ใช้ได้กับวิชาที่มีเนื้อหาเต็มเท่านั้น</p><p><a href="#/">กลับหน้าแรก</a></p></div></div>';
+      return;
+    }
+    const now = Date.now(), p = examPlan(sid, now), dueKeys = SRS.due("", now).map(r => r.key);
+    const rows = deep.topics.map((t, i) => Object.assign({ t, i }, topicState(sid, t, dueKeys))).sort((a, b) => b.score - a.score || a.i - b.i);
+    const FILTERS = [["all", "ทั้งหมด"], ["sum", "สรุป"], ["trap", "กับดัก"], ["qa", "ปากเปล่า"], ["due", "เฉพาะหัวข้อที่ต้องทวน"]];
+    view.innerHTML = '<div class="wrap cram"><nav class="crumb" aria-label="ตำแหน่ง"><a href="#/">ภาพรวมหลักสูตร</a><span>›</span><a href="#/' + sid + '">' + escT(s.th) + '</a><span>›</span><b>คืนก่อนสอบ</b></nav>' +
+      '<div class="page-head"><p class="eyebrow">Перед экзаменом · คืนก่อนสอบ</p>' +
+      '<h1 class="page-title">' + (ICONS[sid] ? '<span class="ticon">' + ICONS[sid] + '</span>' : '') + escT(s.ru) + '</h1>' +
+      '<div class="page-title-th">' + escT(s.th) + ' · สรุป 1 นาที กับดักข้อสอบ และคำถามปากเปล่า ของทุกหัวข้อในหน้าเดียว</div>' +
+      '<p class="lede">หัวข้อที่ควิซยังอ่อน ครบกำหนดทวน หรือยังไม่ได้อ่าน ขึ้นก่อน · เปิดคำถามแล้วลองตอบเองก่อนดูคำตอบ จากนั้นกด «จำได้» หรือ «ยังไม่ได้» ' +
+      'ระบบจะนัดทวนข้อนั้นให้ · «อ่านเต็ม» พากลับไปที่ส่วนนั้นในฉบับเต็ม</p>' +
+      (p && !p.past ? '<p><span class="s6-left' + (p.days <= 3 ? ' near' : '') + '">' + escT(KINDS[p.kind].split(" · ")[0]) + ' ' + fmtDate(p.date) + ' · ' + leftTxt(p.days) + '</span></p>' + planHtml(p) : '') +
+      '<div class="cr-bar" role="group" aria-label="แสดงเฉพาะ">' + FILTERS.map((x, i) =>
+        '<button type="button" data-cf="' + x[0] + '"' + (i ? '' : ' class="on"') + ' aria-pressed="' + !i + '">' + x[1] + '</button>').join("") +
+      '<span class="m" id="crStat" role="status">กำลังโหลด 0/' + rows.length + ' หัวข้อ</span></div></div>' +
+      '<div class="cr-list">' + rows.map(x => '<section class="cr-t' + (x.score ? " hot" : "") + '" data-tid="' + x.t.id + '" aria-labelledby="cr-h-' + x.t.id + '">' +
+        '<header class="cr-h"><span class="cr-n">' + (x.i + 1) + '</span><div class="cr-tt"><h2 lang="ru" id="cr-h-' + x.t.id + '">' + escT(x.t.ru) + '</h2><div class="th">' + escT(x.t.th) + '</div>' +
+        (x.why.length ? '<div class="cr-why">' + x.why.map(w => '<i>' + escT(w) + '</i>').join("") + '</div>' : '') + '</div>' +
+        '<div class="cr-ha"><a href="#/' + sid + '/' + x.t.id + '">อ่านเต็ม ›</a>' +
+        '<button type="button" data-crk="k:' + x.t.id + '" title="ทวนหัวข้อนี้แล้ว — นัดทวนครั้งถัดไป และติ๊กทบทวนแล้ว">ทวนแล้ว ✓</button></div></header>' +
+        '<div class="cr-body"><p class="cr-load">กำลังโหลด…</p></div></section>').join("") + '</div></div>';
+    const list = view.querySelector(".cr-list"), stat = view.querySelector("#crStat");
+    view.querySelectorAll("[data-cf]").forEach(b => b.addEventListener("click", () => {
+      view.querySelectorAll("[data-cf]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+      list.className = "cr-list" + (b.dataset.cf === "all" ? "" : " f-" + b.dataset.cf);
+    }));
+    list.addEventListener("click", e => {
+      const kb = e.target.closest("[data-crk]");
+      if (kb) {
+        const k = kb.dataset.crk;
+        SRS.grade(k, 4);
+        if (!DONE.has(k)) toggleKey(k);                                              // ติ๊ก «ทบทวนแล้ว» ให้ตรงกับหน้าวิชา
+        kb.textContent = "ทวนแล้ว ✓ · " + nextTxt(SRS.get(k));
+        kb.disabled = true;
+        return;
+      }
+      const gb = e.target.closest("[data-crg]");
+      const d = gb && gb.closest("details[data-srs]");
+      if (!d) return;
+      const g = +gb.dataset.crg, r = SRS.grade(d.getAttribute("data-srs"), g);
+      d.classList.remove("cr-due");
+      d.classList.toggle("cr-okq", g >= 3);
+      d.classList.toggle("cr-miss", g < 3);
+      const stt = d.querySelector(".cr-qs");
+      if (stt) stt.textContent = (g >= 3 ? "จำได้ · " : "นัดทวนพรุ่งนี้ · ") + nextTxt(r);
+    });
+    let done = 0, qaN = 0, empty = 0;
+    const one = async x => {
+      const d = await dbGet("t", sid + "__" + x.t.id);
+      if (job !== CRAM_JOB) return;
+      const sec = list.querySelector('.cr-t[data-tid="' + x.t.id + '"]'), body = sec && sec.querySelector(".cr-body");
+      if (!body) return;
+      if (!d || typeof d.html !== "string") {
+        body.innerHTML = '<p class="cr-load">โหลดหัวข้อนี้ไม่สำเร็จ — <a href="#/' + sid + '/' + x.t.id + '">เปิดในฉบับเต็ม</a></p>';
+        return;
+      }
+      const r = cramExtract(sid, x.t, d.html);
+      qaN += r.qa;
+      if (r.html) body.innerHTML = r.html;
+      else { empty++; sec.classList.add("empty"); body.innerHTML = '<p class="cr-load">หัวข้อนี้ไม่มีสรุป กับดัก หรือคำถามปากเปล่า — อ่านในฉบับเต็ม</p>'; }
+    };
+    (async () => {
+      const q = rows.slice();
+      const worker = async () => {
+        while (q.length && job === CRAM_JOB) {
+          await one(q.shift());
+          done++;
+          if (job === CRAM_JOB && done < rows.length) stat.textContent = "กำลังโหลด " + done + "/" + rows.length + " หัวข้อ";
+        }
+      };
+      await Promise.all([worker(), worker(), worker(), worker()]);                   // ขนานทีละ 4 ไฟล์ ตามลำดับที่แสดง
+      if (job !== CRAM_JOB) return;
+      stat.textContent = rows.length + " หัวข้อ · คำถามปากเปล่า " + qaN + " ข้อ" + (empty ? " · " + empty + " หัวข้อไม่มีสรุป/คำถาม" : "");
+      if (qaN) CRAM_OK.add(sid);
+      if (EXAMS[sid] && qaN && EXAMS[sid].qa !== qaN) { EXAMS[sid].qa = qaN; saveExams(); }   // แผนสอบรู้จำนวนคำถามปากเปล่าทั้งหมดแล้ว
+      list.classList.add("ready");
+    })();
+  }
+  registerPage("cram", {
+    render: cramRender,
+    title: st => { const s = ALL_SUBJ.find(x => x.id === (st.seg || [])[0]); return "คืนก่อนสอบ" + (s ? " — " + s.th : ""); },
   });
 })();
 /* ===== SLOT S6 END ===== */
