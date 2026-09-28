@@ -3782,5 +3782,21 @@ details.cr-miss { border-left: 3px solid var(--crit); }
 /* ===== SLOT S7 BEGIN ===== */
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 BEGIN ===== */
+/* S8: แถบ «บันทึกไม่สำเร็จ» (แสดงครั้งเดียว) · การ์ดข้อมูลในเครื่องในหน้า #/progress */
+#s8bar {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 90;
+  display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; width: max-content; max-width: min(560px, calc(100vw - 32px)); box-sizing: border-box;
+  padding: 8px 8px 8px 14px; border-radius: var(--radius); background: var(--crit); color: #fff; font-size: 13.5px; box-shadow: var(--shadow);
+}
+#s8bar a { color: #fff; font-weight: 600; }
+#s8bar button { background: none; border: 0; color: #fff; font-size: 18px; line-height: 1; padding: 4px 8px; cursor: pointer; }
+@media (max-width: 900px) { #s8bar { bottom: calc(78px + env(safe-area-inset-bottom)); } }
+.s8card { margin-top: 18px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); max-width: 70ch; }
+.s8card h3 { margin: 0 0 6px; font-size: 15px; }
+.s8card p { margin: 0 0 12px; color: var(--ink-2); font-size: 13.5px; line-height: 1.6; }
+.s8card .s8m { font-size: 12.5px; color: var(--ink-3); }
+.s8card .qbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.s8card .s8warn { color: var(--crit); }
+.s8card ul.s8list { margin: 0 0 12px; padding-left: 20px; font-size: 13.5px; color: var(--ink-2); }
 /* ===== SLOT S8 END ===== */
 /* ===== SLOTS END ===== */
