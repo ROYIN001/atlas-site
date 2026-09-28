@@ -1,0 +1,141 @@
+{
+ "_about": "สร้างโดย python src/counts.py --update — ห้ามแก้มือ · จำนวนใดต่ำกว่านี้ tests/verify ตก",
+ "_site": {
+  "demo_functions": 439,
+  "fig_files": 1158
+ },
+ "subjects": {
+  "asu": {
+   "demo_keys": 15,
+   "demo_slots": 33,
+   "fig_files": 53,
+   "fig_slots": 53,
+   "html_kb": 1762,
+   "ids": 23,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 25
+  },
+  "elob": {
+   "demo_keys": 77,
+   "demo_slots": 86,
+   "fig_files": 163,
+   "fig_slots": 241,
+   "html_kb": 3974,
+   "ids": 6,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 36
+  },
+  "hist": {
+   "demo_keys": 12,
+   "demo_slots": 796,
+   "fig_files": 337,
+   "fig_slots": 337,
+   "html_kb": 6920,
+   "ids": 1204,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 27
+  },
+  "nadezh": {
+   "demo_keys": 60,
+   "demo_slots": 93,
+   "fig_files": 101,
+   "fig_slots": 142,
+   "html_kb": 3231,
+   "ids": 0,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 28
+  },
+  "nav": {
+   "demo_keys": 60,
+   "demo_slots": 155,
+   "fig_files": 88,
+   "fig_slots": 123,
+   "html_kb": 6805,
+   "ids": 1353,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 22
+  },
+  "ppo": {
+   "demo_keys": 40,
+   "demo_slots": 40,
+   "fig_files": 74,
+   "fig_slots": 86,
+   "html_kb": 2033,
+   "ids": 0,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 34
+  },
+  "suka": {
+   "demo_keys": 18,
+   "demo_slots": 20,
+   "fig_files": 77,
+   "fig_slots": 85,
+   "html_kb": 430,
+   "ids": 0,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 17
+  },
+  "surn": {
+   "demo_keys": 16,
+   "demo_slots": 16,
+   "fig_files": 0,
+   "fig_slots": 0,
+   "html_kb": 408,
+   "ids": 6,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 21
+  },
+  "tau": {
+   "demo_keys": 33,
+   "demo_slots": 30,
+   "fig_files": 95,
+   "fig_slots": 95,
+   "html_kb": 566,
+   "ids": 0,
+   "meta_demos": 4,
+   "summary": 4,
+   "topics": 17
+  },
+  "teh_el": {
+   "demo_keys": 30,
+   "demo_slots": 40,
+   "fig_files": 80,
+   "fig_slots": 80,
+   "html_kb": 1645,
+   "ids": 0,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 27
+  },
+  "toe": {
+   "demo_keys": 1,
+   "demo_slots": 0,
+   "fig_files": 0,
+   "fig_slots": 0,
+   "html_kb": 60,
+   "ids": 0,
+   "meta_demos": 2,
+   "summary": 4,
+   "topics": 11
+  },
+  "vhist": {
+   "demo_keys": 43,
+   "demo_slots": 113,
+   "fig_files": 90,
+   "fig_slots": 90,
+   "html_kb": 3064,
+   "ids": 782,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 23
+  }
+ }
+}
