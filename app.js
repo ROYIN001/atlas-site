@@ -70161,15 +70161,24 @@ function buildNav() {
   mk("Тренажёр · ควิซ", "", () => go({ v: "quiz" }), { "data-nav": "quiz" });
 }
 
-/* ---- v5: สำรอง/นำเข้าความคืบหน้า — ทุกคีย์ atlas-* ใน localStorage (ยกเว้นโหมดผู้ดูแล) เป็นไฟล์ JSON ---- */
+/* ---- สำรอง/นำเข้าความคืบหน้า (v5 · S8 ทำให้กู้คืนได้) — ทุกคีย์ atlas-* ใน localStorage เป็นไฟล์ JSON ----
+   ไฟล์รุ่น 2: {app: "atlas-site", v: 2, schema, saved, data: {<คีย์ atlas-*>: <สตริงดิบใน localStorage>}} ไม่รวม atlas-admin-v1 และ atlas-backup-prev
+   นำเข้า: ตรวจรูปแบบทุกคีย์ตามทะเบียน LEARNER (คีย์ที่ไม่รู้จักรับไว้แต่นับแจ้ง) → สรุปสิ่งที่จะเปลี่ยนให้ยืนยัน
+   → เก็บชุดปัจจุบันลง atlas-backup-prev → เขียน · เขียนล้มกลางทาง = คืนชุดเดิมจาก atlas-backup-prev แล้วแจ้ง
+   ไฟล์เสีย/รุ่นใหม่กว่าที่เว็บนี้รู้จัก → ปฏิเสธพร้อมเหตุผล ไม่แตะข้อมูลเดิม · รับไฟล์รุ่น 1 (schema 1 → learnerStart ย้ายคีย์ศัพท์หลังโหลดใหม่) */
+const learnerKeysNow = () => {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("atlas-") && k !== ADMINKEY && k !== PREVKEY) out.push(k); }
+  return out;
+};
+function learnerSnapshot() {
+  const data = {};
+  learnerKeysNow().forEach(k => { data[k] = localStorage.getItem(k); });
+  return data;
+}
 function progressExport() {
   try {
-    const data = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith("atlas-") && k !== ADMINKEY) data[k] = localStorage.getItem(k);
-    }
-    const blob = new Blob([JSON.stringify({ app: "atlas-site", v: 1, saved: new Date().toISOString(), data }, null, 1)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ app: "atlas-site", v: BACKUP_V, schema: SCHEMA, saved: new Date().toISOString(), data: learnerSnapshot() }, null, 1)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "study-program-progress-" + new Date().toISOString().slice(0, 10) + ".json";
@@ -70178,19 +70187,100 @@ function progressExport() {
     return true;
   } catch (e) { return false; }
 }
-async function progressImport(file) {
+/* ตรวจค่าดิบหนึ่งคีย์ตามทะเบียน → ค่าที่ parse แล้ว (สำหรับนับ) · ผิดรูปแบบ = throw */
+function learnerParse(key, raw) {
+  const spec = LEARNER[key];
+  if (typeof raw !== "string") throw new Error("«" + key + "» ไม่ใช่ข้อความ");
+  if (!spec) return raw;
+  const bad = () => new Error("«" + (spec.label || key) + "» (" + key + ") รูปแบบไม่ถูกต้อง");
+  if (spec.kind === "raw") { if (spec.re && !spec.re.test(raw)) throw bad(); return raw; }
+  let v;
+  try { v = JSON.parse(raw); } catch (e) { throw bad(); }
+  if (spec.kind === "set" && !(Array.isArray(v) && v.every(x => typeof x === "string" || typeof x === "number"))) throw bad();
+  if (spec.kind === "obj" && !(v && typeof v === "object" && !Array.isArray(v))) throw bad();
+  if (spec.meta && v.schema !== undefined && !(Number.isInteger(v.schema) && v.schema >= 1)) throw bad();
+  if (spec.check && !spec.check(v)) throw bad();
+  return v;
+}
+const learnerCount = (key, raw) => {
+  if (raw === null || raw === undefined) return 0;
+  const spec = LEARNER[key];
+  let v;
+  try { v = learnerParse(key, raw); } catch (e) { return 0; }
+  return spec && spec.count ? spec.count(v) : Array.isArray(v) ? v.length : 1;
+};
+/* อ่านไฟล์สำรอง → แผนนำเข้า {data, schema, saved, unknown, lines} · ไม่แตะ localStorage */
+function importPlan(text) {
   let j;
-  try { j = JSON.parse(await file.text()); } catch (e) { throw new Error("อ่านไฟล์ไม่ได้ (ไม่ใช่ JSON)"); }
-  if (!j || j.app !== "atlas-site" || !j.data || typeof j.data !== "object") throw new Error("ไม่ใช่ไฟล์สำรองของเว็บนี้");
-  const keys = Object.keys(j.data).filter(k => /^atlas-[\w-]+$/.test(k) && k !== ADMINKEY && typeof j.data[k] === "string");
+  try { j = JSON.parse(text); } catch (e) { throw new Error("อ่านไฟล์ไม่ได้ (ไม่ใช่ JSON)"); }
+  if (!j || typeof j !== "object" || j.app !== "atlas-site" || !j.data || typeof j.data !== "object" || Array.isArray(j.data)) throw new Error("ไม่ใช่ไฟล์สำรองของเว็บนี้");
+  const v = j.v === undefined ? 1 : j.v;
+  if (!Number.isInteger(v) || v < 1) throw new Error("ไฟล์เสีย — ไม่รู้รุ่นของไฟล์");
+  if (v > BACKUP_V) throw new Error("ไฟล์มาจากเว็บรุ่นใหม่กว่า (ไฟล์รุ่น " + v + ") — โหลดหน้าเว็บใหม่ให้เป็นรุ่นล่าสุดแล้วลองอีกครั้ง");
+  const keys = Object.keys(j.data).filter(k => /^atlas-[\w-]+$/.test(k) && k !== ADMINKEY && k !== PREVKEY);
   if (!keys.length) throw new Error("ไฟล์ไม่มีข้อมูลความคืบหน้า");
-  const when = j.saved ? new Date(j.saved).toLocaleString("th-TH") : "ไม่ทราบเวลา";
-  if (!confirm("แทนที่ความคืบหน้าในเครื่องนี้ด้วยไฟล์ที่สำรองไว้เมื่อ " + when + " ?")) return;
-  const old = [];
-  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("atlas-") && k !== ADMINKEY) old.push(k); }
-  old.forEach(k => localStorage.removeItem(k));
-  keys.forEach(k => localStorage.setItem(k, j.data[k]));
+  const data = {}, unknown = [];
+  keys.forEach(k => { learnerParse(k, j.data[k]); data[k] = j.data[k]; if (!LEARNER[k]) unknown.push(k); });
+  let fmeta = {};
+  if (data[METAKEY]) fmeta = JSON.parse(data[METAKEY]);
+  const schema = Number.isInteger(j.schema) ? j.schema : fmeta.schema || 1;
+  if (schema > SCHEMA) throw new Error("ไฟล์มาจากเว็บรุ่นใหม่กว่า (ข้อมูลรุ่น " + schema + ") — โหลดหน้าเว็บใหม่ให้เป็นรุ่นล่าสุดแล้วลองอีกครั้ง");
+  let cmeta = {};
+  try { cmeta = JSON.parse(localStorage.getItem(METAKEY)) || {}; } catch (e) {}
+  data[METAKEY] = JSON.stringify({ schema, created: fmeta.created || cmeta.created || new Date().toISOString(), lastActive: new Date().toISOString() });
+  const cur = learnerSnapshot(), lines = [];
+  Object.keys(LEARNER).forEach(k => {
+    if (LEARNER[k].meta) return;
+    const a = learnerCount(k, cur[k]), b = learnerCount(k, data[k]);
+    if (a || b) lines.push(LEARNER[k].label + " " + a + " → " + b);
+  });
+  if (unknown.length) lines.push("ไม่รู้จัก " + unknown.length + " รายการ (รับไว้ตามเดิม)");
+  const gone = Object.keys(cur).filter(k => !LEARNER[k] && !(k in data)).length;
+  if (gone) lines.push("ข้อมูลอื่นในเครื่องที่ไฟล์ไม่มี " + gone + " รายการจะถูกลบ");
+  return { data, schema, saved: j.saved || null, unknown, lines };
+}
+/* แทนที่ข้อมูลผู้เรียนทั้งชุด — เก็บชุดปัจจุบันลง atlas-backup-prev ก่อน · ล้มกลางทางคืนจาก atlas-backup-prev · สำเร็จ = true */
+function applyLearnerData(next, why) {
+  const prev = learnerSnapshot();
+  try {
+    localStorage.setItem(PREVKEY, JSON.stringify({ saved: new Date().toISOString(), why: why || "", data: prev }));
+  } catch (e) {
+    throw new Error((isQuota(e) ? "พื้นที่เก็บไม่พอสำรองชุดปัจจุบันไว้กู้คืน" : "สำรองชุดปัจจุบันไม่สำเร็จ") + " — ยังไม่ได้เปลี่ยนอะไร · ลอง «ล้างข้อมูลชั่วคราว» ในหน้าความก้าวหน้า หรือสำรองเป็นไฟล์ก่อน");
+  }
+  try {
+    Object.keys(prev).forEach(k => { if (!(k in next)) localStorage.removeItem(k); });
+    Object.keys(next).forEach(k => localStorage.setItem(k, next[k]));
+    return true;
+  } catch (e) {
+    let back = prev, ok = true;
+    try { back = JSON.parse(localStorage.getItem(PREVKEY)).data || prev; } catch (x) {}
+    learnerKeysNow().forEach(k => { if (!(k in back)) try { localStorage.removeItem(k); } catch (x) { ok = false; } });   // ลบของใหม่ก่อน คืนพื้นที่ให้ชุดเดิม
+    Object.keys(back).forEach(k => { try { if (localStorage.getItem(k) !== back[k]) localStorage.setItem(k, back[k]); } catch (x) { ok = false; } });
+    throw new Error((isQuota(e) ? "พื้นที่เก็บของเบราว์เซอร์เต็มระหว่างเขียน" : "เขียนไม่สำเร็จ (" + (e && e.name) + ")") +
+      (ok ? " — คืนข้อมูลเดิมครบแล้ว" : " — คืนข้อมูลเดิมไม่ครบ ใช้ปุ่ม «กู้คืนชุดก่อนนำเข้า» ในหน้าความก้าวหน้า"));
+  }
+}
+async function progressImport(file) {
+  const plan = importPlan(await file.text());
+  const when = plan.saved ? new Date(plan.saved).toLocaleString("th-TH") : "ไม่ทราบเวลา";
+  if (!confirm("แทนที่ความคืบหน้าในเครื่องนี้ด้วยไฟล์ที่สำรองไว้เมื่อ " + when + " ?\n\n• " + plan.lines.join("\n• ") +
+    "\n\nชุดปัจจุบันจะถูกเก็บไว้ กู้คืนได้ด้วยปุ่ม «กู้คืนชุดก่อนนำเข้า» ในหน้าความก้าวหน้า")) return false;
+  applyLearnerData(plan.data, "นำเข้าไฟล์ " + when);
   location.reload();
+  return true;
+}
+/* กู้คืนชุดที่เก็บไว้ก่อนนำเข้าครั้งล่าสุด — ชุดปัจจุบันสลับไปอยู่ใน atlas-backup-prev แทน (กดซ้ำ = ย้อนกลับ) */
+function restorePrev() {
+  let p;
+  try { p = JSON.parse(localStorage.getItem(PREVKEY)); } catch (e) {}
+  if (!p || !p.data || typeof p.data !== "object") throw new Error("ไม่มีชุดก่อนนำเข้าให้กู้คืน");
+  const plan = importPlan(JSON.stringify({ app: "atlas-site", v: BACKUP_V, saved: p.saved, data: p.data }));
+  const when = p.saved ? new Date(p.saved).toLocaleString("th-TH") : "ไม่ทราบเวลา";
+  if (!confirm("กู้คืนความคืบหน้าชุดที่เก็บไว้เมื่อ " + when + (p.why ? " (ก่อน" + p.why + ")" : "") + " ?\n\n• " + plan.lines.join("\n• ") +
+    "\n\nชุดปัจจุบันจะถูกเก็บไว้แทน กดกู้คืนอีกครั้งเพื่อย้อนกลับได้")) return false;
+  applyLearnerData(plan.data, "กู้คืนชุดก่อนนำเข้า");
+  location.reload();
+  return true;
 }
 
 /* ---- overview ---- */
@@ -71807,10 +71897,22 @@ HOOKS.html("progress", () => {
   const temp = keys.filter(k => (LEARNER[k] && LEARNER[k].temp) || k === PREVKEY).reduce((a, k) => a + keyBytes(k), 0);
   return '<section class="s8card" id="s8store" aria-labelledby="s8storeH"><h3 id="s8storeH">พื้นที่เก็บในเครื่องนี้</h3>' +
     '<p>ความคืบหน้าทั้งหมดใช้ <b>' + fmtBytes(total) + '</b> (' + keys.length + ' รายการ) · ในนั้นเป็นข้อมูลชั่วคราวที่สร้างใหม่ได้ ' + fmtBytes(temp) +
-    '<br><span class="m" id="s8est">กำลังวัดพื้นที่ทั้งเว็บ…</span></p>' +
+    '<br><span class="s8m" id="s8est">กำลังวัดพื้นที่ทั้งเว็บ…</span></p>' +
     (STORE_ERR ? '<p class="s8warn">ครั้งล่าสุดบันทึก «' + escS8((LEARNER[STORE_ERR.key] || {}).label || STORE_ERR.key) + '» ไม่สำเร็จ' + (STORE_ERR.quota ? ' เพราะพื้นที่เต็ม' : '') + '</p>' : '') +
-    '<div class="qbar"><button type="button" id="s8clear">ล้างข้อมูลชั่วคราว</button><span class="m" id="s8clearMsg" role="status"></span></div></section>';
+    '<div class="qbar"><button type="button" id="s8clear">ล้างข้อมูลชั่วคราว</button><span class="m" id="s8clearMsg" role="status"></span></div></section>' +
+    prevCard();
 });
+/* ชุดก่อนนำเข้า (atlas-backup-prev) — กู้คืนได้จนกว่าจะนำเข้าครั้งถัดไปหรือลบทิ้ง */
+function prevCard() {
+  let p = null;
+  try { p = JSON.parse(lsGet(PREVKEY)); } catch (e) {}
+  if (!p || !p.data) return "";
+  const when = p.saved ? new Date(p.saved).toLocaleString("th-TH") : "ไม่ทราบเวลา";
+  return '<section class="s8card" id="s8prev" aria-labelledby="s8prevH"><h3 id="s8prevH">ชุดก่อนนำเข้า</h3>' +
+    '<p>เก็บความคืบหน้าชุดที่อยู่ในเครื่องนี้ไว้เมื่อ <b>' + escS8(when) + '</b>' + (p.why ? ' ก่อน' + escS8(p.why) : '') +
+    ' (' + Object.keys(p.data).length + ' รายการ · ' + fmtBytes(keyBytes(PREVKEY)) + ') · กู้คืนแล้วชุดปัจจุบันจะถูกเก็บไว้แทน กดอีกครั้งเพื่อย้อนกลับได้</p>' +
+    '<div class="qbar"><button type="button" id="s8restore">กู้คืนชุดก่อนนำเข้า</button><span class="m" id="s8restoreMsg" role="status"></span></div></section>';
+}
 function s8Bind() {
   const est = document.getElementById("s8est");
   if (est) {
@@ -71819,6 +71921,10 @@ function s8Bind() {
     }).catch(() => { est.textContent = ""; });
     else est.textContent = "";
   }
+  const rs = document.getElementById("s8restore");
+  if (rs) rs.addEventListener("click", () => {
+    try { restorePrev(); } catch (e) { document.getElementById("s8restoreMsg").textContent = "กู้คืนไม่สำเร็จ — " + e.message; }
+  });
   const cl = document.getElementById("s8clear");
   if (cl) cl.addEventListener("click", () => { document.getElementById("s8clearMsg").textContent = clearTemp(); });
 }
