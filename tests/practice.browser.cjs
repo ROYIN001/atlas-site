@@ -169,7 +169,8 @@ const ok = (name) => { passed++; console.log('  ✓ ' + name); };
     assert.equal(await page.evaluate(() => document.activeElement.id), 'fDone', 'จบชุด → โฟกัสที่สรุป');
     const terms = await page.evaluate(() => Object.keys((JSON.parse(localStorage.getItem('atlas-practice-v1') || '{}'))._terms || {}));
     assert.equal(terms.length, total, 'บันทึกผลทุกใบ (termKey)');
-    assert.ok(terms.every(k => /^g:phr-\d+$/.test(k)), 'คีย์จาก termKey()');
+    const want = await page.evaluate(() => { const m = MODULES.find(x => x.id === 'phr'); return m.terms.map((t, i) => termKey(m, t, i)); });
+    assert.deepEqual(terms.slice().sort(), want.slice().sort(), 'คีย์จาก termKey()');
     ok('Flashcard ' + total + ' ใบครบรอบด้วยคีย์บอร์ดล้วน (Tab · Enter/Space · 1/2) โฟกัสอยู่บนการ์ด');
 
     // ทิศทางไทย→รัสเซีย · ควิซศัพท์ตามกลุ่ม · toe ไม่มีกลุ่ม
