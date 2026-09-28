@@ -72032,6 +72032,38 @@ document.addEventListener("std2:quiz", e => {         // ตัวเก็บ�
   if (sec) tendQuiz(sec);
 });
 
+/* ---- ชุดอ่านง่าย: ตาราง .tw ที่กว้างกว่ากล่อง → .scrolls (เงาขอบ) + ป้าย «เลื่อนดู →» จนเลื่อนครั้งแรก · ข้อความวิชารูปแบบเดิม 16/1.7 ---- */
+function s2Tables(root) {
+  const todo = [];
+  root.querySelectorAll(".tw").forEach(tw => {
+    if (!tw.clientWidth) return;                       // ยังไม่แสดง (อยู่ใน details ที่ปิด)
+    todo.push([tw, tw.scrollWidth > tw.clientWidth + 1]);
+  });
+  todo.forEach(([tw, over]) => {                       // วัดครบก่อนแล้วค่อยแก้ DOM — คำนวณเลย์เอาต์รอบเดียว
+    tw.classList.toggle("scrolls", over);
+    const hint = tw.previousElementSibling && tw.previousElementSibling.classList.contains("tw-hint") ? tw.previousElementSibling : null;
+    if (over && !hint && !tw.dataset.s2seen) {
+      tw.insertAdjacentHTML("beforebegin", '<p class="tw-hint" aria-hidden="true">เลื่อนดู →</p>');
+      tw.addEventListener("scroll", () => {
+        tw.dataset.s2seen = "1";
+        const h = tw.previousElementSibling;
+        if (h && h.classList.contains("tw-hint")) h.remove();
+      }, { once: true, passive: true });
+    } else if (!over && hint) hint.remove();
+  });
+}
+HOOKS.on("fill", el => {
+  if (!el.querySelector(".std2")) el.classList.add("s2-legacy");
+  s2Tables(el);
+});
+document.addEventListener("toggle", e => { if (e.target.open && e.target.closest && e.target.closest("#view")) s2Tables(e.target); }, true);
+let s2W = window.innerWidth, s2RT = 0;
+window.addEventListener("resize", () => {
+  if (window.innerWidth === s2W) return;
+  s2W = window.innerWidth;
+  clearTimeout(s2RT);
+  s2RT = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(s2Tables), 300);
+}, { passive: true });
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ===== SLOT S3 END ===== */

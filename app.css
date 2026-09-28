@@ -3834,6 +3834,50 @@ html.s2-modal { overflow: hidden; }
 .tend-np a b { font-weight: 500; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 .tend-np a.next { text-align: right; grid-column: 2; }
 
+/* ---- ชุดอ่านง่าย ---- */
+:root { --s2-shade: rgba(16, 26, 24, .22); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s2-shade: rgba(0, 0, 0, .75); } }
+:root[data-theme="dark"] { --s2-shade: rgba(0, 0, 0, .75); }
+#view sub, #view sup { font-size: max(11.5px, .75em); }
+#view .tbody.s2-legacy { font-size: 16px; line-height: 1.7; }
+#view .tw.scrolls {                                  /* เงาบอกว่ายังมีคอลัมน์ซ่อนอยู่ขอบไหน — ชั้น local เลื่อนตามเนื้อหาไปบังเงา (scroll) เมื่อถึงขอบ */
+  background:
+    linear-gradient(to right, var(--panel) 30%, transparent) left center / 36px 100% no-repeat local,
+    linear-gradient(to left, var(--panel) 30%, transparent) right center / 36px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--s2-shade), transparent) left center / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--s2-shade), transparent) right center / 14px 100% no-repeat scroll,
+    var(--panel);
+}
+#view .tw-hint {
+  margin: 12px 0 -10px; text-align: right; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif;
+  font-size: 12.5px; line-height: 1.4; color: var(--accent-2); font-weight: 600; max-width: none;
+}
+a.nav-item:focus-visible, .ts-list button:focus-visible { outline-offset: -2px; }
+@media (max-width: 600px) {
+  .topic-check { width: 40px; height: 40px; }
+  .topic-check:not(.done) { color: var(--line-2); }   /* ปุ่มใหญ่ขึ้น — ให้เห็นว่าเป็นช่องติ๊ก ไม่ใช่กล่องว่าง */
+  .topic-nav { padding: 6px 0; gap: 6px; }
+  .topic-nav button { min-height: 40px; padding: 8px 12px; font-size: 12.5px; }
+  .g-grid .tick { width: 40px; height: 40px; top: 6px; right: 6px; }
+  .g-grid .bmark { width: 40px; height: 40px; top: 6px; right: 50px; }
+  .g-grid .card .ru { padding-right: 96px; }
+  /* หัวหน้าวิชาบนมือถือ ≤ 200 px ก่อนถึงแถบโหมด: ตัดสิ่งที่ซ้ำ/รอง · คำนำเหลือ 2 บรรทัด */
+  .crumb { padding-top: 4px; font-size: 12px; }
+  .crumb button { padding: 2px 0; }
+  .crumb > span:first-of-type, .crumb > b { display: none; }   /* ชื่อวิชาซ้ำกับบรรทัดชื่อไทยใต้หัวเรื่อง — เหลือแค่ลิงก์กลับ */
+  .crumb + .page-head .page-title-th .m { display: none; }
+  .crumb + .page-head { padding: 4px 0 6px; }
+  .crumb + .page-head .eyebrow { display: none; }
+  .crumb + .page-head h1.page-title { font-size: 19px; line-height: 1.22; }
+  .crumb + .page-head .page-title-th { font-size: 14px; margin-top: 4px; }
+  .crumb + .page-head .lede {
+    margin-top: 6px; font-size: 13.5px; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .crumb + .page-head > div[style] { display: none; }   /* แถบ «ทำเครื่องหมายทบทวนแล้ว %» — บนมือถือดูได้ในสารบัญ (อ่านแล้ว n/N) และตัวเลขท้ายแถบชิป */
+  .crumb + .page-head .offl { margin-top: 8px; }
+  .modebar { margin-top: 4px; }
+}
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* ===== SLOT S3 END ===== */
