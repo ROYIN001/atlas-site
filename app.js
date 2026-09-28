@@ -71667,6 +71667,178 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
+/* S5 · ฝึกทบทวน — หน้า #/practice[/<วิชา>[/<หัวข้อ>]] · ซ้อมปากเปล่า #/oral/<วิชา>[/<หัวข้อ>] · เสียงรัสเซีย window.SAY
+   · Flashcard #/flash[/<กลุ่ม|วิชา>] · ควิซศัพท์ #/quiz[/<กลุ่ม|วิชา>] (renderFlash/renderQuiz/POOL อยู่ที่เดิม ส่วนนี้คือของประกอบ)
+   ข้อมูลคำถาม: data/qa/<วิชา>.json + _index.json (src/build_steps/qa.py) · id ของ details.qa ที่ไม่มี id = "qa-" + stableId(ข้อความคำถาม)
+     ข้อความคำถาม = เนื้อใน .qa-q (STD2) หรือ <summary> — ทุกขอบแท็กเป็นช่องว่าง (qaText) · คำถามซ้ำข้ามหัวข้อใช้ id จาก _index.json (fix)
+   ต่อท้ายที่อยู่ของหน้าซ้อมได้: /n<จำนวน> (จำนวนข้อต่อชุด) · /weak (เฉพาะข้อที่เคยตอบไม่ได้/ยังไม่แม่น)
+   localStorage: atlas-oral-v1 { "<วิชา>/<หัวข้อ>/<id>": {r: 1|3|5, t, n} }   r = ตอบไม่ได้/บางส่วน/ครบ · n = จำนวนครั้งที่ตอบ
+                 atlas-practice-v1 { <หัวข้อ>: { <id ของ host quiz2>: {done, ok, n, t} }, _terms: { <termKey>: {r: 1|5, t, n} }, _opt: {timer, dir} }
+   ควิซ quiz2 ในหัวข้อได้ id = <หัวข้อ>-q<ลำดับ นับจาก 1> (และ data-id เท่ากัน) ตอนเติมหัวข้อ · SRS (S6): q:<วิชา>/<หัวข้อ>/<id> · termKey() */
+function qaText(el) {                              // ข้อความของโหนด — ทุกขอบแท็กเป็นช่องว่าง (ตรงกับ text() ใน src/build_steps/qa.py)
+  let s = "";
+  (function walk(n) {
+    for (const c of n.childNodes) {
+      if (c.nodeType === 3) s += c.data;
+      else if (c.nodeType === 1 && c.tagName !== "SCRIPT" && c.tagName !== "STYLE") { s += " "; walk(c); s += " "; }
+    }
+  })(el);
+  return s;
+}
+function qaRuText(ans) {                           // ข้อความรัสเซียของคำตอบที่จะอ่านออกเสียง ("" = ไม่มี) — กติกาเดียวกับ ru_text() ใน qa.py
+  const skip = n => n.classList.contains("ans-l") || n.classList.contains("say") || n.hasAttribute("data-demo");
+  const txt = el => {
+    let s = "";
+    (function walk(n) {
+      for (const c of n.childNodes) {
+        if (c.nodeType === 3) s += c.data;
+        else if (c.nodeType === 1 && !skip(c) && c.tagName !== "SCRIPT" && c.tagName !== "STYLE") { s += " "; walk(c); s += " "; }
+      }
+    })(el);
+    return s.replace(/\s+/g, " ").trim();
+  };
+  const ru = ans.querySelector(".ans-ru");
+  if (ru) return txt(ru);
+  const t = txt(ans), c = (t.match(/[А-Яа-яЁё]/g) || []).length, th = (t.match(/[฀-๿]/g) || []).length;
+  return c >= 20 && th * 20 <= c ? t : "";
+}
+/* ---- S5 end of pure helpers ---- */
+const ORALKEY = "atlas-oral-v1", PRACKEY = "atlas-practice-v1";
+function s5load(k) { try { const o = JSON.parse(localStorage.getItem(k) || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } }
+let ORAL = s5load(ORALKEY), PRAC = s5load(PRACKEY);
+const saveOral = () => { try { localStorage.setItem(ORALKEY, JSON.stringify(ORAL)); } catch (e) {} };
+const savePrac = () => { try { localStorage.setItem(PRACKEY, JSON.stringify(PRAC)); } catch (e) {} };
+const s5opt = (k, v) => { PRAC._opt = PRAC._opt || {}; if (v !== undefined) { PRAC._opt[k] = v; savePrac(); } return PRAC._opt[k]; };
+const s5grade = (key, g) => { if (window.SRS && typeof SRS.grade === "function") { try { SRS.grade(key, g); } catch (e) { console.error("SRS.grade", e); } } };
+function termResult(k, ok) {                        // Flashcard «จำได้/ยังไม่แม่น» · ควิซศัพท์ ถูก/ผิด — คีย์จาก termKey() เสมอ
+  if (!k) return;
+  const T = PRAC._terms = PRAC._terms || {}, p = T[k] || {};
+  T[k] = { r: ok ? 5 : 1, t: Date.now(), n: (p.n || 0) + 1 };
+  savePrac(); s5grade(k, ok ? 5 : 1);
+}
+const termIsWeak = k => !!(PRAC._terms && PRAC._terms[k] && PRAC._terms[k].r < 5);
+const s5shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const s5subj = sid => ALL_SUBJ.find(x => x.id === sid);
+const s5topic = (sid, tid) => topicsOf(sid).find(t => t.id === tid);
+const s5ago = t => { const d = Math.floor((Date.now() - t) / 864e5); return d <= 0 ? "วันนี้" : d === 1 ? "เมื่อวาน" : d + " วันก่อน"; };
+const RATE = { 1: "ตอบไม่ได้", 3: "ได้บางส่วน", 5: "ตอบครบ" };
+
+/* ---- เสียงภาษารัสเซียของกลาง (ยกจาก ih-say ของ История — ตัวเดิมใน IHDEMOS ยังทำงานเหมือนเดิม) ----
+   SAY.ok = เบราว์เซอร์อ่านออกเสียงได้ · SAY.speak(text, rate) คืน false ถ้าเครื่องไม่มีเสียงรัสเซีย · SAY.stop()
+   SAY.voice() = เสียง ru ที่ใช้ (เฉพาะเสียงในเครื่อง localService — ไม่ส่งข้อความไปเซิร์ฟเวอร์ภายนอก) · SAY.hint() = วิธีติดตั้งเสียงตามระบบ
+   sayButton(getText) = ปุ่ม 🔊 ฟัง / ช้า พร้อมข้อความแนะนำเมื่อไม่มีเสียง */
+window.SAY = (function () {
+  const ok = typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance === "function";
+  let voice = null, onEnd = null;
+  function pick() {
+    if (!ok) return null;
+    let vs = [];
+    try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
+    const ru = vs.filter(v => /^ru([-_]|$)/i.test(v.lang || "") && v.localService !== false);
+    return (voice = ru.find(v => /^ru[-_]ru/i.test(v.lang)) || ru[0] || null);
+  }
+  if (ok) { pick(); try { speechSynthesis.addEventListener("voiceschanged", () => { if (pick()) document.querySelectorAll(".say-hint").forEach(h => { h.hidden = true; }); }); } catch (e) {} }
+  function stop() {
+    if (ok) { try { speechSynthesis.cancel(); } catch (e) {} }
+    const f = onEnd; onEnd = null; if (f) f();
+  }
+  function speak(text, rate, done) {
+    stop();
+    text = String(text || "").replace(/\s+/g, " ").trim();
+    if (!ok || !text || !(voice || pick())) return false;
+    const parts = [];                               // แบ่งเป็นประโยค ≤ ~220 ตัว — ข้อความยาวก้อนเดียวบางเบราว์เซอร์หยุดกลางทาง
+    text.split(/(?<=[.!?…;])\s+/).forEach(s => { const L = parts.length - 1; if (L >= 0 && parts[L].length + s.length < 220) parts[L] += " " + s; else parts.push(s); });
+    onEnd = done || null;
+    parts.forEach((p, i) => {
+      const u = new SpeechSynthesisUtterance(p);
+      u.lang = voice.lang || "ru-RU"; u.voice = voice; u.rate = rate || 0.95;
+      if (i === parts.length - 1) u.onend = u.onerror = () => { const f = onEnd; onEnd = null; if (f) f(); };
+      speechSynthesis.speak(u);
+    });
+    return true;
+  }
+  function hint() {
+    const ua = navigator.userAgent || "";
+    if (!ok) return "เบราว์เซอร์นี้อ่านออกเสียงไม่ได้ — ลองเปิดด้วย Chrome, Edge หรือ Safari รุ่นใหม่";
+    const h = "เครื่องนี้ยังไม่มีเสียงอ่านภาษารัสเซีย — ";
+    if (/Android/i.test(ua)) return h + "Android: การตั้งค่า › การช่วยเหลือพิเศษ › เอาต์พุตการอ่านออกเสียง (Text-to-speech) › ⚙ ของบริการ Google › ติดตั้งข้อมูลเสียง › Русский (Россия) แล้วเปิดหน้านี้ใหม่";
+    if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return h + "iPhone/iPad: การตั้งค่า › การช่วยการเข้าถึง › เนื้อหาที่พูด › เสียง › รัสเซีย › ดาวน์โหลดเสียงหนึ่งเสียง แล้วเปิดหน้านี้ใหม่";
+    if (/Windows/i.test(ua)) return h + "Windows: การตั้งค่า › เวลาและภาษา › ภาษาและภูมิภาค › เพิ่มภาษา › Русский (เลือก «การอ่านออกเสียง») เสร็จแล้วปิดเปิดเบราว์เซอร์ใหม่";
+    if (/Mac/i.test(ua)) return h + "Mac: การตั้งค่าระบบ › การช่วยการเข้าถึง › เนื้อหาที่พูด › เสียงระบบ › จัดการเสียง › Русский";
+    return h + "เพิ่มเสียงภาษารัสเซียในการตั้งค่าการอ่านออกเสียงของเครื่อง (Android · iOS · Windows)";
+  }
+  return { ok, speak, stop, hint, voice: () => voice || pick() };
+})();
+function sayButton(getText, label) {
+  const w = document.createElement("span");
+  w.className = "say";
+  w.innerHTML = '<button type="button" class="say-btn" data-rate="0.95" aria-label="' + escT(label || "ฟังภาษารัสเซีย") + '">🔊 ฟัง</button>' +
+    '<button type="button" class="say-btn" data-rate="0.7" aria-label="' + escT((label || "ฟังภาษารัสเซีย") + " แบบช้า") + '">ช้า</button>' +
+    '<span class="say-hint" role="status" hidden></span>';
+  const hint = w.querySelector(".say-hint");
+  w.querySelectorAll(".say-btn").forEach(b => b.addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();       // ปุ่มอยู่ใน <summary>/<details> ได้ ไม่ให้พับ/กาง
+    if (b.classList.contains("on")) { SAY.stop(); return; }
+    const off = () => w.querySelectorAll(".say-btn").forEach(x => { x.classList.remove("on"); x.setAttribute("aria-pressed", "false"); });
+    const started = SAY.speak(getText(), +b.dataset.rate, off);
+    if (!started) { hint.textContent = SAY.hint(); hint.hidden = false; return; }
+    b.classList.add("on"); b.setAttribute("aria-pressed", "true");
+  }));
+  return w;
+}
+
+/* ---- ดัชนีคำถาม (จำนวนต่อวิชา/หัวข้อ · ควิซ quiz2 ต่อหัวข้อ · id ของคำถามซ้ำ) ---- */
+let QAIX = null, QAIXP = null;
+function qaIndex() {
+  if (!QAIXP) QAIXP = dbGet("qa", "_index").then(x => {
+    if (!x) { DBCACHE.delete("qa/_index"); QAIXP = null; return QAIX || {}; }   // โหลดไม่ได้ — ครั้งหน้าลองใหม่
+    return (QAIX = x);
+  });
+  return QAIXP;
+}
+const qaList = el => [...el.querySelectorAll("details.qa")].filter(d => d.querySelector(":scope > summary"));
+function qaBaseId(d) { const s = d.querySelector(":scope > summary"); return "qa-" + stableId(qaText(s.querySelector(".qa-q") || s)); }
+function qaIds(el, sid, tid, fixOnly) {
+  const fix = (QAIX && QAIX[sid] && QAIX[sid].fix && QAIX[sid].fix[tid]) || {};
+  qaList(el).forEach((d, i) => {
+    if (d.dataset.qaid === undefined) { if (d.id || fixOnly) return; d.id = qaBaseId(d); d.dataset.qaid = ""; }   // data-qaid = id นี้ใส่ตอนเติมหัวข้อ
+    if (fix[i]) d.id = fix[i];
+    const r = ORAL[sid + "/" + tid + "/" + d.id];
+    if (r) { d.dataset.oral = r.r; d.title = "ซ้อมปากเปล่าครั้งล่าสุด: " + RATE[r.r] + " · " + s5ago(r.t); }
+  });
+}
+HOOKS.on("subject", s => { if (DEEP[s.id]) qaIndex(); });
+HOOKS.on("fill", (el, t, sid) => {
+  const tid = t.id;
+  if (!sid) return;
+  qaIds(el, sid, tid);
+  if (!QAIX) qaIndex().then(() => { if (el.isConnected) qaIds(el, sid, tid, true); });
+  el.querySelectorAll('[data-demo="quiz2"]').forEach((h, i) => { if (!h.id) h.id = tid + "-q" + (i + 1); if (!h.dataset.id) h.dataset.id = h.id; });
+  const qs = qaList(el);
+  qs.forEach(d => {                                 // 🔊 ในกล่องคำตอบ (ไม่ใช่ใน summary) เมื่อคำตอบเป็นภาษารัสเซีย
+    const ans = d.querySelector(":scope > .ans");
+    if (!ans || ans.querySelector('[data-demo^="ih-say"], .say') || !qaRuText(ans)) return;
+    const b = sayButton(() => qaRuText(ans), "ฟังคำตอบภาษารัสเซีย");
+    const ru = ans.querySelector(".ans-ru"), lab = ru && ru.querySelector(":scope > .ans-l");
+    if (lab) lab.after(b); else (ru || ans).prepend(b);
+  });
+  if (qs.length) {                                  // ท้ายชุดคำถาม: ไปซ้อมแบบปิดคำตอบ
+    const p = document.createElement("p");
+    p.className = "s5-go";
+    p.innerHTML = '<a class="btn" href="#/oral/' + sid + '/' + tid + '">ซ้อมปากเปล่า ' + qs.length + ' ข้อของหัวข้อนี้ →</a> <a href="#/practice/' + sid + '/' + tid + '">ฝึกทบทวนแบบอื่น</a>';
+    qs[qs.length - 1].after(p);
+  }
+});
+HOOKS.html("subject-head", ctx => ctx.deep
+  ? '<p class="s5-go s5-head"><a class="btn" href="#/practice/' + ctx.s.id + '">🎯 ฝึกทบทวนวิชานี้</a> <a href="#/oral/' + ctx.s.id + '">ซ้อมปากเปล่า' +
+    (QAIX && QAIX[ctx.s.id] ? ' ' + QAIX[ctx.s.id].n + ' ข้อ' : '') + '</a></p>'
+  : "");
+HOOKS.on("offline", sid => ["data/qa/_index.json?v=" + DATA_VERSION, "data/qa/" + sid + ".json?v=" + DATA_VERSION]);
+let S5TIMER = 0, S5TOK = 0;
+const s5halt = () => { clearInterval(S5TIMER); S5TIMER = 0; SAY.stop(); };
+HOOKS.on("clear", s5halt);
+HOOKS.on("go", s5halt);
+
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
 /* ===== SLOT S6 END ===== */

@@ -3635,6 +3635,20 @@
 /* ===== SLOT S4 BEGIN ===== */
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 BEGIN ===== */
+/* S5 · ฝึกทบทวน #/practice · ซ้อมปากเปล่า #/oral · ปุ่มเสียง .say · Flashcard/ควิซศัพท์ (ต่อจากบล็อก v2: flashcards) */
+.say { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 8px; }
+.say-btn { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13px; padding: 5px 11px; border-radius: 999px; min-height: 32px; }
+.say-btn.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.say-hint { flex-basis: 100%; font-size: 13px; line-height: 1.55; color: var(--ink-2); background: var(--wash-2); border-radius: 6px; padding: 7px 10px; }
+.ans-ru > .say { display: flex; margin-top: -2px; }
+details.qa[data-oral] { box-shadow: inset 3px 0 0 var(--s5-r, var(--line-2)); }
+details.qa[data-oral="5"] { --s5-r: var(--ok); }
+details.qa[data-oral="3"] { --s5-r: var(--accent-2); }
+details.qa[data-oral="1"] { --s5-r: var(--crit); }
+.s5-go { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 18px; font-size: 14px; }
+.s5-go a:not(.btn) { color: var(--accent); }
+.s5-go .btn, .s5 .btn { text-decoration: none; display: inline-block; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13.5px; }
+.s5-head { margin: 0 0 6px; }
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 BEGIN ===== */
 /* ===== SLOT S6 END ===== */
