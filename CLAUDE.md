@@ -52,6 +52,7 @@ _work/                          (อยู่ใน .gitignore — บนเค�
 | `window.SUKAFIG = function` | ตัวใส่ `src` ให้รูปเมื่อเลื่อนไปถึง — ตั้ง `img.src = "figs/" + id + ".webp"` |
 | `const DEMOS = {` | ทะเบียนแบบจำลองส่วนกลาง |
 | `Object.assign(DEMOS, window.TEDEMOS \|\| {})` | ทะเบียนของแต่ละวิชา (`TEDEMOS`, `ASUDEMOS`, `NASDEMOS`, `PPODEMOS` …) รวม 278 ฟังก์ชัน |
+| `const HOOKS = {` · `/* ===== SLOT S1` | **v6: จุดเกี่ยวและช่องโค้ดต่อ session** (หัวข้อ 14) — ความสามารถใหม่เสียบผ่าน `HOOKS.on/html`, หน้าใหม่ผ่าน `registerPage`, โค้ดอยู่ในช่อง SLOT ก่อน `buildNav()` |
 | `function buildIndex` | สร้างดัชนีค้นหาจาก `IXHAY` ที่โหลดมาจาก `data/ix/` |
 | `/* ===== ТАУ: демонстрации (window.TAUDEMOS)` | บล็อกเดโมของ ТАУ Т.6–Т.11 (30 ฟังก์ชัน) — **ห้ามแก้ในบล็อกนี้โดยตรง** ต้นฉบับอยู่ที่ `_work/demos/tau-<theme>-<key>.js` (ไฟล์ละหนึ่งฟังก์ชัน ห่อ IIFE แยกกัน) แล้วประกอบด้วย `python _work/demos/assemble.py t6 t7 t8 t9 t10 t11` ซึ่งเขียนทับเฉพาะบล็อกนี้ ตรวจว่าไบต์นอกบล็อกไม่เปลี่ยน คัดลอกบล็อก CSS `.nas` เป็น `.tau` และรัน `node --check` |
 | `/* ===== СН ЛА (ฉบับยกระดับ): демонстрации (window.NAVDEMOS)` | เดโมของ СН ЛА ทั้งวิชา (ครบ 22 หัวข้อในมาตรฐานกลาง v2 · 27 ก.ย. 2026) — 54 ฟังก์ชัน: แอนิเมชันทีละขั้น 41 ตัว (`nav<N>-*`, `navapp-*`) + แบบจำลองเดิมฉบับแก้ 13 ตัว `legacy-<key>.js` ที่**ทับ key เดิมใน DEMOS** (sphereparts, culm, celest, kepler, starpair, trassa, refr, euler, bins, filterconv, mnk, gdop, atmo — ฟังก์ชัน `demoX` เดิมใน app.js ไม่ถูกเรียกแล้ว) · วางหลังบล็อก STD2 ก่อน `/* ================= APP` — ต้นฉบับ `_work/navpilot/demos/<key>.js` ประกอบด้วย `_work/navpilot/build.py` (รัน `_work/std2/tools/integrate.py` ก่อน แล้วแทนที่เฉพาะบล็อกนี้ + entry `nav` ของ DEEP) · เนื้อหา `_work/navpilot/v2/src/*.src.html` → `build_topic.py` → `v2/out` → `data/t/nav__*.json` · สถานะและรายการค้าง `_work/navpilot/R-STATUS.md` |
@@ -330,3 +331,67 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 **งานยกระดับวิชา — เช็กลิสต์เพิ่มจากหัวข้อ 3/9:** ลิงก์ข้ามหัวข้อใช้รูปแบบ `#/…` · แบบจำลองใหม่อยู่ใน `js/subj/` · ข้อมูลที่โหลดเพิ่มต้องอยู่ในเว็บเดียวกัน
 และเพิ่มใน `saveOffline()` · `python src/build_data.py` · `node --test tests/*.test.cjs` · `python src/verify.py --subject <วิชา> --mobile`
 
+
+
+## 14. ทำงานหลาย session พร้อมกัน — จุดเกี่ยว (hooks) ช่องโค้ด (SLOT) และเจ้าของไฟล์ (เพิ่ม 27 ก.ย. 2026)
+
+งานยกระดับโครงเว็บรอบ 2 แบ่งเป็น 8 session ทำคู่ขนานบน branch แยกกัน (คำสั่งอยู่ที่ `claude/คำสั่ง-session-S1–S8.md`) กติกาข้างล่างมีไว้ให้ PR ทั้งแปด merge เข้า `main` ได้โดยไม่ชนกัน — **session ของโครงเว็บทุก session ต้องอ่านหัวข้อนี้ก่อนแตะไฟล์**
+
+**หลักการ:** เขียนโค้ดใหม่ **ในช่องของตัวเอง** (app.js: `/* ===== SLOT S<n> … BEGIN ===== */` … `END` ก่อน `buildNav();` · app.css: ช่องเดียวกันท้ายไฟล์) แล้วเสียบเข้าหน้าเดิมผ่าน **HOOKS** ไม่แก้ฟังก์ชันร่วม · แก้ฟังก์ชันเดิมได้เฉพาะที่ตารางเจ้าของด้านล่างระบุว่าเป็นของคุณ · ไฟล์ใหม่ตั้งชื่อตาม session (`tests/<ชื่อ>.test.cjs`, `src/build_steps/<ชื่อ>.py`, `data/<ชื่อ>/`)
+
+**API ที่ commit เตรียมพื้นให้ (ค้น `v6:` ใน app.js)**
+- `HOOKS.on("fill", (el, t, sid) => …)` หลังเติมหัวข้อ (el = `.tbody`, t = เมทาดาทาหัวข้อ) · `HOOKS.on("subject", (s, deep, mode) => …)` หลังวาดหน้าวิชา · `HOOKS.on("overview", () => …)` · `HOOKS.on("go", st => …)` หลังเปลี่ยนหน้าทุกครั้ง · `HOOKS.on("clear", () => …)` ก่อนล้างหน้า (หยุด timer/observer ของคุณ) · `HOOKS.on("offline", sid => [url…])` ไฟล์เพิ่มให้ปุ่มเก็บไว้อ่านออฟไลน์
+- `HOOKS.html("overview-top" | "overview-end" | "subject-head" | "subject-end" | "progress", ctx => html)` ใส่ HTML ในหน้าเดิม (คืนสตริง · ห้ามใส่ `<script>`) แล้วผูกปุ่มใน `HOOKS.on("overview"/"subject"/"go")` · `progress` = การ์ดในหน้า `#/progress` ที่ S2 สร้าง
+- `registerPage("oral", { render(st), title(st) })` → ที่อยู่ `#/oral[/seg/…]` · `state = {v:"oral", seg:[…]}` · `go({v:"oral", seg:["tau"]})` · Back/ชื่อแท็บทำให้เอง · โหมดวิชาเพิ่ม (เช่นคืนก่อนสอบ) ทำเป็นหน้า `#/cram/<sid>` ไม่แก้ `renderSubject`
+- `stableId(text)` (app.js) = `stable_id(text)` (`src/buildlib.py`) — id เสถียรจากข้อความ ตรงกันทุกไบต์ (`tests/hooks.test.cjs` ตรวจ)
+- `termKey(m, t, i)` — คีย์ความคืบหน้าของศัพท์ ทุกที่ต้องเรียกผ่านนี้ (S8 เปลี่ยนเป็น id ถาวรที่เดียว)
+- `python src/build_data.py` รัน `src/build_steps/*.py` ทุกไฟล์ (`run(ctx)` · ดู README ในโฟลเดอร์นั้น) — ขั้นตอนใหม่เขียนไฟล์ของตัวเองใน `data/` ห้ามแตะ manifest/ix
+
+**ข้อตกลงร่วมที่หลาย session ใช้ (ห้ามตีความต่างกัน)**
+- id ของคำถามปากเปล่า `details.qa` ที่ไม่มี id: `"qa-" + stableId(ข้อความคำถาม)` โดยข้อความคำถาม = เนื้อใน `<summary>` (รูปแบบเดิม) หรือ `.qa-q` (STD2) หลังถอดแท็ก — S5 ใส่ใน DOM ตอนเติมหัวข้อ (hook `fill`) และใน `data/qa/<sid>.json` · S6/S7 ใช้ค่าเดียวกัน
+- คีย์ SRS: หัวข้อ `k:<tid>` · ศัพท์ = `termKey()` · ปากเปล่า `q:<sid>/<tid>/<qaId>` · ควิซ `quiz2` รายบล็อก `z:<tid>/<data-id ของ host>` — S6 ประกาศ `window.SRS = { grade(key, g0to5), due(prefix), get(key) }` · session อื่นเรียกแบบมีเงื่อนไข `window.SRS && SRS.grade(...)`
+- คีย์ localStorage ใหม่ทุกตัวขึ้นต้น `atlas-` (เข้าไฟล์สำรองอัตโนมัติ) · ห้ามซ้ำ: S2 `atlas-ui-v1` · S3 `atlas-offline-v1` (มีแล้ว ขยายได้) · S4 `atlas-search-v1` · S5 `atlas-oral-v1` `atlas-practice-v1` · S6 `atlas-srs-v1` `atlas-exam-v1` `atlas-seen-v1` · S7 `atlas-recent-v1` `atlas-notes-v1` `atlas-pins-v1` · S8 `atlas-meta-v1` (เลขรุ่นสคีมา)
+- เมนูหลัก 5 พื้นที่ (S2 ทำ): หน้าหลัก `#/` · รายวิชา `#/subjects` · ฝึกทบทวน `#/practice` (S5 ทำหน้า — ถ้ายังไม่มี S2 ให้ปุ่มไป `#/flash`) · ค้นหา · ความก้าวหน้า `#/progress`
+- ปุ่ม/การ์ดที่พาไปหน้าอื่นเป็น `<a href="#/…">` จริง (คัดลอก/เปิดแท็บใหม่ได้) ส่วน `<button>` ใช้กับการกระทำ
+- ทุก session จบด้วย `python src/build_data.py` → `node --test tests/*.test.cjs` → `python src/verify.py --no-throttle --mobile` (ทั้งเว็บ หรือ `--subject` ที่เกี่ยว) และห้ามให้เว็บเรียกเซิร์ฟเวอร์ภายนอก · ไม่แก้ `src/verify.py` (ของ S1) — ถ้าต้องเปลี่ยนวิธีตรวจ ให้เขียนไว้ใน PR
+
+**เจ้าของไฟล์/ฟังก์ชัน (แก้ได้เฉพาะเจ้าของ · ที่เหลือใช้ hooks)**
+
+| session | ชื่องาน | เป็นเจ้าของ (แก้ตรงได้) |
+|---|---|---|
+| S1 | ด่านอัตโนมัติของ build | `src/verify.py` · `src/build_data.py` ส่วนหลัก (เวอร์ชัน hash) · `src/counts.py` + `src/counts-baseline.json` · `tests/audit-integrity.test.cjs` · `tests/content-rules.test.cjs` · `.github/workflows/` · `index.html` เฉพาะ `?v=` · app.js บริเวณ `DATA_VERSION`/`dbGet`/`DBCACHE` · `data/t` เฉพาะ 21 ไฟล์ที่อ้างโฟลเดอร์ในเครื่อง · `.claude/agents/demo-writer.md` · CLAUDE.md §4 |
+| S2 | เปลือกนำทาง + หน้าแรก + มือถือ + อ่านง่าย | `index.html` เฉพาะ `#bbar` · app.js: `renderOverview` `subjCard` `buildNav` ตัวจัดการ `#bbar` `topBtn` · app.css: `.topic-nav` `.topbar` `#bbar` `@media (max-width: 900px)` ทั้งสองบล็อก `v5: กันเนื้อหาล้นจอแคบ` · หน้า `#/subjects` `#/progress` |
+| S3 | ประสิทธิภาพ + ความทนทานของแบบจำลอง/ออฟไลน์ | app.js: `buildDemo`/`fitCanvas`/`Plot` (scaffold กลาง 1098–1180) · ภายใน `fillBody` (การติดตั้ง `[data-demo]`) · `SUKAFIG` · `subjAssets` · `saveOffline`/`offlineUi`/`netBar` · `sw.js` · `src/build_steps/figdim.py` |
+| S4 | ค้นหาและดัชนี | app.js: ทั้งส่วน `/* ---- search ---- */` · `filterGloss` ใน `renderGlossary` · บล็อก `/* ---- search box ---- */` · ที่อยู่ `#/search/…` ใน `parseRoute`/`routeHash` |
+| S5 | ฝึกทบทวน: `#/practice` · ปากเปล่า `#/oral` · เสียงรัสเซีย · Flashcard/ควิซ | app.js: `renderFlash` `renderQuiz` `POOL` ตัวจัดการ `#quizBtn` · `src/build_steps/qa.py` → `data/qa/` |
+| S6 | ทวนตามกำหนด (SRS) · วันสอบ · `#/cram` | ช่อง S6 เท่านั้น (ใช้ hooks ทั้งหมด) |
+| S7 | ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด · ป้ายสถานะเนื้อหา | ช่อง S7 · `src/build_steps/rel.py` → `data/rel.json` |
+| S8 | ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม | app.js: `termKey` · บล็อก `persist*`/`save*` (`KEY`…`saveRail`) · `progressExport`/`progressImport` · ช่อง S8 |
+
+**ขั้นตอน merge:** เรียง S1 → S8 → S2 → S3 → S4 → S5 → S6 → S7 · PR ที่รอคิวกด «Update branch» บน GitHub ก่อน merge · ถ้าชนกันให้ session นั้นรวม `main` แก้เอง · หลัง merge ครบ เปิด session รวม (S9) รัน build/tests/verify ทั้งเว็บ ปรับ §14 นี้เป็นสรุปถาวร และ tag รุ่น
+
+**บันทึกของแต่ละ session** (เขียนเฉพาะใต้หัวข้อของตัวเอง 3–8 บรรทัด: ทำอะไร คีย์/ไฟล์/hook ที่เพิ่ม ข้อควรระวัง)
+
+#### 14.1 S1 — ด่านอัตโนมัติ
+(ยังไม่ทำ)
+
+#### 14.2 S2 — เปลือกนำทาง
+(ยังไม่ทำ)
+
+#### 14.3 S3 — ประสิทธิภาพ/ออฟไลน์
+(ยังไม่ทำ)
+
+#### 14.4 S4 — ค้นหา
+(ยังไม่ทำ)
+
+#### 14.5 S5 — ฝึกทบทวน
+(ยังไม่ทำ)
+
+#### 14.6 S6 — SRS/วันสอบ/คืนก่อนสอบ
+(ยังไม่ทำ)
+
+#### 14.7 S7 — ลิงก์/ส่วนตัว/สถานะเนื้อหา
+(ยังไม่ทำ)
+
+#### 14.8 S8 — ข้อมูลผู้เรียน
+(ยังไม่ทำ)

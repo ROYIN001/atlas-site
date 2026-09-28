@@ -1013,6 +1013,7 @@ const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let LIVE = [];
 
 function clearDemos() {
+  if (typeof HOOKS !== "undefined") HOOKS.run("clear");
   LIVE.forEach(d => { if (d.raf) cancelAnimationFrame(d.raf); if (d.ro) d.ro.disconnect(); if (d.io) d.io.disconnect(); });
   LIVE = [];
 }
@@ -69909,6 +69910,46 @@ if (ADMIN_Q !== null) {
   ADMIN = ADMIN_Q !== "0";
   try { localStorage.setItem(ADMINKEY, ADMIN ? "1" : "0"); } catch (e) {}
 }
+/* ---- v6: จุดเกี่ยว (hooks) · หน้าเพิ่ม (registerPage) · ช่องโค้ดต่อ session (SLOT) ----
+   ให้หลาย session เพิ่มความสามารถพร้อมกันได้โดยไม่แก้ฟังก์ชันร่วม (fillBody/renderSubject/renderOverview/go/saveOffline)
+   จุดเกี่ยวที่มี (ชื่อ · อาร์กิวเมนต์ · เรียกเมื่อ):
+     HOOKS.on("fill", (el, t, sid) => …)            หลังเติมเนื้อหาหัวข้อและติดตั้งแบบจำลองแล้ว (el = .tbody)
+     HOOKS.on("subject", (s, deep, mode) => …)      หลังวาดหน้าวิชาและผูกปุ่มแล้ว (mode = "sum"|"full")
+     HOOKS.on("overview", () => …)                  หลังวาดหน้าแรกและผูกปุ่มแล้ว
+     HOOKS.on("go", st => …)                        หลังเปลี่ยนหน้าเสร็จทุกครั้ง (state ใหม่)
+     HOOKS.on("clear", () => …)                     ก่อนล้างหน้า (หยุดตัวจับเวลา/observer ของคุณที่นี่)
+     HOOKS.on("offline", sid => [url, …])           คืนรายการไฟล์เพิ่มที่ปุ่ม «เก็บไว้อ่านออฟไลน์» ต้องดึงของวิชานั้น
+   ใส่ HTML ในหน้าเดิม (คืนสตริง html หรือ "" · ห้ามใส่ script):
+     HOOKS.html("overview-top", ctx => …)           หลังการ์ดหลักสูตร ก่อนแถววิชาที่มีเนื้อหาเต็ม
+     HOOKS.html("overview-end", ctx => …)           ก่อนกล่องสำรองความคืบหน้า
+     HOOKS.html("subject-head", ctx => …)           ใต้หัวหน้าวิชา ก่อนแถบโหมด (ctx = {s, deep, mode})
+     HOOKS.html("subject-end", ctx => …)            ท้ายรายการหัวข้อ ก่อน «เรียนพร้อมกันในภาค»
+     HOOKS.html("progress", ctx => …)               การ์ดในหน้าความก้าวหน้า #/progress (หน้านี้ S2 สร้าง · S3/S6/S8 เติมการ์ดผ่านจุดนี้ · ผูกปุ่มใน HOOKS.on("go", st => st.v === "progress" && …))
+   ผูกปุ่มใน html ที่ใส่: ทำในจุดเกี่ยว "overview"/"subject" (DOM มีแล้ว)
+   หน้าใหม่: registerPage("oral", { render(st), title(st) })  →  ที่อยู่ #/oral[/seg/…]  state = {v:"oral", seg:[…]}
+     render วาดลง view เอง · title คืนชื่อแท็บ · ไปหน้านั้นด้วย go({v:"oral", seg:["tau"]}) · ประวัติ/Back ทำงานให้เอง
+   โหมดวิชาเพิ่ม (เช่น คืนก่อนสอบ): ทำเป็นหน้าแยก #/<page>/<sid> ไม่แก้ renderSubject
+   โค้ดของแต่ละ session อยู่ในช่องของตัวเองท้ายไฟล์ (ค้น «SLOT») และ CSS ในช่องท้าย app.css — ห้ามเขียนนอกช่องถ้าไม่จำเป็น */
+const HOOKS = {
+  _h: {}, _html: {},
+  on(name, fn) { (this._h[name] = this._h[name] || []).push(fn); },
+  run(name, ...a) { (this._h[name] || []).forEach(fn => { try { fn(...a); } catch (e) { console.error("hook " + name, e); } }); },
+  collect(name, ...a) { return (this._h[name] || []).flatMap(fn => { try { return fn(...a) || []; } catch (e) { console.error("hook " + name, e); return []; } }); },
+  html(name, fn) { (this._html[name] = this._html[name] || []).push(fn); },
+  render(name, ctx) { return (this._html[name] || []).map(fn => { try { return fn(ctx) || ""; } catch (e) { console.error("hook html " + name, e); return ""; } }).join(""); },
+};
+const PAGE_DEFS = {};
+function registerPage(name, def) { PAGE_DEFS[name] = def; }
+/* id เสถียรจากข้อความ (เช่นคำถามปากเปล่า details.qa ที่ไม่มี id) — djb2 32 บิต → ฐาน 36 · ต้องตรงกับ src/buildlib.py stable_id() ทุกไบต์
+   ใช้ข้อความหลังถอดแท็ก ยุบช่องว่างเป็นช่องเดียว ตัดหัวท้าย · ไม่แปลงตัวพิมพ์ */
+function stableId(text) {
+  const t = String(text).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  let h = 5381;
+  for (let i = 0; i < t.length; i++) h = (Math.imul(h, 33) + t.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+/* คีย์ความคืบหน้าของคำศัพท์ — ทุกที่ต้องเรียกผ่านฟังก์ชันนี้ (ตอนนี้ยังเป็นลำดับในกลุ่ม · S8 จะเปลี่ยนเป็น id ถาวร + ย้ายข้อมูลเดิม ที่เดียว) */
+const termKey = (m, t, i) => "g:" + m.id + "-" + i;
 const BLKCLS = { "ГСЭ": "blk-gse", "МЕН": "blk-men", "ОПД": "blk-opd", "СД": "blk-sd", "ВПД": "blk-vpd" };
 const ICONS = { hist: "📜", elob: "🔋", tau: "🎛️", surn: "🚀", suka: "🛰️", nav: "🧭", toe: "🔌", teh_el: "⚡", asu: "📡", nadezh: "🛡️", ppo: "🔧", vhist: "🗺️" };
 
@@ -69925,7 +69966,7 @@ try { MODE = localStorage.getItem("atlas-mode-v1") || "sum"; } catch (e) {}
 const subjKeys = s => DEEP[s.id]
   ? DEEP[s.id].topics.map(t => "k:" + t.id)
   : (s.topics || []).map((_, i) => "k:" + s.id + ":" + i);
-const glossKeys = () => MODULES.flatMap(m => m.terms.map((_, i) => "g:" + m.id + "-" + i));
+const glossKeys = () => MODULES.flatMap(m => m.terms.map((t, i) => termKey(m, t, i)));
 const TOTAL = ALL_SUBJ.reduce((n, s) => n + subjKeys(s).length, 0) + glossKeys().length;
 
 function pct(keys) {
@@ -70137,6 +70178,7 @@ function renderOverview() {
       (ICONS[lastS.id] ? ICONS[lastS.id] + ' ' : '') + lastS.ru + '</b>' + (lastT ? ' · ' + lastT.th : '') + '</button>' : '') +
     '</div>';
 
+  h += HOOKS.render("overview-top", {});
   const deepList = SUBJECTS.filter(s => DEEP[s.id]).sort(byNum);   // v5: ทางลัดไปวิชาที่อ่านได้จริง — ขึ้นก่อนทุกอย่าง
   h += '<section class="deepstrip" aria-labelledby="deepH"><div class="nowhead"><h2 id="deepH">วิชาที่มีเนื้อหาเต็ม</h2>' +
     '<span class="year-note">' + deepList.length + ' วิชา · เรียบเรียงแล้วพร้อมแบบจำลองโต้ตอบ</span></div><div class="dgrid">' +
@@ -70178,6 +70220,7 @@ function renderOverview() {
   h += '<footer class="foot">รายการนี้ไม่รวมยุทธวิธีเฉพาะ (Тактика специальная) การฝึกงาน และการสอบรับรองของรัฐ (ГИА) แต่รวมพลศึกษา (เรียนภาค 1–9) · รวม ' +
     SUBJECTS.length + ' วิชา ' + fmtZe(PROGRAM.listed) + ' з.е. · ' +
     'ตัวเลขมุมซ้ายของการ์ดคือเลขประจำวิชาในเว็บนี้ ไม่เปลี่ยน จึงใช้อ้างอิงได้ · ความคืบหน้าเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</footer></div>';
+  h += HOOKS.render("overview-end", {});
   h += '<section class="backup" aria-labelledby="bkH"><h3 id="bkH">ความคืบหน้าของคุณ</h3>' +
     '<p>เครื่องหมาย «ทบทวนแล้ว» คำศัพท์ที่จำได้ บุ๊กมาร์ก ผลควิซ และตำแหน่งที่อ่านค้างไว้ เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ' +
     'สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
@@ -70205,6 +70248,7 @@ function renderOverview() {
   });
   const rb = document.getElementById("resumeBtn");
   if (rb) rb.addEventListener("click", () => go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off }));
+  HOOKS.run("overview");
 }
 
 /* ---- subject ---- */
@@ -70244,6 +70288,7 @@ async function fillBody(el) {
   if (window.SUKAFIG) window.SUKAFIG(el);
   fitWideMath(el);
   tocOnFill(el);
+  HOOKS.run("fill", el, t, sid);
 }
 function fillAllBodies() {
   return Promise.all([...document.querySelectorAll(".tbody[data-lazy]")].map(fillBody));
@@ -70334,6 +70379,8 @@ function renderSubject() {
     (deep ? '<div class="offl" id="offl"></div>' : '') +
     '<p class="m">สถานะภาคเรียนอิงแผนการเรียน ส่วนเปอร์เซ็นต์อิงการทำเครื่องหมายของคุณในเครื่องนี้ ไม่ใช่ผลสอบหรือการประเมินความเข้าใจ</p>' +
     '</div>';
+  const modeNow = deep && deep.summary && deep.summary.length ? MODE : "full";
+  h += HOOKS.render("subject-head", { s, deep, mode: modeNow });
 
   if (deep) {
     const hasSum = !!(deep.summary && deep.summary.length);
@@ -70376,6 +70423,7 @@ function renderSubject() {
     });
     h += '</ul></section>';
   }
+  h += HOOKS.render("subject-end", { s, deep, mode: modeNow });
   const same = semsOf(s).length ? runningIn(semFirst(s)).filter(x => x.id !== s.id).sort(byNum) : [];
   if (same.length) h += '<section class="topic"><div class="topic-head"><div><h2>เรียนพร้อมกันในภาค ' + semFirst(s) + '</h2>' +
     '<div class="th">' + same.length + ' วิชา</div></div></div><div class="chiprow">' +
@@ -70422,6 +70470,7 @@ function renderSubject() {
       lz.forEach(el => LAZY_IO.observe(el));
     } else fillAllBodies();
   }
+  HOOKS.run("subject", s, deep, modeNow);
 }
 
 /* ---- v4: สารบัญยกระดับ + แถบข้าง (โครงหน้าวิชา 3 คอลัมน์ .sgrid) ----
@@ -70792,6 +70841,7 @@ function parseRoute(hash) {
   if (p[0] === "glossary") { const q = p.slice(1).join("/"); return q ? { v: "glossary", q } : { v: "glossary" }; }
   if (p[0] === "sem" && !ADMIN) return { v: "overview" };
   if (PAGES.includes(p[0])) return { v: p[0] };
+  if (PAGE_DEFS[p[0]]) return { v: p[0], seg: p.slice(1).filter(x => x !== "") };
   return subjRoute(p[0], p[1], p[2]);
 }
 function routeHash(st) {
@@ -70799,11 +70849,12 @@ function routeHash(st) {
   if (st.v === "subject") return "#/" + st.id + (st.topic ? "/" + st.topic + (st.anchor ? "/" + e(st.anchor) : "") : st.mode ? "/" + st.mode : "");
   if (st.v === "search") return "#/search/" + e(st.q || "");
   if (st.v === "glossary") return "#/glossary" + (st.q ? "/" + e(st.q) : "");
+  if (PAGE_DEFS[st.v]) return "#/" + st.v + (st.seg || []).map(x => "/" + e(x)).join("");
   return st.v && st.v !== "overview" ? "#/" + st.v : "#/";
 }
 function routeOnly(st) {
   const r = { v: st.v };
-  ["id", "q", "mode", "topic", "anchor"].forEach(k => { if (st[k]) r[k] = st[k]; });
+  ["id", "q", "mode", "topic", "anchor", "seg"].forEach(k => { if (st[k]) r[k] = st[k]; });
   return r;
 }
 function pageTitle(st) {
@@ -70814,6 +70865,7 @@ function pageTitle(st) {
     return s ? (t ? t.th + " — " : "") + s.th + " · " + base : base;
   }
   if (st.v === "search") return "ค้นหา «" + st.q + "» · " + base;
+  if (PAGE_DEFS[st.v] && PAGE_DEFS[st.v].title) { try { const t = PAGE_DEFS[st.v].title(st); if (t) return t + " · " + base; } catch (e) {} }
   const names = { glossary: "คลังศัพท์", flash: "Flashcard คำศัพท์", quiz: "ควิซคำศัพท์", sem: "ปรับภาคเรียน" };
   return names[st.v] ? names[st.v] + " · " + base : base;
 }
@@ -70957,7 +71009,8 @@ function go(st, opt) {
       }
     });
   }
-  ({ overview: renderOverview, subject: renderSubject, glossary: renderGlossary, quiz: renderQuiz, search: renderSearch, sem: renderSemEditor, flash: renderFlash }[st.v] || renderOverview)();
+  if (PAGE_DEFS[st.v]) PAGE_DEFS[st.v].render(st);
+  else ({ overview: renderOverview, subject: renderSubject, glossary: renderGlossary, quiz: renderQuiz, search: renderSearch, sem: renderSemEditor, flash: renderFlash }[st.v] || renderOverview)();
   syncProgress();
   document.querySelectorAll("#bbar [data-bb]").forEach(b => b.classList.toggle("on", b.dataset.bb === st.v));
   if (opt.pop) { ROUTED = location.hash; document.title = pageTitle(st); }
@@ -70970,6 +71023,7 @@ function go(st, opt) {
   }
   const h1 = view.querySelector("h1");               // ผู้ใช้คีย์บอร์ด/โปรแกรมอ่านจอเริ่มที่หัวเรื่องของหน้าใหม่ (ไม่แย่งโฟกัสจากช่องค้นหา)
   if (h1 && !opt.init && document.activeElement !== searchEl) { h1.setAttribute("tabindex", "-1"); h1.focus({ preventScroll: true }); }
+  HOOKS.run("go", st);
 }
 function onRoute() {
   if (location.hash === ROUTED) return;
@@ -71124,7 +71178,7 @@ function renderGlossary() {
   MODULES.forEach(m => {
     h += '<div class="modcap" data-mod="' + m.id + '"><h2>' + m.ru + '</h2><span class="th">' + m.th + '</span></div><div class="g-grid" data-grid="' + m.id + '">';
     m.terms.forEach((t, i) => {
-      const k = "g:" + m.id + "-" + i;
+      const k = termKey(m, t, i);
       h += '<article class="card' + (DONE.has(k) ? " known" : "") + (BM.has(k) ? " bm" : "") + '" data-k="' + k + '" data-hay="' +
         (t.ru + " " + (t.abbr || "") + " " + t.th + " " + t.note).toLowerCase().replace(/"/g, "") + '">' +
         '<div class="ru">' + t.ru + (t.abbr ? ' <span class="abbr">' + t.abbr + '</span>' : '') + '</div>' +
@@ -71342,7 +71396,7 @@ function renderSearch() {
 /* ---- flashcards ---- */
 function renderFlash() {
   let src = "all", deck = [], idx = 0, flip = false, okCount = 0;
-  const allCards = MODULES.flatMap(m => m.terms.map((t, i) => ({ t, mod: m.th, k: "g:" + m.id + "-" + i })));
+  const allCards = MODULES.flatMap(m => m.terms.map((t, i) => ({ t, mod: m.th, k: termKey(m, t, i) })));
   const build = () => {
     deck = allCards.filter(c => src === "all" ? true : src === "unk" ? !DONE.has(c.k) : BM.has(c.k));
     for (let i = deck.length - 1; i > 0; i--) {
@@ -71562,6 +71616,7 @@ async function saveOffline(s) {
   topics.forEach(t => (t.demos || (t.demo ? [t.demo] : [])).forEach(k => { const m = /^vh-([a-z0-9-]+)$/.exec(k); if (m) urls.add("data/vh/" + m[1] + ".json"); }));
   if (bodies.some(h => h.includes('data-demo="ih-'))) { urls.add("data/ih/atlas.json"); urls.add("data/ih/world.json"); }
   urls.add(MANIFEST_URL);
+  HOOKS.collect("offline", s.id).forEach(u => urls.add(u));
   try { const m = (((await manifestGet()) || {}).subjects || {})[s.id] || {}; if (m.js) urls.add("js/subj/" + s.id + ".js?v=" + m.js); if (m.css) urls.add("js/subj/" + s.id + ".css?v=" + m.css); } catch (e) {}
   try { const css = await (await fetch("fonts/fonts.css")).text(); for (const m of css.matchAll(/url\(([^)]+\.woff2)\)/g)) urls.add("fonts/" + m[1]); } catch (e) {}
   const list = [...urls], total = list.length + topics.length;
@@ -71600,6 +71655,26 @@ window.addEventListener("scroll", () => {
   clearTimeout(WSS_T);
   WSS_T = setTimeout(writeScrollState, 400);        // หัวข้อที่อ่านอยู่ → ที่อยู่ของหน้า + «อ่านต่อ»
 }, { passive: true });
+
+/* ---- v6: ช่องโค้ดต่อ session — แต่ละ session เขียนเฉพาะในช่องของตัวเอง (ดู CLAUDE.md หัวข้อ 14) ----
+   โค้ดในช่องรันก่อนเริ่มแอป จึงลงทะเบียน HOOKS/registerPage ได้ทันเวลา · ฟังก์ชันส่วนกลางทั้งหมดใช้ได้ (go, navTopic, DEEP, DEMOS, dbGet, topicsOf …) */
+/* ===== SLOT S1 (ด่านอัตโนมัติของ build) BEGIN ===== */
+/* ===== SLOT S1 END ===== */
+/* ===== SLOT S2 (มือถือ: สารบัญ ชิปหัวข้อ แถบหลบ ชุดอ่านง่าย) BEGIN ===== */
+/* ===== SLOT S2 END ===== */
+/* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
+/* ===== SLOT S3 END ===== */
+/* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
+/* ===== SLOT S4 END ===== */
+/* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
+/* ===== SLOT S5 END ===== */
+/* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
+/* ===== SLOT S6 END ===== */
+/* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
+/* ===== SLOT S7 END ===== */
+/* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
+/* ===== SLOT S8 END ===== */
+/* ===== SLOTS END ===== */
 
 buildNav();
 setTimeout(buildIndex, 2000);
