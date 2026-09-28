@@ -8,7 +8,8 @@
 ต้องผ่านทุกข้อ: ทุกวิชาเปิดได้ · ไม่มี .tfail · canvas = [data-demo] · รูปทุกใบ
 naturalWidth > 0 · ค้นหาคำรัสเซียเจอ · ไม่มี page error
 · กล่อง/ช่องรูปในหน้า ต้องเท่ากับไฟล์ใน data/t (ของหายต้องรู้) · โครง figure มี .fw+img ครบ
-· จำนวนต่อวิชาต้องไม่ลดลงจาก src/verify-baseline.json — ตั้งใจเปลี่ยนจำนวน ให้รัน --update-baseline
+· จำนวนที่หน้าเว็บวาดจริงต้องไม่ต่ำกว่า src/counts-baseline.json (ไฟล์เดียวกับที่ tests ใช้ · สร้างด้วย
+  python src/counts.py --update เมื่อตั้งใจเพิ่ม/ลดเนื้อหา)
 พึ่งแค่ playwright กับ stdlib · ห้ามเปิดด้วย file:// จึงเปิดเซิร์ฟเวอร์เองใน thread
 """
 import argparse
@@ -26,7 +27,7 @@ sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)   # ให้เ�
 
 ROOT = Path(__file__).resolve().parent.parent
 QUERY = "Передаточная функция"   # คำค้นทดสอบ ควรเจอในหลายวิชา
-BASELINE = ROOT / "src" / "verify-baseline.json"
+BASELINE = ROOT / "src" / "counts-baseline.json"   # ของ src/counts.py
 BLOCKED_HOSTS = ("fonts.googleapis.com", "fonts.gstatic.com")
 
 
@@ -284,8 +285,6 @@ def main():
     ap.add_argument("--mobile", action="store_true",
                     help="ตรวจจอมือถือ 360 px เพิ่ม: ไม่มีตาราง/สูตร/ป้ายไหนล้นจอ (ทั้งสองโหมด เปิดเจาะลึกทุกกล่อง)")
     ap.add_argument("--verbose", action="store_true", help="พิมพ์เวลาแต่ละช่วงของทุกวิชา")
-    ap.add_argument("--update-baseline", action="store_true",
-                    help="บันทึกจำนวนของรอบนี้ลง src/verify-baseline.json — ใช้เมื่อตั้งใจเพิ่ม/ลดเนื้อหา")
     args = ap.parse_args()
     global VERBOSE
     VERBOSE = args.verbose
@@ -435,20 +434,26 @@ def main():
         if srm and srm["figs"] != gs:
             xfail.append(f"{r['id']}: ช่องรูปโหมดสรุป {srm['figs']} ≠ data-fig ในไฟล์ summary {gs}")
 
-    # ---------- baseline — จำนวนต้องไม่ลดลงระหว่าง commit (ครึ่งหลัง) ----------
+    # ---------- baseline — สิ่งที่หน้าเว็บวาดต้องไม่ต่ำกว่า src/counts-baseline.json (ครึ่งหลัง) ----------
+    # baseline นับจากไฟล์ (src/counts.py) · หน้าเว็บวาดทุกไฟล์ครั้งเดียวในโหมดของมัน จึงเทียบผลรวมสองโหมด:
+    # กล่อง = topics · ช่องเดโม = data-demo ใน html + เดโมในเมทาดาทา DEEP · ช่องรูป = data-fig
     base, bfail = {}, []
-    if BASELINE.exists():
-        try:
-            base = json.loads(BASELINE.read_text(encoding="utf-8"))
-        except Exception as e:
-            bfail.append(f"baseline: อ่าน {BASELINE.name} ไม่ได้: {e}")
-    if not args.update_baseline:      # --update-baseline = ตั้งใจเปลี่ยนจำนวน จึงไม่เทียบ
-        for r in results:
-            b = base.get(r["id"]) or {}
-            for k in ("boxes", "demos", "figs", "sum_boxes"):
-                v, bv = r.get(k), b.get(k)
-                if v is not None and bv is not None and v < bv:
-                    bfail.append(f"{r['id']}: {k} ลดลงจาก baseline {bv} → {v} (ตั้งใจ? รันด้วย --update-baseline)")
+    try:
+        base = json.loads(BASELINE.read_text(encoding="utf-8")).get("subjects", {})
+    except Exception as e:
+        bfail.append(f"baseline: อ่าน src/{BASELINE.name} ไม่ได้: {e} (รัน python src/counts.py --update)")
+    for r in results if base else []:
+        b = base.get(r["id"])
+        if not b:
+            bfail.append(f"{r['id']}: ไม่มีใน src/{BASELINE.name} (วิชาใหม่? รัน python src/counts.py --update)")
+            continue
+        s = r.get("sum") or {}
+        got = {"boxes": r["boxes"] + s.get("boxes", 0), "demos": r["demos"] + s.get("demos", 0),
+               "figs": r["figs"] + s.get("figs", 0)}
+        want = {"boxes": b["topics"], "demos": b["demo_slots"] + b.get("meta_demos", 0), "figs": b["fig_slots"]}
+        for k in got:
+            if got[k] < want[k]:
+                bfail.append(f"{r['id']}: {k} (สองโหมดรวม) {got[k]} ต่ำกว่า baseline {want[k]}")
     for m in xfail + bfail:
         print("  ✗ " + m)
 
@@ -462,16 +467,6 @@ def main():
           f"errors={len(errors)} search_hits={hits} home_ready_s={home_ready:.2f}"
           f"{f' mobile_fail={mobile_bad}' if args.mobile else ''} {'PASS' if ok else 'FAIL'}")
     print(f"total {time.perf_counter() - t_all:.1f}s")
-    bad_ids = {m.split(":", 1)[0] for m in xfail}
-    if args.update_baseline:
-        for r in results:
-            if r["ok"] and r["id"] not in bad_ids:
-                base[r["id"]] = {"boxes": r["boxes"], "demos": r["demos"],
-                                 "figs": r["figs"], "sum_boxes": r.get("sum_boxes")}
-        BASELINE.write_text(json.dumps(base, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"baseline บันทึกแล้ว → src/{BASELINE.name} ({len(base)} วิชา)")
-    elif not BASELINE.exists():
-        print("หมายเหตุ: ยังไม่มี src/verify-baseline.json — รันครั้งแรกด้วย --update-baseline เพื่อเปิดเกราะ «จำนวนต้องไม่ลดลง»")
     return 0 if ok else 1
 
 

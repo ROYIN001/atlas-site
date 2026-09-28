@@ -4,8 +4,13 @@
    · หน้าเว็บ (navigate)    เน็ตก่อน รอไม่เกิน 4 วินาที แล้วค่อยใช้สำเนาในเครื่อง
    · ไฟล์อื่นในเว็บเดียวกัน   ส่งสำเนาในเครื่องทันทีถ้ามี แล้วโหลดใหม่เบื้องหลังให้ครั้งหน้าสดเสมอ (stale-while-revalidate)
                             ไม่มีสำเนาก็โหลดจากเน็ต · เน็ตล่มก็ใช้สำเนารุ่นอื่นของไฟล์เดียวกัน (ต่างกันแค่ ?v=)
+   · คำขอที่ตั้ง cache: "reload" (ปุ่มเก็บ/อัปเดตสำเนาออฟไลน์ของ app.js — offlineSave)  เน็ตก่อนเสมอ แล้วเก็บตัวใหม่แทนตัวเดิม
+                            เน็ตล่มค่อยใช้สำเนา — ปุ่ม «อัปเดต» จึงได้ไฟล์ล่าสุดจริง ไม่ใช่สำเนาเดิมที่ส่งกลับทันที
    · เก็บไฟล์ใหม่แล้วลบรุ่นเก่าที่ต่างกันแค่ ?v= ทิ้ง ไม่ให้ app.js รุ่นเก่า ๆ กองในเครื่อง
-   แก้ไฟล์นี้แล้วเบราว์เซอร์จะติดตั้งตัวใหม่เองในการเปิดครั้งถัดไป · เปลี่ยน CACHE เมื่ออยากล้างสำเนาทั้งหมดของทุกคน */
+   · หน้าเว็บลบไฟล์ของวิชาที่ผู้อ่านไม่เก็บแล้วเอง (offlineRemove ใน app.js ลบจากทุก cache ที่ขึ้นต้น "atlas-")
+   แก้ไฟล์นี้แล้วเบราว์เซอร์จะติดตั้งตัวใหม่เองในการเปิดครั้งถัดไป · เปลี่ยน CACHE เมื่อโครงของสำเนาเปลี่ยน (ล้างสำเนาทั้งหมดของทุกคน —
+   ต้องล้าง atlas-offline-v1 ในหน้าเว็บให้ตรงกันด้วย ไม่งั้นหน้าวิชาจะบอกว่าเก็บไว้แล้วทั้งที่สำเนาหายไป)
+   S3 (28 ก.ย. 2026): เพิ่มทาง cache: "reload" — คีย์และรูปแบบของสำเนาเหมือนเดิม จึงคง "atlas-v1" ไว้ สำเนาที่ผู้อ่านเก็บไว้แล้วใช้ต่อได้ */
 const CACHE = "atlas-v1";
 const SHELL = new URL("./", self.registration.scope).href;
 
@@ -22,8 +27,20 @@ self.addEventListener("fetch", e => {
   if (url.origin !== self.location.origin || !req.url.startsWith(SHELL)) return;
   if (req.headers.has("range")) return;
   if (req.mode === "navigate") e.respondWith(page(req));
+  else if (req.cache === "reload" || req.cache === "no-store") e.respondWith(fresh(req));
   else e.respondWith(asset(req, e));
 });
+
+async function fresh(req) {
+  const c = await caches.open(CACHE);
+  try {
+    const res = await fetch(req);
+    if (res.ok && res.type === "basic") { await c.put(req, res.clone()); await prune(c, req.url); }
+    return res;
+  } catch (err) {
+    return (await c.match(req)) || (await c.match(req, { ignoreSearch: true })) || Response.error();
+  }
+}
 
 async function page(req) {
   const c = await caches.open(CACHE);
