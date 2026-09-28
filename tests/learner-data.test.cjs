@@ -17,6 +17,7 @@ function section(startMarker, endMarker) {
 const CORE = section('const HOOKS = {', 'const BLKCLS = {');
 const PROG = section('/* ================= APP ================= */', '/* v5: ภาคเรียนของผู้อ่าน');
 const SLOT = section('/* ===== SLOT S8 (', '/* ===== SLOT S8 END');
+const BACKUP = section('/* ---- สำรอง/นำเข้าความคืบหน้า', '/* ---- overview ---- */');
 
 // localStorage จำลอง · failOn(key) → setItem ของคีย์นั้นโยน QuotaExceededError
 function fakeStorage(init) {
@@ -49,8 +50,9 @@ function boot({ storage, modules, extra = '' }) {
   };
   vm.createContext(sb);
   // แทน storeFailed (แถบแจ้งใน DOM) ด้วยตัวจด — กำหนดก่อนโค้ดรัน จึงจับการแจ้งระหว่างย้ายสคีมาตอนเริ่มได้
-  vm.runInContext('storeFailed = e => { warned.push(e); };\n' + CORE + PROG + extra + SLOT +
-    '\nObject.assign(this, { termKey, stableId, store, persist, persistBM, DONE, BM, learnerStart, migrateTermKeys, readMeta, LEARNER, get STORE_ERR() { return STORE_ERR; } });', sb);
+  vm.runInContext('storeFailed = e => { warned.push(e); };\n' + CORE + PROG + BACKUP + extra + SLOT +
+    '\nObject.assign(this, { termKey, stableId, store, persist, persistBM, saveLast, DONE, BM, learnerStart, migrateTermKeys, readMeta, LEARNER, learnerKey,' +
+    ' importPlan, progressImport, restorePrev, clearTemp, storeErr: () => STORE_ERR });', sb);
   return sb;
 }
 
@@ -130,3 +132,134 @@ test('ย้ายสคีมาแล้วเขียนไม่สำเ�
   assert.equal(JSON.parse(st.getItem('atlas-meta-v1')).schema, 2);
 });
 
+
+// ---- ข้อ 2–4: นำเข้า/กู้คืน/ตัวเขียน ----
+const ORIGINAL = {
+  'atlas-sula-v1': JSON.stringify(['k:tau-t1', 'k:tau-t2']),
+  'atlas-bm-v1': JSON.stringify(['tau-t3']),
+  'atlas-quiz-v1': JSON.stringify({ 'tau-t1': { 0: { done: 1, ok: 1, n: 1 } } }),
+  'atlas-last-v1': JSON.stringify({ v: 'subject', id: 'tau' }),
+  'atlas-admin-v1': '1',
+};
+const fileOf = obj => ({ text: async () => (typeof obj === 'string' ? obj : JSON.stringify(obj)) });
+const learner = st => Object.fromEntries(Object.entries(st.dump()).filter(([k]) => !['atlas-meta-v1', 'atlas-backup-prev', 'atlas-admin-v1'].includes(k)));
+function fresh() {
+  const st = fakeStorage(ORIGINAL);
+  const sb = boot({ storage: st, modules: [mod('tau', ['а1'])] });
+  return { st, sb, before: learner(st) };
+}
+const GOOD = {
+  app: 'atlas-site', v: 2, schema: 2, saved: '2026-09-01T10:00:00Z',
+  data: { 'atlas-sula-v1': JSON.stringify(['k:a', 'k:b', 'k:c']), 'atlas-bm-v1': JSON.stringify(['x', 'y']), 'atlas-ui-v1': '{}', 'atlas-foo': '1' },
+};
+
+test('นำเข้าไฟล์เสีย/ผิดรูปแบบ/รุ่นใหม่กว่า → ปฏิเสธพร้อมเหตุผล ข้อมูลเดิมครบ ไม่ถามยืนยัน', async () => {
+  const cases = [
+    [{ x: 1 }, /ไม่ใช่ไฟล์สำรอง/],
+    ['{oops', /ไม่ใช่ JSON/],
+    [{ app: 'atlas-site', v: 1, data: {} }, /ไม่มีข้อมูล/],
+    [{ app: 'atlas-site', v: 9, data: { 'atlas-sula-v1': '[]' } }, /รุ่นใหม่กว่า/],
+    [{ app: 'atlas-site', v: 2, schema: 3, data: { 'atlas-sula-v1': '[]' } }, /รุ่นใหม่กว่า/],
+    [{ app: 'atlas-site', v: 2, data: { 'atlas-sula-v1': '{"a":1}' } }, /atlas-sula-v1.*รูปแบบไม่ถูกต้อง/],
+    [{ app: 'atlas-site', v: 2, data: { 'atlas-bm-v1': '[1,{"a":2}]' } }, /atlas-bm-v1/],
+    [{ app: 'atlas-site', v: 2, data: { 'atlas-quiz-v1': '[]' } }, /atlas-quiz-v1/],
+    [{ app: 'atlas-site', v: 2, data: { 'atlas-mode-v1': 'zzz' } }, /atlas-mode-v1/],
+    [{ app: 'atlas-site', v: 2, data: { 'atlas-meta-v1': '{"schema":"x"}' } }, /atlas-meta-v1/],
+    [{ app: 'atlas-site', v: 2, data: { 'atlas-foo': 5 } }, /ไม่ใช่ข้อความ/],
+  ];
+  for (const [obj, re] of cases) {
+    const { st, sb, before } = fresh();
+    await assert.rejects(sb.progressImport(fileOf(obj)), re, JSON.stringify(obj));
+    assert.deepEqual(learner(st), before);
+    assert.equal(st.getItem('atlas-backup-prev'), null);
+    assert.equal(sb.confirms.length, 0);
+    assert.equal(sb.reloaded, undefined);
+  }
+});
+
+test('นำเข้า: สรุปสิ่งที่จะเปลี่ยนก่อนยืนยัน · ยกเลิกแล้วไม่แตะอะไร · สำเร็จแล้วชุดเดิมอยู่ใน atlas-backup-prev', async () => {
+  const { st, sb, before } = fresh();
+  sb.answer = false;
+  assert.equal(await sb.progressImport(fileOf(GOOD)), false);
+  assert.deepEqual(learner(st), before);
+  const msg = sb.confirms[0];
+  assert.match(msg, /เครื่องหมายทบทวน\/จำได้ 2 → 3/);
+  assert.match(msg, /บุ๊กมาร์ก 1 → 2/);
+  assert.match(msg, /ผลควิซ \(หัวข้อ\) 1 → 0/);
+  assert.match(msg, /ไม่รู้จัก 2 รายการ/);
+  sb.answer = true;
+  assert.equal(await sb.progressImport(fileOf(GOOD)), true);
+  assert.equal(sb.reloaded, 1);
+  assert.deepEqual(learner(st), GOOD.data, 'แทนที่ทั้งชุด (คีย์ที่ไฟล์ไม่มีถูกลบ)');
+  assert.equal(st.getItem('atlas-admin-v1'), '1', 'โหมดผู้ดูแลไม่ถูกแตะ');
+  const prev = JSON.parse(st.getItem('atlas-backup-prev'));
+  const { 'atlas-admin-v1': _a, ...origLearner } = ORIGINAL;
+  assert.deepEqual(Object.fromEntries(Object.entries(prev.data).filter(([k]) => k !== 'atlas-meta-v1')), origLearner);
+  assert.equal(JSON.parse(st.getItem('atlas-meta-v1')).schema, 2);
+  // กู้คืนชุดก่อนนำเข้า → กลับเป็นชุดเดิม และชุดที่นำเข้าสลับไปอยู่ใน atlas-backup-prev
+  assert.equal(sb.restorePrev(), true);
+  assert.deepEqual(learner(st), origLearner);
+  assert.deepEqual(Object.fromEntries(Object.entries(JSON.parse(st.getItem('atlas-backup-prev')).data).filter(([k]) => k !== 'atlas-meta-v1')), GOOD.data);
+});
+
+test('นำเข้าแล้ว setItem ล้มกลางทาง (พื้นที่เต็ม) → คืนชุดเดิมครบและแจ้งเหตุผล', async () => {
+  const { st, sb, before } = fresh();
+  let n = 0;
+  st.fail = k => k !== 'atlas-backup-prev' && ++n === 2;       // เขียนได้คีย์แรก คีย์ที่สองพื้นที่เต็ม
+  await assert.rejects(sb.progressImport(fileOf(GOOD)), /พื้นที่เก็บของเบราว์เซอร์เต็ม.*คืนข้อมูลเดิมครบแล้ว/);
+  assert.deepEqual(learner(st), before);
+  assert.equal(sb.reloaded, undefined);
+});
+
+test('นำเข้าแล้วเก็บชุดปัจจุบันลง atlas-backup-prev ไม่ได้ → ยกเลิกทั้งหมด ข้อมูลเดิมครบ', async () => {
+  const { st, sb, before } = fresh();
+  st.fail = k => k === 'atlas-backup-prev';
+  await assert.rejects(sb.progressImport(fileOf(GOOD)), /ยังไม่ได้เปลี่ยนอะไร/);
+  assert.deepEqual(learner(st), before);
+});
+
+test('ไฟล์สำรองรุ่น 1 (เว็บเดิม คีย์ศัพท์เป็นลำดับ) → schema 1 แล้วย้ายเป็นคีย์ถาวรตอนเปิดหน้าใหม่', async () => {
+  const modules = [mod('tau', ['а1', 'б2'])];
+  const st = fakeStorage({ 'atlas-sula-v1': '[]' });
+  const sb = boot({ storage: st, modules });
+  await sb.progressImport(fileOf({ app: 'atlas-site', v: 1, saved: '2026-08-01T00:00:00Z', data: { 'atlas-sula-v1': JSON.stringify(['g:tau-1', 'k:tau-t1']) } }));
+  assert.equal(JSON.parse(st.getItem('atlas-meta-v1')).schema, 1);
+  const sb2 = boot({ storage: st, modules });                  // = location.reload()
+  assert.deepEqual(JSON.parse(st.getItem('atlas-sula-v1')), [sb2.termKey(modules[0], modules[0].terms[1], 1), 'k:tau-t1']);
+  assert.equal(JSON.parse(st.getItem('atlas-meta-v1')).schema, 2);
+});
+
+test('store(): สำเร็จคืน true · พื้นที่เต็มคืน false แจ้งผู้อ่าน ข้อมูลเดิมในเครื่องไม่เสีย', () => {
+  const { st, sb } = fresh();
+  assert.equal(sb.store('atlas-x-v1', { a: 1 }), true);
+  assert.equal(st.getItem('atlas-x-v1'), '{"a":1}');
+  assert.equal(sb.store('atlas-x-v1', 'raw'), true);
+  assert.equal(st.getItem('atlas-x-v1'), 'raw');
+  assert.equal(sb.store('atlas-x-v1', undefined), true);
+  assert.equal(st.getItem('atlas-x-v1'), null);
+  st.fail = () => true;
+  sb.DONE.add('k:new');
+  assert.equal(sb.persist(), false);
+  assert.equal(sb.warned.length, 1);
+  assert.equal(sb.warned[0].quota, true);
+  assert.equal(sb.warned[0].key, 'atlas-sula-v1');
+  assert.equal(sb.storeErr().key, 'atlas-sula-v1');
+  assert.equal(st.getItem('atlas-sula-v1'), ORIGINAL['atlas-sula-v1'], 'ค่าเดิมในเครื่องยังอยู่');
+  // ตัวเขียนทุกตัวในบล็อกความคืบหน้าเรียกผ่าน store() — ไม่มี setItem ตรง ๆ ที่กลืน error เงียบ
+  assert.doesNotMatch(PROG, /localStorage\.setItem\((KEY|BMKEY|LASTKEY|RAILKEY)/);
+  assert.match(app, /const saveSem = \(\) => store\(SEMKEY, SEMOVR\);/);
+  assert.match(app, /const saveQuiz = \(\) => store\(QKEY, QUIZ\);/);
+});
+
+test('ล้างข้อมูลชั่วคราว: ลบเฉพาะคีย์ที่สร้างใหม่ได้ · atlas-backup-prev ต้องยืนยันแยก · ความคืบหน้าไม่ถูกลบ', () => {
+  const { st, sb } = fresh();
+  st.setItem('atlas-rail-v1', '[1]');
+  st.setItem('atlas-backup-prev', JSON.stringify({ data: {} }));
+  const answers = [true, false];
+  sb.confirm = () => answers.shift();
+  assert.match(sb.clearTemp(), /ล้างแล้ว 2 รายการ/);
+  assert.equal(st.getItem('atlas-last-v1'), null);
+  assert.equal(st.getItem('atlas-rail-v1'), null);
+  assert.notEqual(st.getItem('atlas-backup-prev'), null, 'ไม่ยืนยันข้อสอง → ชุดก่อนนำเข้ายังอยู่');
+  for (const k of ['atlas-sula-v1', 'atlas-bm-v1', 'atlas-quiz-v1']) assert.equal(st.getItem(k), ORIGINAL[k]);
+});
