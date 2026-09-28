@@ -71905,7 +71905,7 @@ function s7Toast(msg) {
   t.textContent = msg;
   t.classList.add("on");
   clearTimeout(S7_TOAST_T);
-  S7_TOAST_T = setTimeout(() => t.classList.remove("on"), 3200);
+  S7_TOAST_T = setTimeout(() => t.classList.remove("on"), msg.length > 60 ? 6500 : 3200);
 }
 async function s7Copy(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
@@ -72053,6 +72053,54 @@ HOOKS.html("progress", () => {
     (list.length ? '<ol class="s7-list s7-notes">' + list.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">' + s7Ago(x.t) + '</span>' +
       '<p>' + s7Esc(x.text.length > 220 ? x.text.slice(0, 220) + "…" : x.text) + '</p></li>').join("") + '</ol>'
       : '<p class="m">ยังไม่มี — ท้ายทุกหัวข้อมีช่อง «บันทึกของฉัน» ให้จดสั้น ๆ</p>') + '</section>';
+});
+
+/* ---- 6) แจ้งจุดผิด — ไม่มีเซิร์ฟเวอร์รับ จึงคัดลอกข้อความสำเร็จรูปให้ผู้อ่านไปวางในกลุ่ม LINE ของรุ่นเอง ----
+   ถ้าเจ้าของงานเพิ่มไฟล์ data/feedback.json = { "url": "https://…" } (เช่นแบบฟอร์ม) จะเปิดลิงก์นั้นให้ด้วย · โหลดไฟล์นี้เมื่อกดปุ่มเท่านั้น */
+let S7_SEL = "";
+document.addEventListener("pointerdown", e => {          // จำข้อความที่เลือกไว้ก่อนการกดปุ่มจะล้างการเลือก
+  if (e.target.closest && e.target.closest(".s7-rep")) { const s = window.getSelection && String(window.getSelection() || "").trim(); if (s) S7_SEL = s; }
+}, true);
+let S7_FB = null;
+const s7Feedback = () => S7_FB || (S7_FB = fetch("data/feedback.json?v=" + DATA_VERSION, { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null).then(j => j && typeof j.url === "string" && /^https:\/\//.test(j.url) ? j.url : null).catch(() => null));
+function s7ReportText(sid, tid, id, sel) {
+  const s = ALL_SUBJ.find(x => x.id === sid), t = s7Topic(sid, tid);
+  return ["แจ้งจุดผิด · Study Program",
+    "วิชา: " + (s ? s.th + " (" + s.ru + ")" : sid),
+    "หัวข้อ: " + (t ? s7Plain(t.th) + " (" + s7Plain(t.ru) + ")" : tid),
+    "ลิงก์: " + s7Url(sid, tid, id),
+    sel ? "ข้อความที่เลือก: «" + (sel.length > 500 ? sel.slice(0, 500) + "…" : sel) + "»" : "",
+    "รุ่นข้อมูล: " + DATA_VERSION,
+    "ผิดตรงไหน / ที่ถูกควรเป็น: "].filter(Boolean).join("\n");
+}
+async function s7Report(sid, tid, id) {
+  const cur = window.getSelection ? String(window.getSelection() || "").trim() : "";
+  const sel = cur || S7_SEL;
+  S7_SEL = "";
+  const text = s7ReportText(sid, tid, id, sel);
+  const ok = await s7Copy(text);
+  const url = await s7Feedback();
+  let opened = false;
+  if (url) { try { opened = !!window.open(url, "_blank", "noopener"); } catch (e) {} }
+  if (!ok) { window.prompt("คัดลอกข้อความนี้ไปแจ้งจุดผิด", text.replace(/\n/g, " · ")); return; }
+  s7Toast("คัดลอกข้อความแจ้งจุดผิดแล้ว" + (sel ? " (รวมข้อความที่คุณเลือก)" : "") + " — วางในกลุ่ม LINE ของรุ่น แล้วพิมพ์ต่อว่าผิดตรงไหน" +
+    (url && !opened ? " · เปิดแบบฟอร์มแจ้งจุดผิดได้จากลิงก์ในไฟล์ data/feedback.json" : opened ? " · หรือกรอกในแบบฟอร์มที่เปิดขึ้น" : ""));
+}
+HOOKS.on("fill", (el, t, sid) => {
+  const bar = el.closest("section.topic") && el.closest("section.topic").querySelector(":scope > .topic-head .s7-bar");
+  if (bar && !bar.querySelector(".s7-rep")) {
+    const b = s7Btn("s7-rep", "⚑ แจ้งจุดผิด", "แจ้งจุดผิดในหัวข้อนี้ — เลือกข้อความที่ผิดก่อนกดได้", () => s7Report(sid, t.id));
+    b.textContent = "⚑ แจ้งจุดผิด";
+    bar.appendChild(b);
+  }
+  const addDemo = () => el.querySelectorAll(".demo-head").forEach(h => {
+    const host = h.closest("[data-demo]");
+    if (h.querySelector(".s7-rep") || !host || !host.id || !el.contains(host)) return;   // id ตั้งโดยปุ่ม ⧉ (ข้อ 4)
+    h.appendChild(s7Btn("s7-rep s7-mini", "⚑", "แจ้งจุดผิดในแบบจำลองนี้", () => s7Report(sid, t.id, host.id), true));
+  });
+  addDemo();
+  [1600, 5100].forEach(ms => setTimeout(() => { if (el.isConnected) addDemo(); }, ms));
 });
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */

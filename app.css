@@ -3683,6 +3683,7 @@
   background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 8px; font-size: 14px; line-height: 1.45;
   box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
 #s7toast.on { opacity: 1; transform: translate(-50%, 0); }
+.s7-rep { font-size: 12.5px; }
 @media (max-width: 900px) { #s7toast { bottom: 84px; } }
 /* บันทึกส่วนตัวท้ายหัวข้อ */
 #view .mynote { margin: 18px 0 4px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 0 12px; }
