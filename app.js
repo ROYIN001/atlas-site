@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "a1beb6b538";
+const DATA_VERSION = "7d5ce2a49b";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -72381,27 +72381,36 @@ function s7HeadBar(el, t, sid) {
   title.appendChild(bar);
   return bar;
 }
-/* ปุ่ม ⧉ ของคำถามปากเปล่า (details.qa ที่มี id) และแบบจำลอง (.demo-head · ใช้ id ของกล่อง [data-demo] ถ้าไม่มีตั้งเป็น <หัวข้อ>-dm<ลำดับ>) */
+/* ปุ่ม ⧉ ของคำถามปากเปล่า (details.qa ที่มี id) และแบบจำลอง (.demo-head)
+   กล่อง [data-demo] ที่ไม่มี id ได้ <หัวข้อ>-dm<ลำดับ> ตอนเติมหัวข้อ (ลิงก์ถึงแบบจำลองใช้ได้ก่อนแบบจำลองติดตั้ง)
+   แบบจำลองติดตั้งเมื่อเลื่อนเข้าใกล้จอ (S3 demoMount) → เฝ้าลูกชั้นแรกของกล่องทีละกล่อง พอ .demo-head โผล่ก็ใส่ปุ่มแล้วเลิกเฝ้า
+   (ไม่เฝ้าทั้ง subtree — แบบจำลองเขียน readout ใหม่ทุกเฟรม) · ข้อ 6 เพิ่มปุ่ม ⚑ ผ่าน S7_DEMO_TOOLS */
+const S7_DEMO_TOOLS = [];
+let S7_MO = [];
+S7_DEMO_TOOLS.push((h, host, t, sid) => h.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของแบบจำลองนี้",
+  () => s7ShareLink(s7Url(sid, t.id, host.id), s7TopicName(sid, t.id)), true)));
+function s7DemoHead(host, t, sid) {                    // true = มีหัวแล้ว (ใส่ปุ่มแล้วหรือเพิ่งใส่)
+  const h = [...host.querySelectorAll(".demo-head")].find(x => x.closest("[data-demo]") === host);
+  if (!h) return false;
+  if (!h.querySelector(".s7-mini")) S7_DEMO_TOOLS.forEach(fn => fn(h, host, t, sid));
+  return true;
+}
 function s7ElemTools(el, t, sid) {
   el.querySelectorAll("details.qa[id] > summary").forEach(sm => {
     if (sm.querySelector(".s7-cp")) return;
     const id = sm.parentElement.id;
     sm.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของคำถามนี้", () => s7ShareLink(s7Url(sid, t.id, id), s7TopicName(sid, t.id))));
   });
-  const hosts = [...el.querySelectorAll("[data-demo]")];
-  el.querySelectorAll(".demo-head").forEach(h => {
-    if (h.querySelector(".s7-cp")) return;
-    const host = h.closest("[data-demo]");
-    if (!host || !el.contains(host)) return;
-    if (!host.id) host.id = t.id + "-dm" + (hosts.indexOf(host) + 1);
-    h.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของแบบจำลองนี้", () => s7ShareLink(s7Url(sid, t.id, host.id), s7TopicName(sid, t.id)), true));
+  el.querySelectorAll("[data-demo]").forEach((host, i) => {
+    if (!host.id) host.id = t.id + "-dm" + (i + 1);
+    if (s7DemoHead(host, t, sid)) return;
+    const mo = new MutationObserver(() => { if (!host.isConnected || s7DemoHead(host, t, sid)) { mo.disconnect(); S7_MO = S7_MO.filter(x => x !== mo); } });
+    mo.observe(host, { childList: true });
+    S7_MO.push(mo);
   });
 }
-HOOKS.on("fill", (el, t, sid) => {
-  s7HeadBar(el, t, sid);
-  s7ElemTools(el, t, sid);
-  [1500, 5000].forEach(ms => setTimeout(() => { if (el.isConnected) s7ElemTools(el, t, sid); }, ms));   // แบบจำลองที่วาดหัวทีหลัง (โหลดข้อมูลก่อน)
-});
+HOOKS.on("fill", (el, t, sid) => { s7HeadBar(el, t, sid); s7ElemTools(el, t, sid); });
+HOOKS.on("clear", () => { S7_MO.forEach(mo => mo.disconnect()); S7_MO = []; });
 /* เปิดลิงก์ที่ชี้องค์ประกอบ (#/<วิชา>/<หัวข้อ>/<id>) → ไฮไลต์เป้าหมาย 2 วินาทีหลังเลื่อนไปถึง */
 let S7_HL = 0;
 function s7Hl(id) {
@@ -72518,14 +72527,8 @@ HOOKS.on("fill", (el, t, sid) => {
     b.textContent = "⚑ แจ้งจุดผิด";
     bar.appendChild(b);
   }
-  const addDemo = () => el.querySelectorAll(".demo-head").forEach(h => {
-    const host = h.closest("[data-demo]");
-    if (h.querySelector(".s7-rep") || !host || !host.id || !el.contains(host)) return;   // id ตั้งโดยปุ่ม ⧉ (ข้อ 4)
-    h.appendChild(s7Btn("s7-rep s7-mini", "⚑", "แจ้งจุดผิดในแบบจำลองนี้", () => s7Report(sid, t.id, host.id), true));
-  });
-  addDemo();
-  [1600, 5100].forEach(ms => setTimeout(() => { if (el.isConnected) addDemo(); }, ms));
 });
+S7_DEMO_TOOLS.push((h, host, t, sid) => h.appendChild(s7Btn("s7-rep s7-mini", "⚑", "แจ้งจุดผิดในแบบจำลองนี้", () => s7Report(sid, t.id, host.id), true)));
 
 /* ---- 7) ป้ายสถานะเนื้อหาในหัวหัวข้อ (ฟิลด์ rev / chk / src ของ DEEP — ดู s7Status ในส่วน PURE) ---- */
 HOOKS.on("fill", (el, t, sid) => {
