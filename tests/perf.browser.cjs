@@ -229,7 +229,9 @@ const TESTS = {
       const v = document.getElementById('view'), imgs = [...v.querySelectorAll('figure.ifig[data-fig] img')];
       return { boxes: v.querySelectorAll('.tbody').length, filled: v.querySelectorAll('.tbody:not([data-lazy])').length,
         tfail: v.querySelectorAll('.tfail').length, demos: v.querySelectorAll('[data-demo]').length,
-        canvas: v.querySelectorAll('canvas').length, demoFail: v.querySelectorAll('.demo-fail').length,
+        // เหมือน verify.py: วิดเจ็ต ih-… (История) วาดด้วย SVG/HTML — นับว่าติดตั้งแล้วเมื่อกล่องมีเนื้อหา
+        canvas: v.querySelectorAll('canvas').length + [...v.querySelectorAll('[data-demo^="ih-"]')].filter(h => h.children.length && !h.querySelector('canvas')).length,
+        demoFail: v.querySelectorAll('.demo-fail').length,
         figs: imgs.length, imgsOk: imgs.filter(i => i.naturalWidth > 0).length };
     });
     await ctx.close();
