@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "99175ba428";
+const DATA_VERSION = "9588096df2";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -71140,7 +71140,11 @@ function parseRoute(hash) {
   if (h && h[0] !== "/") return null;                        // #<id> = ลิงก์ในหน้า ไม่ใช่ที่อยู่ของหน้า
   const p = h.slice(1).split("/").map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
   if (!p[0]) return { v: "overview" };
-  if (p[0] === "search") { const q = p.slice(1).join("/").trim().toLowerCase(); return q ? { v: "search", q } : { v: "overview" }; }
+  if (p[0] === "search") {                                 // #/search/<คำ>[/<วิชา>] — คำค้นมี «/» ได้ จึงนับเซกเมนต์สุดท้ายเป็นวิชาเฉพาะเมื่อเป็น id ใน SUBJECTS
+    const seg = p.slice(1), sid = seg.length > 1 && ALL_SUBJ.some(s => s.id === seg[seg.length - 1]) ? seg.pop() : "";
+    const q = seg.join("/").trim().toLowerCase();
+    return q ? (sid ? { v: "search", q, sid } : { v: "search", q }) : { v: "overview" };
+  }
   if (p[0] === "glossary") { const q = p.slice(1).join("/"); return q ? { v: "glossary", q } : { v: "glossary" }; }
   if (p[0] === "sem" && !ADMIN) return { v: "overview" };
   if (PAGES.includes(p[0])) return { v: p[0] };
@@ -71150,14 +71154,14 @@ function parseRoute(hash) {
 function routeHash(st) {
   const e = encodeURIComponent;
   if (st.v === "subject") return "#/" + st.id + (st.topic ? "/" + st.topic + (st.anchor ? "/" + e(st.anchor) : "") : st.mode ? "/" + st.mode : "");
-  if (st.v === "search") return "#/search/" + e(st.q || "");
+  if (st.v === "search") return "#/search/" + e(st.q || "") + (st.sid ? "/" + st.sid : "");
   if (st.v === "glossary") return "#/glossary" + (st.q ? "/" + e(st.q) : "");
   if (PAGE_DEFS[st.v]) return "#/" + st.v + (st.seg || []).map(x => "/" + e(x)).join("");
   return st.v && st.v !== "overview" ? "#/" + st.v : "#/";
 }
 function routeOnly(st) {
   const r = { v: st.v };
-  ["id", "q", "mode", "topic", "anchor", "seg"].forEach(k => { if (st[k]) r[k] = st[k]; });
+  ["id", "q", "sid", "mode", "topic", "anchor", "seg"].forEach(k => { if (st[k]) r[k] = st[k]; });   // sid = ขอบเขต «วิชานี้» ของ #/search
   return r;
 }
 function pageTitle(st) {
@@ -71529,13 +71533,13 @@ function renderGlossary() {
   const unk = document.getElementById("unkBtn");
   unk.addEventListener("click", () => { onlyUnknown = !onlyUnknown; unk.classList.toggle("on", onlyUnknown); filterGloss(); });
 
-  function filterGloss() {
-    const q = (searchEl.value || "").trim().toLowerCase();
+  function filterGloss() {                       // กติกาเดียวกับหน้าค้นหา: ชื่อพ้อง (Kalman = Калман = คาลมาน) · ё = е · ทุกคำในวลี
+    const raw = (searchEl.value || "").trim(), qs = raw ? searchQueries(raw) : null;
     let shown = 0;
     MODULES.forEach(m => {
       let n = 0;
       view.querySelectorAll('[data-grid="' + m.id + '"] .card').forEach(c => {
-        const ok = (!q || c.dataset.hay.includes(q)) && (!onlyUnknown || !DONE.has(c.dataset.k)) && (!onlyBM || BM.has(c.dataset.k));
+        const ok = (!qs || textMatch(normS(c.dataset.hay), qs)) && (!onlyUnknown || !DONE.has(c.dataset.k)) && (!onlyBM || BM.has(c.dataset.k));
         c.classList.toggle("hidden", !ok);
         if (ok) n++;
       });
@@ -71552,40 +71556,107 @@ function renderGlossary() {
 /* ---- search ---- */
 const INDEX = [];
 let INDEX_BUILT = false;
-/* ข้อความเต็มของทุกหัวข้ออยู่ใน data/ix (ราว 4.5 MB แบบบีบอัด) — โหลดเมื่อผู้อ่านเริ่มค้นหาเท่านั้น
-   (เดิมโหลดทุกครั้งที่เปิดเว็บ แม้ไม่ได้ค้นหา) · ระหว่างรอ ผลมาจากชื่อวิชา ชื่อหัวข้อ และคลังศัพท์
-   แล้วหน้าผลค้นหาเติมเองเมื่อดัชนีมาครบ · ตัวเรียก: โฟกัสช่องค้นหา · ปุ่มค้นหาแถบล่าง · หน้าผลค้นหา */
+/* ข้อความเต็มของทุกหัวข้ออยู่ใน data/ix (ราว 21 MB ดิบ / 4.7 MB บีบอัด ทั้ง 12 วิชา) — โหลดเป็นขั้น ไม่โหลดทีเดียวทั้งหมด
+   · โฟกัสช่องค้นหา = โหลดเฉพาะวิชาที่เปิดอยู่ (ixPrime) · พิมพ์ตัวแรก/เปิดหน้าผลค้นหา = วิชานั้นก่อน แล้วที่เหลือทีละวิชา (loadIndex)
+   · สถานะต่อวิชา IXST[sid] = "wait" | "load" | "ok" | "fail" · IX_READY = true เฉพาะเมื่อครบทุกวิชา
+   · วิชาที่ล้มไม่ลองซ้ำเอง — ปุ่ม «ลองใหม่» ในหน้าผล (ixRetry) โหลดเฉพาะที่ขาด
+   · IXHAY เก็บข้อความที่ปรับ ё→е แล้ว (ตัวพิมพ์เล็กมาจาก build_data) และ INDEX อ้างสตริงเดียวกัน ไม่คัดลอกซ้ำ
+     ไม่เก็บ JSON ดิบไว้ใน DBCACHE (เดิมผ่าน dbGet ข้อความทั้งหมดค้างในหน่วยความจำสองชุด) */
 const IXHAY = {};
+const IXST = {};
+let IX_SUBJ = null, IX_MAN = null, IX_MANST = "";           // รายชื่อวิชาที่มีดัชนี (จาก manifest) · "load" | "fail" ระหว่าง/หลังโหลด manifest
 let IX_LOADED = false, IX_READY = false, IX_DONE = 0, IX_TOTAL = 0;
-async function loadIndex() {
-  if (IX_LOADED) return;
-  IX_LOADED = true;
-  const man = await fetch("data/manifest.json?v=" + DATA_VERSION).then(r => r.ok ? r.json() : null).catch(() => null);
-  const subs = (man && man.subjects) || {};
-  IX_TOTAL = Object.keys(subs).length;
-  await Promise.all(Object.keys(subs).map(async sid => {
-    const d = await dbGet("ix", sid);
-    (d && d.rows || []).forEach(r => { IXHAY[sid + "__" + r.id] = r.hay; });
-    IX_DONE++;
-  }));
-  IX_READY = true;
-  INDEX.length = 0; INDEX_BUILT = false;
-  // Refresh an early search once full-text content is available.
-  if (state.v === "search") renderSearch();
+let IX_QUEUE = [], IX_PUMP = null, IX_TICK = 0;
+/* ?v= ของดัชนีรายวิชา = manifest.subjects.<sid>.v (hash เนื้อหาวิชา แบบเดียวกับ dbVer) ไม่มีก็ DATA_VERSION · ปุ่มเก็บไว้อ่านออฟไลน์ใช้ที่อยู่เดียวกันนี้ */
+const ixUrl = sid => "data/ix/" + sid + ".json?v=" + ((IX_MAN && IX_MAN[sid] && IX_MAN[sid].v) || DATA_VERSION);
+async function ixSubjects() {
+  if (IX_SUBJ) return IX_SUBJ;
+  IX_MANST = "load";
+  const man = await manifestGet();
+  if (IX_SUBJ) return IX_SUBJ;
+  if (!man || !man.subjects) { IX_MANST = "fail"; ixChanged(); return null; }
+  IX_MAN = man.subjects; IX_SUBJ = Object.keys(man.subjects); IX_TOTAL = IX_SUBJ.length; IX_MANST = "";
+  return IX_SUBJ;
 }
+function ixCount() {
+  IX_DONE = IX_SUBJ ? IX_SUBJ.filter(s => IXST[s] === "ok").length : 0;
+  IX_READY = !!IX_SUBJ && IX_DONE === IX_TOTAL;
+}
+async function ixFetch(sid) {
+  IXST[sid] = "load";
+  ixChanged();
+  let d = null;
+  try { const r = await fetch(ixUrl(sid)); if (r.ok) d = await r.json(); } catch (e) { d = null; }
+  if (d && Array.isArray(d.rows)) {
+    d.rows.forEach(r => { if (r && typeof r.hay === "string") IXHAY[sid + "__" + r.id] = r.hay.includes("ё") ? r.hay.replace(/ё/g, "е") : r.hay; });
+    IXST[sid] = "ok";
+    INDEX.forEach(x => { if (x.sid === sid && x.tid && IXHAY[sid + "__" + x.tid]) x.b = IXHAY[sid + "__" + x.tid]; });
+  } else IXST[sid] = "fail";
+  ixCount();
+  ixChanged();
+}
+function ixPump() {                               // โหลดตามคิวทีละวิชา — ผลค้นหาเติมเองทุกครั้งที่วิชาหนึ่งมาถึง
+  if (!IX_PUMP && IX_QUEUE.length) IX_PUMP = (async () => {
+    await null;                                   // ให้ IX_PUMP ถูกตั้งก่อน — ไม่งั้นคิวว่างจะรีเซ็ตเป็น null ก่อนถูกกำหนดค่าแล้วค้างตลอดไป
+    while (IX_QUEUE.length) { const sid = IX_QUEUE.shift(); if (IXST[sid] === "wait") await ixFetch(sid); }
+    IX_PUMP = null;
+  })();
+  return IX_PUMP || Promise.resolve();
+}
+function ixEnqueue(sids, front) {
+  const add = sids.filter(s => IX_SUBJ.includes(s) && (!IXST[s] || IXST[s] === "wait"));
+  add.forEach(s => { IXST[s] = "wait"; });
+  IX_QUEUE = front ? [...new Set([...add, ...IX_QUEUE])] : [...new Set([...IX_QUEUE, ...add])];
+  return ixPump();
+}
+/* วิชาที่ระบุ (ถ้ามี) ขึ้นหน้าคิว แล้วตามด้วยทุกวิชาที่ยังไม่ได้โหลด · คืน promise ที่จบเมื่อคิวหมด */
+async function loadIndex(first) {
+  IX_LOADED = true;
+  const all = await ixSubjects();
+  if (!all) return;
+  ixEnqueue((first || []).filter(Boolean), true);
+  return ixEnqueue(all, false);
+}
+/* โหลดเฉพาะวิชาที่ระบุ (โฟกัสช่องค้นหาในหน้าวิชา) — ยังไม่แตะวิชาอื่น */
+async function ixPrime(sids) {
+  const all = await ixSubjects();
+  if (all) return ixEnqueue(sids.filter(Boolean), true);
+}
+function ixMissing() { return IX_SUBJ ? IX_SUBJ.filter(s => IXST[s] === "fail") : []; }
+function ixBusy() { return IX_MANST === "load" || !!(IX_SUBJ && IX_SUBJ.some(s => IXST[s] === "wait" || IXST[s] === "load")); }
+function ixRetry() {                              // ลองใหม่เฉพาะวิชาที่ล้ม (หรือ manifest ถ้ายังไม่มีรายชื่อวิชา)
+  if (!IX_SUBJ) { IX_MANST = ""; return loadIndex(); }
+  const miss = ixMissing();
+  miss.forEach(s => { delete IXST[s]; });
+  ixCount(); ixChanged();
+  return ixEnqueue(miss, true);
+}
+function ixChanged() {                            // หน้าผลค้นหาที่เปิดอยู่วาดผลใหม่ (หน่วงไว้ รวมหลายวิชาที่มาติดกันเป็นครั้งเดียว)
+  clearTimeout(IX_TICK);
+  IX_TICK = setTimeout(() => { if (state.v === "search" && typeof searchRefresh === "function") searchRefresh(); }, 250);
+}
+const IX_ABBR = { toe: "ТОЭ", vhist: "ВИ", hist: "История", tau: "ТАУ", nav: "СН ЛА", suka: "СУ КА", surn: "СУ РН", ppo: "ППО", asu: "АСУ", nadezh: "Надёжность", elob: "ЭОЛА", teh_el: "ТЭ" };
+const ixName = sid => IX_ABBR[sid] || ((ALL_SUBJ.find(s => s.id === sid) || {}).ru || sid);
+/* กลุ่มคลังศัพท์ → วิชา (ใช้กับขอบเขต «วิชานี้») · กลุ่มที่ไม่ตรงกับวิชาใด (dyn act sys phr) เป็นศัพท์ทั่วไป */
+const GLOSS_SUBJ = { te: "teh_el" };
 function buildIndex() {
   if (INDEX_BUILT) return;
   INDEX_BUILT = true;
+  INDEX.length = 0;
   const strip = html => html.replace(/<[^>]*>/g, " ").replace(/&#?[a-z0-9]{1,8};/gi, " ").replace(/\s+/g, " ");
-  const add = (e, body) => { const head = normS(e.title + " " + e.sub + " "); e.head = head.length; e.hay = head + normS(body || ""); INDEX.push(e); };
+  const add = (e, body) => { e.t = normS(e.title); e.h = normS(e.title + " " + e.sub); e.b = body || ""; INDEX.push(e); };
+  const sids = new Set(ALL_SUBJ.map(s => s.id));
   ALL_SUBJ.forEach(s => {
-    add({ kind: "วิชา · " + semTxt(s), title: s.ru, sub: s.th + " — " + strip(s.desc), go: { v: "subject", id: s.id } }, (s.topics || []).join(" "));
-    if (DEEP[s.id]) [["หัวข้อ", DEEP[s.id].topics], ["สรุปทบทวน", DEEP[s.id].summary || []]].forEach(([k, list]) => list.forEach(t => {
-      add({ kind: k + " · " + s.th, title: t.ru, sub: t.th, go: { v: "subject", id: s.id, topic: t.id } }, IXHAY[s.id + "__" + t.id] || strip(t.html || ""));
+    add({ type: "subj", kind: "วิชา · " + semTxt(s), sid: s.id, title: s.ru, sub: s.th + " — " + strip(s.desc || ""), href: "#/" + s.id, go: { v: "subject", id: s.id } }, normS((s.topics || []).join(" ")));
+    if (DEEP[s.id]) [["topic", "หัวข้อ", DEEP[s.id].topics], ["sum", "สรุปทบทวน", DEEP[s.id].summary || []]].forEach(([type, k, list]) => list.forEach(t => {
+      add({ type, kind: k + " · " + s.th, sid: s.id, tid: t.id, title: t.ru, sub: t.th, href: "#/" + s.id + "/" + t.id, go: { v: "subject", id: s.id, topic: t.id } },
+        IXHAY[s.id + "__" + t.id] || (t.html ? normS(strip(t.html)) : ""));
     }));
   });
   MODULES.forEach(m => m.terms.forEach(t => {
-    add({ kind: "ศัพท์ · " + m.th, title: t.ru + (t.abbr ? " " + t.abbr : ""), sub: t.th + " — " + strip(t.note || ""), go: { v: "glossary" } }, "");
+    const sid = GLOSS_SUBJ[m.id] || (sids.has(m.id) ? m.id : "");
+    add({ type: "term", kind: "ศัพท์ · " + m.th, sid, term: t.ru, title: t.ru + (t.abbr ? " " + t.abbr : ""), sub: t.th + " — " + strip(t.note || ""),
+      href: "#/glossary/" + encodeURIComponent(t.ru), go: { v: "glossary", q: t.ru } }, "");
   }));
 }
 function searchAliases(query) {
@@ -71599,41 +71670,53 @@ function escapeText(value) {
 }
 /* ё กับ е ถือเป็นตัวเดียวกัน (ตำรารัสเซียส่วนใหญ่ไม่พิมพ์ ё) · ความยาวสตริงไม่เปลี่ยน ใช้ตำแหน่งร่วมกับต้นฉบับได้ */
 const normS = x => String(x).toLowerCase().replace(/ё/g, "е");
-/* คะแนน: ตรงในชื่อ > ในชื่อไทย/คำอธิบาย > ในเนื้อหา (นับจำนวนครั้ง) · ถ้าทั้งวลีไม่เจอ ยอมรับเมื่อทุกคำอยู่ในรายการเดียวกัน */
+/* คำค้นหนึ่งคำ → รายการคำที่ต้องลองหา (ชื่อพ้อง + ё=е) — ทั้งหน้าผลค้นหาและตัวกรองคลังศัพท์ใช้ตัวนี้ */
+const searchQueries = query => [...new Set(searchAliases(String(query || "")).map(normS))];
+/* hay (normS แล้ว) ตรงกับคำค้นไหม — ทั้งวลี หรือทุกคำ (≥ 2 ตัว) อยู่ในข้อความเดียวกัน · กติกาเดียวกับ searchHit */
+function textMatch(hay, queries) {
+  return queries.some(q => {
+    if (!q) return false;
+    if (hay.includes(q)) return true;
+    const ws = q.split(/\s+/).filter(w => w.length >= 2);
+    return ws.length >= 2 && ws.every(w => hay.includes(w));
+  });
+}
+/* คะแนน: ตรงในชื่อ > ในชื่อไทย/คำอธิบาย > ในเนื้อหา (นับจำนวนครั้ง) · ถ้าทั้งวลีไม่เจอ ยอมรับเมื่อทุกคำอยู่ในรายการเดียวกัน
+   x.t = ชื่อ · x.h = ชื่อ + คำอธิบาย · x.b = เนื้อหา (สตริงเดียวกับใน IXHAY) — ทั้งหมด normS แล้ว · hit.at = ตำแหน่งใน x.b (−1 = ไม่อยู่ในเนื้อหา) */
 function searchHit(x, queries) {
   let best = null;
   for (let q of queries) {
     if (!q) continue;
-    let at = x.hay.indexOf(q), score = 0;
-    if (at >= 0) {
-      score = at < x.head ? (normS(x.title).includes(q) ? (normS(x.title).startsWith(q) ? 130 : 100) : 50) : 0;
+    const inHead = x.h.includes(q);
+    let at = x.b.indexOf(q), score = 0;
+    if (inHead || at >= 0) {
+      score = inHead ? (x.t.includes(q) ? (x.t.startsWith(q) ? 130 : 100) : 50) : 0;
       let n = 0;
-      for (let i = x.hay.indexOf(q, x.head); i >= 0 && n < 20; i = x.hay.indexOf(q, i + q.length)) n++;
+      for (let i = at; i >= 0 && n < 20; i = x.b.indexOf(q, i + q.length)) n++;
       score += 10 + 2 * n;
-      if (at < x.head && n) at = x.hay.indexOf(q, x.head);
     } else {
       const ws = q.split(/\s+/).filter(w => w.length >= 2);
-      if (ws.length < 2 || !ws.every(w => x.hay.includes(w))) continue;
-      score = 5 + ws.filter(w => x.hay.lastIndexOf(w, x.head) >= 0).length * 10;
-      const inBody = ws.map(w => x.hay.indexOf(w, x.head)).filter(i => i >= 0);
+      if (ws.length < 2 || !ws.every(w => x.h.includes(w) || x.b.includes(w))) continue;
+      score = 5 + ws.filter(w => x.h.includes(w)).length * 10;
+      const inBody = ws.map(w => x.b.indexOf(w)).filter(i => i >= 0);
       at = inBody.length ? Math.min(...inBody) : -1;
-      q = ws.find(w => x.hay.indexOf(w, x.head) === at) || ws[0];
+      q = ws.find(w => x.b.indexOf(w) === at) || ws[0];
     }
     if (!best || score > best.score) best = { score, at, q };
   }
   return best;
 }
 function searchSnippet(x, hit) {                  // ข้อความรอบคำที่เจอในเนื้อหา (ตัวพิมพ์เล็ก ตามที่เก็บในดัชนี)
-  if (!hit || hit.at < x.head) return "";
-  const a = Math.max(x.head, hit.at - 70), b = Math.min(x.hay.length, hit.at + hit.q.length + 90);
-  let pre = x.hay.slice(a, hit.at), post = x.hay.slice(hit.at + hit.q.length, b);
-  if (a > x.head) pre = "…" + pre.replace(/^\S*\s/, "");
-  if (b < x.hay.length) post = post.replace(/\s\S*$/, "") + "…";
-  return escapeText(pre) + "<mark>" + escapeText(x.hay.substr(hit.at, hit.q.length)) + "</mark>" + escapeText(post);
+  if (!hit || hit.at < 0) return "";
+  const a = Math.max(0, hit.at - 70), b = Math.min(x.b.length, hit.at + hit.q.length + 90);
+  let pre = x.b.slice(a, hit.at), post = x.b.slice(hit.at + hit.q.length, b);
+  if (a > 0) pre = "…" + pre.replace(/^\S*\s/, "");
+  if (b < x.b.length) post = post.replace(/\s\S*$/, "") + "…";
+  return escapeText(pre) + "<mark>" + escapeText(x.b.substr(hit.at, hit.q.length)) + "</mark>" + escapeText(post);
 }
 /* ไฮไลต์คำที่ค้นในหัวข้อปลายทาง แล้วคืน <mark> แรก — scrollToTopic เลื่อนไปหาที่แรกที่เจอแทนหัวข้อ */
 function markHits(root, query) {
-  const qs = [...new Set(searchAliases(query).map(normS))].filter(q => q.length >= 2);
+  const qs = searchQueries(query).filter(q => q.length >= 2);
   let first = markTerms(root, qs);
   if (!first) {
     const ws = [...new Set(qs.flatMap(q => q.split(/\s+/)))].filter(w => w.length >= 3).sort((a, b) => b.length - a.length);
@@ -71660,40 +71743,165 @@ function markTerms(root, terms) {
   }
   return first;
 }
+/* ตัวเลือกของหน้าผลค้นหา (ขอบเขต · ชนิดผล · จำนวนที่แสดง) — คงไว้เมื่อกด Back กลับมาจากหัวข้อ
+   เก็บใน localStorage เพราะ history.state ของรายการค้นหาถูกเขียนทับตอนออกจากหน้า · ขอบเขต «วิชานี้» อยู่ในที่อยู่ด้วย (#/search/<คำ>/<วิชา>) */
+const SXKEY = "atlas-search-v1", SX_STEP = 60;
+let SX = { q: "", from: "", scope: "all", kind: "all", shown: SX_STEP };
+try { const o = JSON.parse(localStorage.getItem(SXKEY) || "{}"); if (o && typeof o === "object") SX = Object.assign(SX, o); } catch (e) {}
+const sxSave = () => { try { localStorage.setItem(SXKEY, JSON.stringify(SX)); } catch (e) {} };
+let SX_FROM = null, SX_KEEP = false, SX_HITS = [];     // ช่องค้นหาตั้ง: วิชาที่เริ่มค้นจาก · พิมพ์ต่อในหน้าผล (คงตัวกรองไว้)
+const SX_KINDS = [["all", "ทั้งหมด"], ["topic", "หัวข้อ"], ["sum", "สรุป"], ["term", "ศัพท์"], ["subj", "วิชา"]];
+const SX_EX = ["устойч", "เสถียร", "Kalman", "передаточная функция"];
 function renderSearch() {
-  if (!IX_READY) loadIndex();
-  buildIndex();
   const q = state.q;
-  const queries = [...new Set(searchAliases(q).map(normS))];
-  const all = [];
-  INDEX.forEach((x, i) => { const hit = searchHit(x, queries); if (hit) all.push({ x, hit, i }); });
-  all.sort((a, b) => b.hit.score - a.hit.score || a.i - b.i);
-  const hits = all.slice(0, 60);
-  let h = '<div class="wrap"><div class="page-head"><p class="eyebrow">Поиск</p>' +
+  if (SX.q !== q && !SX_KEEP) SX = { q, from: "", scope: "all", kind: "all", shown: SX_STEP };   // คำค้นใหม่ = เริ่มตัวกรองใหม่
+  if (SX.q !== q) SX.shown = SX_STEP;
+  if (SX_FROM) SX.from = SX_FROM;
+  SX.q = q; SX_KEEP = false; SX_FROM = null;
+  if (state.sid) { SX.scope = "subj"; SX.from = state.sid; }
+  else if (SX.scope === "subj") SX.scope = "all";                 // ที่อยู่ไม่มีวิชา = ทุกวิชา
+  if (!["all", "subj", "gloss"].includes(SX.scope)) SX.scope = "all";
+  if (!SX_KINDS.some(k => k[0] === SX.kind)) SX.kind = "all";
+  sxSave();
+  if (SX.scope !== "gloss") loadIndex(state.sid ? [state.sid] : []);
+  if (document.activeElement !== searchEl && normS(searchEl.value.trim()) !== normS(q)) searchEl.value = q;
+  view.innerHTML = '<div class="wrap sx"><div class="page-head"><p class="eyebrow">Поиск</p>' +
     '<h1 class="page-title">ผลการค้นหา “' + escapeText(q) + '”</h1>' +
-    '<div class="page-title-th">พบ ' + all.length + ' รายการ' + (all.length > 60 ? " (แสดง 60 รายการที่ตรงที่สุด)" : "") + '</div>' +
-    (IX_READY ? '' : '<p class="ix-wait" role="status"><span id="ixst">กำลังโหลดข้อความเต็มของทุกหัวข้อ…</span> ตอนนี้ค้นได้แค่ชื่อวิชา ชื่อหัวข้อ และคลังศัพท์ ผลจะเติมเองเมื่อโหลดเสร็จ (ครั้งแรกราว 4 MB)</p>') +
-    '</div><div class="res">';
-  if (!hits.length) h += '<p class="empty">ไม่พบ ลองพิมพ์บางส่วนของคำรัสเซีย เช่น «устойч» หรือคำไทย เช่น «เสถียร»</p>';
-  hits.forEach(({ x, hit }, i) => {
-    const snip = searchSnippet(x, hit);
-    h += '<button class="res-item" data-i="' + i + '"><span class="k">' + x.kind + '</span>' +
-      '<span class="t">' + x.title + '</span><span class="s">' + escapeText(x.sub.slice(0, 150)) + '</span>' +
-      (snip ? '<span class="snip">' + snip + '</span>' : '') + '</button>';
+    '<div class="page-title-th" id="sxCount"></div>' +
+    '<div class="sx-bar" id="sxScope" role="group" aria-label="ขอบเขตการค้นหา"></div>' +
+    '<div class="sx-bar" id="sxKind" role="group" aria-label="ชนิดของผล"></div>' +
+    '<div id="sxStatus" role="status"></div></div>' +
+    '<div class="res" id="sxRes"></div><div class="sx-more" id="sxMore"></div></div>';
+  view.querySelector(".sx").addEventListener("click", sxClick);
+  searchRefresh();
+}
+/* วาดส่วนที่เปลี่ยนได้ของหน้าผลค้นหา — เรียกซ้ำเมื่อดัชนีแต่ละวิชามาถึง / เปลี่ยนตัวกรอง โดยไม่แตะช่องค้นหาและตำแหน่งเลื่อน */
+function searchRefresh() {
+  const box = document.getElementById("sxRes");
+  if (state.v !== "search" || !box) return;
+  if (SX.scope !== "gloss" && IX_SUBJ && !IX_READY && !ixBusy() && IX_SUBJ.some(s => !IXST[s])) loadIndex(state.sid ? [state.sid] : []);
+  buildIndex();
+  const q = state.q, queries = searchQueries(q), sid = SX.scope === "subj" ? SX.from : "";
+  const noIx = !!(sid && IX_SUBJ && !IX_SUBJ.includes(sid));          // วิชาที่ยังไม่มีเนื้อหาเต็ม — ไม่มีดัชนีให้รอ
+  const all = [];
+  INDEX.forEach((x, i) => {
+    if (SX.scope === "gloss" ? x.type !== "term" : sid && x.sid !== sid) return;
+    const hit = searchHit(x, queries);
+    if (hit) all.push({ x, hit, i });
   });
-  h += '</div></div>';
-  view.innerHTML = h;
-  if (!IX_READY) {                                // ตัวนับความคืบหน้า — หยุดเองเมื่อออกจากหน้านี้หรือดัชนีมาครบ
-    const tick = setInterval(() => {
-      const el = document.getElementById("ixst");
-      if (!el || IX_READY) { clearInterval(tick); return; }
-      if (IX_TOTAL) el.textContent = "กำลังโหลดข้อความเต็มของทุกหัวข้อ " + IX_DONE + "/" + IX_TOTAL + " วิชา…";
-    }, 250);
+  all.sort((a, b) => b.hit.score - a.hit.score || a.i - b.i);
+  const cnt = { all: all.length, topic: 0, sum: 0, term: 0, subj: 0 };
+  all.forEach(r => { cnt[r.x.type]++; });
+  const kind = SX.scope === "gloss" ? "all" : SX.kind;
+  const list = kind === "all" ? all : all.filter(r => r.x.type === kind);
+  SX_HITS = list.slice(0, SX.shown);
+  const act = document.activeElement, keep = act && view.contains(act) ? sxFocusKey(act) : "";
+  const kname = (SX_KINDS.find(k => k[0] === kind) || [])[1];
+
+  document.getElementById("sxCount").textContent = "พบ " + all.length + " รายการ" +
+    (sid ? " ในวิชา " + ixName(sid) : SX.scope === "gloss" ? " ในคลังศัพท์" : "") +
+    (kind !== "all" ? " · แสดงเฉพาะ" + kname + " " + list.length + " รายการ" : "") +
+    (list.length > SX_HITS.length ? " · แสดง " + SX_HITS.length + " รายการแรก" : "");
+  const chip = (attr, val, on, label, n, dis) => '<button type="button" class="sx-chip' + (on ? " on" : "") + '" ' + attr + '="' + val + '" aria-pressed="' + on + '"' +
+    (dis ? " disabled" : "") + '>' + label + (n !== undefined ? ' <b>' + n + '</b>' : '') + '</button>';
+  document.getElementById("sxScope").innerHTML =
+    chip("data-scope", "all", SX.scope === "all", "ทุกวิชา") +
+    (SX.from ? chip("data-scope", "subj", SX.scope === "subj", "วิชานี้ · " + escapeText(ixName(SX.from))) : "") +
+    chip("data-scope", "gloss", SX.scope === "gloss", "คลังศัพท์") +
+    (cnt.term ? '<a class="sx-gl" href="#/glossary/' + escapeText(encodeURIComponent(searchEl.value.trim() || q)) + '">ดูในคลังศัพท์ (' + cnt.term + ' คำ) →</a>' : "");
+  const kbar = document.getElementById("sxKind");
+  kbar.hidden = SX.scope === "gloss" || !all.length;
+  kbar.innerHTML = SX_KINDS.map(([k, label]) => chip("data-kind", k, kind === k, label, cnt[k], k !== "all" && !cnt[k] && kind !== k)).join("");
+  document.getElementById("sxStatus").innerHTML = sxStatusHtml(sid);
+
+  let h = "";
+  if (!list.length) {
+    const busy = SX.scope !== "gloss" && !noIx && (sid ? IXST[sid] !== "ok" && IXST[sid] !== "fail" : ixBusy());
+    const miss = SX.scope !== "gloss" && (sid ? IXST[sid] === "fail" : ixMissing().length > 0);
+    h = '<div class="sx-empty"><p class="empty">' + (busy ? "ยังไม่พบ «" + escapeText(q) + "» ในส่วนที่โหลดแล้ว — ผลจะเพิ่มเองเมื่อโหลดข้อความเต็มครบ"
+      : "ไม่พบ «" + escapeText(q) + "»" + (sid ? " ในวิชา " + escapeText(ixName(sid)) : SX.scope === "gloss" ? " ในคลังศัพท์" : kind !== "all" ? " ในชนิด «" + kname + "»" : "") +
+        (miss ? " — อาจอยู่ในวิชาที่โหลดไม่สำเร็จ" : "")) + '</p>';
+    if (!busy) {
+      h += '<div class="sx-acts">' + (SX.scope !== "all" ? '<button type="button" data-scope="all">ค้นทุกวิชา</button>' : "") +
+        (kind !== "all" && all.length ? '<button type="button" data-kind="all">ดูทุกชนิด (' + all.length + ')</button>' : "") +
+        '<button type="button" data-sx="edit">เปลี่ยนคำค้น</button></div>' +
+        '<p class="sx-ex">ลองพิมพ์บางส่วนของคำรัสเซียหรือคำไทย เช่น ' +
+        SX_EX.map(w => '<a href="#/search/' + encodeURIComponent(w.toLowerCase()) + '">' + escapeText(w) + '</a>').join(" · ") + '</p>';
+    }
+    h += '</div>';
   }
-  view.querySelectorAll(".res-item").forEach(b => b.addEventListener("click", () => {
-    const x = hits[+b.dataset.i].x;
-    go(x.go.topic ? Object.assign({}, x.go, { hl: q }) : x.go);
-  }));
+  SX_HITS.forEach((r, i) => {
+    const x = r.x, snip = searchSnippet(x, r.hit);
+    h += '<a class="res-item" href="' + escapeText(x.href) + '" data-i="' + i + '"><span class="k">' + x.kind + '</span>' +
+      '<span class="t">' + x.title + '</span><span class="s">' + escapeText(x.sub.slice(0, 150)) + '</span>' +
+      (snip ? '<span class="snip">' + snip + '</span>' : '') + '</a>';
+  });
+  box.innerHTML = h;
+  const rest = list.length - SX_HITS.length;
+  document.getElementById("sxMore").innerHTML = rest > 0
+    ? '<button type="button" data-sx="more">แสดงเพิ่มอีก ' + Math.min(SX_STEP, rest) + ' รายการ (เหลือ ' + rest + ')</button>' : "";
+  if (keep) { const el = view.querySelector(keep); if (el) el.focus({ preventScroll: true }); }
+}
+function sxFocusKey(el) {                          // วาดใหม่แล้วคืนโฟกัสให้ปุ่ม/ผลเดิม (ผู้ใช้คีย์บอร์ด)
+  for (const a of ["data-scope", "data-kind", "data-sx"]) if (el.hasAttribute(a)) return "[" + a + '="' + el.getAttribute(a) + '"]';
+  if (el.classList.contains("res-item")) return '.res-item[data-i="' + el.dataset.i + '"]';
+  return "";
+}
+function sxStatusHtml(sid) {
+  if (SX.scope === "gloss") return "";
+  const off = typeof navigator !== "undefined" && navigator.onLine === false;
+  const offTxt = off ? " — เครื่องนี้ออฟไลน์อยู่ ค้นเนื้อหาได้เฉพาะวิชาที่เก็บไว้อ่านออฟไลน์" : "";
+  const box = (st, txt, retry) => '<div class="sx-st" data-st="' + st + '"><span>' + txt + '</span>' +
+    (retry ? '<button type="button" data-sx="retry">' + retry + '</button>' : "") + '</div>';
+  const titlesOnly = "ตอนนี้ค้นได้แค่ชื่อวิชา ชื่อหัวข้อ และคลังศัพท์";
+  if (!IX_SUBJ) return IX_MANST === "fail"
+    ? box("fail", "โหลดดัชนีค้นหาไม่สำเร็จ — " + titlesOnly + offTxt, "ลองใหม่")
+    : box("load", "กำลังเตรียมดัชนีค้นหา… " + titlesOnly + " ผลจะเติมเอง");
+  if (sid) {
+    const st = IXST[sid];
+    if (st === "ok" || !IX_SUBJ.includes(sid)) return "";
+    if (st === "fail") return box("fail", "โหลดข้อความเต็มของ " + escapeText(ixName(sid)) + " ไม่สำเร็จ — ตอนนี้ค้นได้แค่ชื่อหัวข้อและคลังศัพท์" + offTxt, "ลองใหม่");
+    return box("load", "กำลังโหลดข้อความเต็มของ " + escapeText(ixName(sid)) + "… ผลจะเติมเองเมื่อโหลดเสร็จ");
+  }
+  if (IX_READY) return "";
+  const miss = ixMissing(), names = miss.map(s => escapeText(ixName(s))).join(", ");
+  if (ixBusy()) return box("load", "กำลังโหลดข้อความเต็ม " + IX_DONE + "/" + IX_TOTAL + " วิชา… ผลจะเติมเองเมื่อแต่ละวิชามาถึง" + (miss.length ? " · ขาด: " + names : "") +
+    '<span class="sx-prog" aria-hidden="true"><i style="width:' + Math.round(100 * (IX_DONE + miss.length) / Math.max(1, IX_TOTAL)) + '%"></i></span>');
+  if (miss.length && miss.length === IX_TOTAL) return box("fail", "โหลดข้อความเต็มไม่สำเร็จ — " + titlesOnly + offTxt, "ลองใหม่");
+  if (miss.length) return box("part", "ค้นได้ " + IX_DONE + "/" + IX_TOTAL + " วิชา — ขาด: " + names + offTxt, "ลองโหลดวิชาที่ขาดอีกครั้ง");
+  return box("load", "กำลังเตรียมดัชนีค้นหา…");
+}
+function sxClick(e) {
+  const t = e.target.closest("[data-scope], [data-kind], [data-sx], a.res-item");
+  if (!t || !view.contains(t)) return;
+  if (t.matches("a.res-item")) {                   // ลิงก์จริง (คัดลอก/เปิดแท็บใหม่ได้) — คลิกธรรมดาส่งคำค้นไปไฮไลต์ในหัวข้อด้วย
+    const r = SX_HITS[+t.dataset.i];
+    if (!r || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    go(r.x.go.topic ? Object.assign({}, r.x.go, { hl: state.q }) : r.x.go);
+    return;
+  }
+  if (t.dataset.scope) {
+    SX.scope = t.dataset.scope; SX.shown = SX_STEP;
+    if (SX.scope === "subj" && SX.from) state.sid = SX.from; else delete state.sid;
+    sxSave();
+    setHistory("replace", state, { y: Math.round(window.scrollY) });
+    if (SX.scope !== "gloss") loadIndex(state.sid ? [state.sid] : []);
+    searchRefresh();
+  } else if (t.dataset.kind) {
+    SX.kind = t.dataset.kind; SX.shown = SX_STEP;
+    sxSave(); searchRefresh();
+  } else if (t.dataset.sx === "more") {
+    const from = SX_HITS.length;
+    SX.shown += SX_STEP; sxSave(); searchRefresh();
+    const first = view.querySelector('.res-item[data-i="' + from + '"]');
+    if (first) first.focus({ preventScroll: true });
+  } else if (t.dataset.sx === "retry") {
+    ixRetry(); searchRefresh();
+  } else if (t.dataset.sx === "edit") {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    searchEl.focus(); searchEl.select();
+  }
 }
 
 /* ---- flashcards ----
@@ -71910,8 +72118,13 @@ function renderQuiz(st) {
 
 /* ---- search box ---- */
 let searchTimer;
-searchEl.addEventListener("focus", loadIndex, { once: true });     // เริ่มโหลดดัชนีข้อความเต็มตอนผู้อ่านจะค้นหา
+const SEARCH_PH = searchEl.getAttribute("placeholder") || "";
+searchEl.addEventListener("focus", () => {                          // โฟกัส = เตรียมเฉพาะวิชาที่เปิดอยู่ · ทุกวิชาโหลดเมื่อเริ่มพิมพ์
+  const sid = state.v === "subject" ? state.id : state.v === "search" ? state.sid : "";
+  if (sid) ixPrime([sid]);
+});
 searchEl.addEventListener("input", () => {
+  if (state.v !== "glossary" && searchEl.value.trim()) loadIndex([state.v === "subject" ? state.id : state.sid]);   // วิชาที่เปิดอยู่ก่อน แล้วที่เหลือทีละวิชา
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     const q = searchEl.value.trim().toLowerCase();
@@ -71921,7 +72134,10 @@ searchEl.addEventListener("input", () => {
       setHistory("replace", state, { y: 0 });             // ที่อยู่ #/glossary/<คำกรอง> ส่งต่อได้
       return;
     }
-    if (q.length >= 2) go({ v: "search", q }, { replace: state.v === "search" });   // พิมพ์ต่อไม่เพิ่มประวัติทีละตัวอักษร
+    if (q.length >= 2) {
+      if (state.v === "search") { SX_KEEP = true; go({ v: "search", q, sid: state.sid }, { replace: true }); }   // พิมพ์ต่อ: ไม่เพิ่มประวัติทีละตัวอักษร คงขอบเขต/ตัวกรอง
+      else { SX_FROM = state.v === "subject" ? state.id : null; go({ v: "search", q }); }                    // เริ่มค้นจากหน้าวิชา → มีชิป «วิชานี้»
+    }
     else if (state.v === "search") go({ v: "overview" }, { replace: true });
   }, 160);
 });
@@ -71929,6 +72145,11 @@ document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== searchEl) { e.preventDefault(); searchEl.focus(); }
   else if (e.key === "Escape" && document.activeElement === searchEl) { searchEl.value = ""; searchEl.blur(); if (state.v === "search") go({ v: "overview" }, { replace: true }); }
 });
+function searchPlaceholder(st) {                  // ช่องเดียวกันทำสองหน้าที่ — บอกให้ชัดว่าตอนนี้ค้นหาหรือกรอง
+  const gl = st.v === "glossary";
+  searchEl.placeholder = gl ? "กรองคลังศัพท์: Калман, คาลมาน, Kalman …" : SEARCH_PH;
+  searchEl.setAttribute("aria-label", gl ? "กรองคลังศัพท์" : "ค้นหาทุกวิชา");
+}
 document.getElementById("quizBtn").addEventListener("click", () =>      // ฝึกทบทวน (S5) — จากหน้าวิชาเลือกวิชา/หัวข้อที่อ่านอยู่ไว้ให้
   go({ v: "practice", seg: state.v === "subject" && DEEP[state.id] ? [state.id].concat(state.topic ? [state.topic] : []) : [] }));
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => LIVE.forEach(d => d.draw && d.draw()));
@@ -72337,6 +72558,10 @@ async function fillChunks(el, html, tail) {
 }
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
+HOOKS.on("go", searchPlaceholder);
+HOOKS.on("subject", () => { if (!IX_SUBJ) ixSubjects(); });                 // รู้ ?v= ของดัชนีก่อนผู้อ่านกดเก็บไว้อ่านออฟไลน์
+HOOKS.on("offline", sid => (IX_SUBJ ? IX_SUBJ.includes(sid) : !!DEEP[sid]) ? [ixUrl(sid)] : []);   // ค้นเนื้อหาวิชาที่เก็บไว้ได้ตอนออฟไลน์
+window.addEventListener("online", () => { if (ixMissing().length) { ixRetry(); ixChanged(); } });   // เน็ตกลับมา — โหลดวิชาที่ขาดให้เอง
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
 /* S5 · ฝึกทบทวน — หน้า #/practice[/<วิชา>[/<หัวข้อ>]] · ซ้อมปากเปล่า #/oral/<วิชา>[/<หัวข้อ>] · เสียงรัสเซีย window.SAY
