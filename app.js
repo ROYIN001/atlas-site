@@ -71669,6 +71669,113 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
+/* S6 — ทวนตามกำหนด (SRS) · วันสอบ · «วันนี้ทวนอะไร» · โหมดคืนก่อนสอบ #/cram/<วิชา>
+   ของที่เก็บในเครื่อง (localStorage — คีย์ของ S6 เท่านั้น ไม่แตะความหมายของ atlas-sula-v1 / atlas-quiz-v1 เดิม):
+     atlas-srs-v1   { <คีย์>: { due, ivl, ef, reps, lapses, last } }   due/last = เวลา ms (due = เที่ยงคืนของวันที่ครบกำหนด) · ivl = วัน
+     atlas-exam-v1  { <วิชา>: { date: "YYYY-MM-DD", kind: "exam"|"zach"|"zacho", qa?: จำนวนคำถามปากเปล่าที่นับได้ตอนเปิด #/cram } }
+     atlas-seen-v1  { <หัวข้อ>: { read: จำนวนครั้งที่หัวข้อค้างกลางจอ > 20 วินาที, t: เวลา ms ครั้งล่าสุด } }
+   คีย์ SRS (ข้อตกลงร่วม CLAUDE.md หัวข้อ 14): k:<หัวข้อ> · termKey() = g:<กลุ่ม>-<ลำดับ> · q:<วิชา>/<หัวข้อ>/<id คำถาม> · z:<หัวข้อ>/<data-id ของ quiz2>
+   API: window.SRS = { grade(key, g0to5, now?), due(prefix, now?), get(key), all(), reload() } · window.examPlan(sid, now?)
+   ทุกครั้งที่ให้คะแนน ส่งเหตุการณ์ "srs:grade" { key, rec } ที่ document · session อื่นเรียก window.SRS && SRS.grade(key, g) เอง */
+
+/* ---- S6 core BEGIN — ตัวคำนวณล้วน ไม่แตะ DOM/localStorage (tests/srs.test.cjs รันส่วนนี้ใน vm) ---- */
+const SRS_DAY = 864e5, SRS_MAXIVL = 365;
+const srsDay0 = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const srsAddDays = (t, n) => { const d = new Date(srsDay0(t)); d.setDate(d.getDate() + n); return d.getTime(); };   // ข้ามช่วงปรับเวลาฤดูร้อนได้
+const srsDays = (a, b) => Math.round((srsDay0(b) - srsDay0(a)) / SRS_DAY);                                        // จำนวนวันปฏิทินจาก a ถึง b
+function srsCore(o) {
+  // o = { load() → object ที่เก็บไว้, save(obj), now() → ms, cap(key, now) → ivl สูงสุด (วัน) หรือ null, onGrade(key, rec) }
+  let db = null;
+  const data = () => db || (db = (o.load && o.load()) || {});
+  const copy = r => r ? JSON.parse(JSON.stringify(r)) : null;
+  function grade(key, g, now) {
+    if (typeof key !== "string" || !key) return null;
+    g = Math.round(+g);
+    if (!isFinite(g)) return null;
+    g = Math.max(0, Math.min(5, g));
+    now = now == null ? o.now() : +now;
+    const r = Object.assign({ ivl: 0, ef: 2.5, reps: 0, lapses: 0 }, data()[key]);
+    if (g < 3) { r.reps = 0; r.lapses += 1; r.ivl = 1; }                            // ลืม → เริ่มนับใหม่ พรุ่งนี้ทวนอีก
+    else { r.reps += 1; r.ivl = r.reps === 1 ? 1 : r.reps === 2 ? 3 : Math.round(r.ivl * r.ef); }   // SM-2: 1 → 3 → ivl × ef (ef ก่อนปรับรอบนี้)
+    r.ef = Math.max(1.3, Math.round((r.ef + 0.1 - (5 - g) * (0.08 + (5 - g) * 0.02)) * 100) / 100);
+    const cap = o.cap ? o.cap(key, now) : null;                                      // ห้ามเลยวันสอบของวิชานั้น
+    r.ivl = Math.max(1, Math.min(r.ivl, SRS_MAXIVL, cap == null ? Infinity : cap));
+    r.due = srsAddDays(now, r.ivl);
+    r.last = now;
+    data()[key] = r;
+    if (o.save) o.save(db);
+    if (o.onGrade) o.onGrade(key, copy(r));
+    return copy(r);
+  }
+  function due(prefix, now) {
+    now = now == null ? o.now() : +now;
+    prefix = prefix || "";
+    return Object.keys(data()).filter(k => k.startsWith(prefix) && data()[k].due <= now)
+      .map(k => Object.assign({ key: k }, data()[k]))
+      .sort((a, b) => a.due - b.due || b.lapses - a.lapses || (a.key < b.key ? -1 : 1));
+  }
+  return {
+    grade, due,
+    get: key => copy(data()[key]),
+    all: () => copy(data()),
+    reload() { db = null; },
+  };
+}
+/* คีย์ → รหัสวิชา · topicSid(tid) และ modSid(กลุ่มศัพท์) ส่งมาจากข้อมูลของแอป */
+function srsSidOf(key, topicSid, modSid) {
+  let m;
+  if ((m = /^q:([^/]+)\//.exec(key))) return m[1];
+  if ((m = /^k:([^:]+):\d+$/.exec(key))) return m[1];                             // วิชาที่ยังเป็นโครงร่าง k:<วิชา>:<ลำดับ>
+  if ((m = /^[kz]:([^/]+)/.exec(key))) return topicSid(m[1]) || null;
+  if ((m = /^g:(.+)-\d+$/.exec(key))) return modSid(m[1]) || null;
+  return null;
+}
+/* ---- S6 core END ---- */
+
+(function () {
+  if (typeof document === "undefined") return;
+  const SRSKEY = "atlas-srs-v1", EXAMKEY = "atlas-exam-v1", SEENKEY = "atlas-seen-v1";
+  const rd = k => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { return {}; } };
+  const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* พื้นที่เต็ม — S8 ดูแล */ } };
+  let EXAMS = rd(EXAMKEY), SEEN = rd(SEENKEY);
+  const saveExams = () => wr(EXAMKEY, EXAMS);
+  const saveSeen = () => wr(SEENKEY, SEEN);
+
+  /* ---- ตำแหน่งของคีย์: หัวข้อ → วิชา · กลุ่มศัพท์ → วิชา ---- */
+  let TSID = null;
+  const topicSid = tid => {
+    if (!TSID) { TSID = {}; Object.keys(DEEP).forEach(sid => topicsOf(sid).forEach(t => { TSID[t.id] = sid; })); }
+    return TSID[tid];
+  };
+  const modSid = mod => { for (const k in MODMAP) if (MODMAP[k] === mod) return k; return ALL_SUBJ.some(s => s.id === mod) ? mod : null; };
+  const sidOf = key => srsSidOf(key, topicSid, modSid);
+  const topicMeta = tid => { const sid = topicSid(tid); return sid ? topicsOf(sid).find(t => t.id === tid) : null; };
+
+  /* ---- วันสอบ: ivl ของคีย์ในวิชาที่ตั้งวันสอบไว้ ต้องไม่เลยวันก่อนสอบ ---- */
+  const examDay = sid => {
+    const e = EXAMS[sid], m = e && /^(\d{4})-(\d{2})-(\d{2})$/.exec(e.date || "");
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : null;
+  };
+  const daysLeft = (sid, now) => { const d = examDay(sid); return d == null ? null : srsDays(now, d); };
+  const capOf = (key, now) => {
+    const sid = sidOf(key), d = sid ? daysLeft(sid, now) : null;
+    return d == null || d < 1 ? null : Math.max(1, d - 1);
+  };
+
+  const SRS = srsCore({
+    load: () => rd(SRSKEY),
+    save: db => wr(SRSKEY, db),
+    now: () => Date.now(),
+    cap: capOf,
+    onGrade: (key, rec) => { try { document.dispatchEvent(new CustomEvent("srs:grade", { detail: { key, rec } })); } catch (e) { /* เบราว์เซอร์เก่า */ } },
+  });
+  window.SRS = SRS;
+  window.addEventListener("storage", e => {                                          // อีกแท็บ/นำเข้าไฟล์สำรอง → อ่านใหม่
+    if (e.key === SRSKEY) SRS.reload();
+    if (e.key === EXAMKEY) EXAMS = rd(EXAMKEY);
+    if (e.key === SEENKEY) SEEN = rd(SEENKEY);
+  });
+})();
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
 /* ===== SLOT S7 END ===== */
