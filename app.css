@@ -3644,7 +3644,7 @@
 /* S8: แถบ «บันทึกไม่สำเร็จ» (แสดงครั้งเดียว) · การ์ดข้อมูลในเครื่องในหน้า #/progress */
 #s8bar {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 90;
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: min(560px, calc(100vw - 32px)); box-sizing: border-box;
+  display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; width: max-content; max-width: min(560px, calc(100vw - 32px)); box-sizing: border-box;
   padding: 8px 8px 8px 14px; border-radius: var(--radius); background: var(--crit); color: #fff; font-size: 13.5px; box-shadow: var(--shadow);
 }
 #s8bar a { color: #fff; font-weight: 600; }
