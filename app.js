@@ -71626,7 +71626,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== searchEl) { e.preventDefault(); searchEl.focus(); }
   else if (e.key === "Escape" && document.activeElement === searchEl) { searchEl.value = ""; searchEl.blur(); if (state.v === "search") go({ v: "overview" }, { replace: true }); }
 });
-document.getElementById("quizBtn").addEventListener("click", () => go({ v: "quiz" }));
+document.getElementById("quizBtn").addEventListener("click", () =>      // ฝึกทบทวน (S5) — จากหน้าวิชาเลือกวิชา/หัวข้อที่อ่านอยู่ไว้ให้
+  go({ v: "practice", seg: state.v === "subject" && DEEP[state.id] ? [state.id].concat(state.topic ? [state.topic] : []) : [] }));
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => LIVE.forEach(d => d.draw && d.draw()));
 new MutationObserver(() => LIVE.forEach(d => d.draw && d.draw()))
   .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -71905,6 +71906,15 @@ HOOKS.html("subject-head", ctx => ctx.deep
     (QAIX && QAIX[ctx.s.id] ? ' ' + QAIX[ctx.s.id].n + ' ข้อ' : '') + '</a></p>'
   : "");
 HOOKS.on("offline", sid => ["data/qa/_index.json?v=" + DATA_VERSION, "data/qa/" + sid + ".json?v=" + DATA_VERSION]);
+/* ผลควิซ quiz2 ต่อ host (คีย์ตาม id ของ host ไม่ใช่ลำดับ — ตัวรับของ v4 ยังเก็บ atlas-quiz-v1 ตามลำดับเหมือนเดิม) */
+document.addEventListener("std2:quiz", e => {
+  const host = e.target && e.target.closest ? e.target.closest('[data-demo="quiz2"]') : null;
+  const sec = host && host.closest("section.topic[id]");
+  const d = e.detail || {};
+  if (!sec || !host.id || !d.done) return;
+  (PRAC[sec.id] = PRAC[sec.id] || {})[host.id] = { done: d.done, ok: d.ok, n: d.total, t: Date.now() };
+  savePrac();
+});
 let S5TIMER = 0, S5TOK = 0;
 const s5halt = () => { clearInterval(S5TIMER); S5TIMER = 0; SAY.stop(); };
 HOOKS.on("clear", s5halt);
@@ -72223,6 +72233,10 @@ registerPage("quiz", {
   render: st => renderQuiz(st),
   title: st => { const o = termScope(st.seg), g = MODULES.find(m => m.id === o.mod); return "ควิซคำศัพท์" + (g ? " · " + g.th : ""); }
 });
+{
+  const qb = document.getElementById("quizBtn");
+  if (qb) { qb.textContent = "ฝึกทบทวน"; qb.title = "ซ้อมปากเปล่า · ควิซ · Flashcard"; }
+}
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
 /* ===== SLOT S6 END ===== */

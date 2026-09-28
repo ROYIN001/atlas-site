@@ -89,3 +89,32 @@ test('build output is compact JSON with sorted subjects and a trailing newline (
   assert.equal(raw.length, JSON.stringify(o).length + 1, 'compact separators');   // JS reorders integer-like keys, so compare length
   assert.deepEqual(Object.keys(o), Object.keys(o).sort());
 });
+
+test('slot S5 is in place: pages, fill hook, SAY, storage keys', () => {
+  const b = app.indexOf('/* ===== SLOT S5 ('), e = app.indexOf('/* ===== SLOT S5 END ===== */');
+  assert.ok(b > 0 && e > b);
+  const slot = app.slice(b, e);
+  for (const s of ['registerPage("practice"', 'registerPage("oral"', 'registerPage("flash"', 'registerPage("quiz"',
+    'HOOKS.on("fill"', 'HOOKS.on("go"', 'HOOKS.on("clear"', 'HOOKS.on("offline"', 'window.SAY =',
+    '"atlas-oral-v1"', '"atlas-practice-v1"', 'std2:quiz']) assert.ok(slot.includes(s), 'slot has ' + s);
+  assert.ok(!/localStorage\.(get|set)Item\("(?!atlas-)/.test(slot), 'every new localStorage key starts with atlas-');
+});
+
+test('qaRuText / text walker rules in app.js agree with qa.py on synthetic markup', () => {
+  // minimal DOM: enough for qaText/qaRuText (childNodes, nodeType, tagName, classList, hasAttribute, querySelector(".ans-ru"))
+  const el = (tag, cls, kids, attrs) => ({ nodeType: 1, tagName: tag.toUpperCase(), childNodes: kids, attrs: attrs || {},
+    classList: { contains: c => (cls || '').split(' ').includes(c) },
+    hasAttribute: a => a in (attrs || {}),
+    querySelector(sel) { assert.equal(sel, '.ans-ru'); const f = n => n.nodeType === 1 && (n.classList.contains('ans-ru') ? n : n.childNodes.map(f).find(Boolean)); return this.childNodes.map(f).find(Boolean) || null; } });
+  const tx = d => ({ nodeType: 3, data: d });
+  const b = app.indexOf('/* ===== SLOT S5 ('), e = app.indexOf('/* ---- S5 end of pure helpers ---- */');
+  assert.ok(e > b, 'pure helper section marker');
+  const h = vm.runInNewContext(app.slice(b, e) + '\n({ qaText, qaRuText });', {});
+  assert.equal(h.qaText(el('summary', '', [el('span', 'qa-n', [tx('УВ 1')]), el('span', 'qa-q', [tx('Сущность')])])).replace(/\s+/g, ' ').trim(), 'УВ 1 Сущность');
+  const ru = el('div', 'ans', [el('div', 'ans-ru', [el('div', 'ans-l', [tx('คำตอบตัวอย่าง')]), el('p', '', [tx('Этикет — система правил.')]), el('div', '', [tx('ฟัง')], { 'data-demo': 'ih-say' })])]);
+  assert.equal(h.qaRuText(ru), 'Этикет — система правил.');
+  const mixed = el('div', 'ans', [tx('ตอบเป็นเจ็ดชนิดตามการจำแนก ФЭП ТЭП')]);
+  assert.equal(h.qaRuText(mixed), '');
+  const russian = el('div', 'ans', [tx('Техническое устройство, предназначенное для функционирования в космосе')]);
+  assert.ok(h.qaRuText(russian).startsWith('Техническое'));
+});
