@@ -69984,8 +69984,27 @@ function stableId(text) {
   for (let i = 0; i < t.length; i++) h = (Math.imul(h, 33) + t.charCodeAt(i)) >>> 0;
   return h.toString(36);
 }
-/* คีย์ความคืบหน้าของคำศัพท์ — ทุกที่ต้องเรียกผ่านฟังก์ชันนี้ (ตอนนี้ยังเป็นลำดับในกลุ่ม · S8 จะเปลี่ยนเป็น id ถาวร + ย้ายข้อมูลเดิม ที่เดียว) */
-const termKey = (m, t, i) => "g:" + m.id + "-" + i;
+/* คีย์ความคืบหน้าของคำศัพท์ — ทุกที่ต้องเรียกผ่านฟังก์ชันนี้ · สคีมา 2 (S8): id ถาวรจากคำรัสเซีย "g:" + กลุ่ม + "-" + stableId(t.ru)
+   เพิ่ม/ย้าย/ลบคำในกลุ่มแล้วเครื่องหมาย «จำได้» กับบุ๊กมาร์กยังอยู่กับคำเดิม · คำรัสเซียซ้ำในกลุ่มเดียวกัน → คำแรกไม่มีท้าย คำถัดไป -2, -3 ตามลำดับ
+   i = ลำดับในกลุ่ม ใช้นับคำซ้ำเท่านั้น (ไม่ตรงกับ t → หาเอง) · คีย์รุ่น 1 ("g:" + กลุ่ม + "-" + ลำดับ) ย้ายครั้งเดียวใน SLOT S8 (migrateTermKeys) */
+const TERMDUP = new WeakMap();                     // m.terms → {n, cnt: Map(id → จำนวนคำที่ id ตรงกัน)} · สร้างใหม่เมื่อจำนวนคำเปลี่ยนหรือเจอ id ใหม่
+function termKey(m, t, i) {
+  const ts = m.terms, id = stableId(t.ru || "");
+  let c = TERMDUP.get(ts);
+  if (!c || c.n !== ts.length || !c.cnt.has(id)) {
+    const cnt = new Map();
+    ts.forEach(x => { const k = stableId(x.ru || ""); cnt.set(k, (cnt.get(k) || 0) + 1); });
+    TERMDUP.set(ts, c = { n: ts.length, cnt });
+  }
+  let k = "g:" + m.id + "-" + id;
+  if (c.cnt.get(id) > 1) {
+    const at = ts[i] === t ? i : ts.indexOf(t);
+    let n = 1;
+    for (let j = 0; j < at; j++) if (stableId(ts[j].ru || "") === id) n++;
+    if (n > 1) k += "-" + n;
+  }
+  return k;
+}
 const BLKCLS = { "ГСЭ": "blk-gse", "МЕН": "blk-men", "ОПД": "blk-opd", "СД": "blk-sd", "ВПД": "blk-vpd" };
 const ICONS = { hist: "📜", elob: "🔋", tau: "🎛️", surn: "🚀", suka: "🛰️", nav: "🧭", toe: "🔌", teh_el: "⚡", asu: "📡", nadezh: "🛡️", ppo: "🔧", vhist: "🗺️" };
 
@@ -71720,6 +71739,37 @@ const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return 
 const keyBytes = k => { const v = lsGet(k); return v === null ? 0 : (k.length + v.length) * 2; };   // localStorage เก็บเป็น UTF-16
 const fmtBytes = b => b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(1).replace(".", ",") + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB";
 const escS8 = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---- id ถาวรของศัพท์: ย้ายคีย์รุ่น 1 ("g:" + กลุ่ม + "-" + ลำดับ) → รุ่น 2 (termKey ใหม่) ตามลำดับปัจจุบันของ MODULES ----
+   ทำครั้งเดียวเมื่อ atlas-meta-v1.schema < 2 (รวมไฟล์สำรองรุ่นเก่าที่นำเข้า — progressImport ตั้ง schema ตามไฟล์ แล้วหน้าโหลดใหม่มาย้ายที่นี่)
+   คีย์ที่ไม่ตรงกับคำใดในตอนนี้คงไว้ตามเดิม (ไม่ลบข้อมูลผู้อ่าน) · เขียนไม่สำเร็จ → ไม่ขยับ schema ครั้งหน้าย้ายใหม่ (ย้ายซ้ำไม่เปลี่ยนคีย์ที่ย้ายแล้ว) */
+function migrateTermKeys(set) {
+  const map = new Map();
+  MODULES.forEach(m => m.terms.forEach((t, i) => map.set("g:" + m.id + "-" + i, termKey(m, t, i))));
+  const out = new Set();
+  let n = 0;
+  set.forEach(k => { const nk = map.get(k); if (nk !== undefined) n++; out.add(nk !== undefined ? nk : k); });
+  return { out, n };
+}
+const readMeta = () => { try { const v = JSON.parse(lsGet(METAKEY)); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } };
+function learnerStart() {
+  const meta = readMeta(), now = new Date().toISOString();
+  if (!meta.created) meta.created = now;
+  if (!(meta.schema >= 2)) {
+    let ok = true;
+    [[DONE, persist], [BM, persistBM]].forEach(([set, save]) => {
+      const r = migrateTermKeys(set);
+      if (!r.n) return;
+      set.clear(); r.out.forEach(k => set.add(k));
+      ok = save() && ok;
+    });
+    meta.schema = ok ? SCHEMA : meta.schema || 1;
+  }
+  meta.lastActive = now;
+  store(METAKEY, meta);
+  return meta;
+}
+learnerStart();
 
 /* แจ้งครั้งเดียวต่อการเปิดหน้า — แถบเล็กด้านล่าง ลิงก์ไปจัดการพื้นที่ที่ #/progress */
 let S8_WARNED = false;
