@@ -69875,20 +69875,56 @@ Object.assign(DEMOS, window.NAVDEMOS || {});
 /* ===== /СН ЛА NAVDEMOS ===== */
 
 /* ================= APP ================= */
+/* S8: ตัวเขียนเดียวของข้อมูลผู้เรียน — ทุก persist… / save… เขียนผ่าน store(key, value)
+   value: สตริง = เขียนตรง ๆ · undefined = ลบคีย์ · อย่างอื่น = JSON.stringify · คืน true เมื่อสำเร็จ
+   ล้มเหลว (พื้นที่เต็ม/เบราว์เซอร์ไม่ให้เก็บ) → STORE_ERR + storeFailed() ในช่อง SLOT S8 แจ้งผู้อ่านครั้งเดียว — ไม่กลืนเงียบอีกต่อไป */
+let STORE_ERR = null;
+const isQuota = e => !!e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" || e.code === 22 || e.code === 1014);
+function store(key, value) {
+  try {
+    if (value === undefined) localStorage.removeItem(key);
+    else localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+    return true;
+  } catch (e) {
+    STORE_ERR = { key, name: (e && e.name) || "Error", quota: isQuota(e), t: Date.now() };
+    try { if (typeof storeFailed === "function") storeFailed(STORE_ERR); } catch (x) {}
+    return false;
+  }
+}
+/* S8: รุ่นสคีมาของข้อมูลผู้เรียน (atlas-meta-v1 = {schema, lastActive, created}) · 2 = คีย์ศัพท์เป็น id ถาวรจากคำรัสเซีย (termKey)
+   ย้ายข้อมูลรุ่น 1 → 2 ทำครั้งเดียวในช่อง SLOT S8 (learnerStart) หลัง MODULES ครบ */
+const METAKEY = "atlas-meta-v1", SCHEMA = 2, BACKUP_V = 2, PREVKEY = "atlas-backup-prev";
+/* S8: ทะเบียนคีย์ของข้อมูลผู้เรียน — ใช้ตรวจไฟล์สำรองก่อนนำเข้าและสรุปสิ่งที่จะเปลี่ยน
+   kind: "set" = JSON array · "obj" = JSON object · "any" = JSON ใดก็ได้ · "raw" = สตริงตามรูปแบบ re · count(v) = จำนวนรายการ (ค่าที่ parse แล้ว)
+   temp: true = สร้างใหม่ได้ ปุ่ม «ล้างข้อมูลชั่วคราว» ลบได้ · session อื่นลงทะเบียนคีย์ของตัวเองได้ด้วย learnerKey(key, spec) */
+const LEARNER = {};
+function learnerKey(key, spec) { LEARNER[key] = Object.assign({ kind: "any" }, spec); }
+const nKeys = v => (v && typeof v === "object" ? Object.keys(v).length : 0);
+learnerKey("atlas-sula-v1", { kind: "set", label: "เครื่องหมายทบทวน/จำได้" });
+learnerKey("atlas-bm-v1", { kind: "set", label: "บุ๊กมาร์ก" });
+learnerKey("atlas-quiz-v1", { kind: "obj", label: "ผลควิซ (หัวข้อ)", count: nKeys });
+learnerKey("atlas-last-v1", { kind: "any", label: "ตำแหน่งอ่านล่าสุด", count: v => (v ? 1 : 0), temp: true });
+learnerKey("atlas-rail-v1", { kind: "set", label: "ภาคที่เปิดในเมนูซ้าย", temp: true });
+learnerKey("atlas-sem-v1", { kind: "obj", label: "ภาคเรียนที่ปรับเอง", count: nKeys });
+learnerKey("atlas-mysem-v1", { kind: "raw", re: /^[1-9]$/, label: "ภาคเรียนของคุณ", count: v => (v ? 1 : 0) });
+learnerKey("atlas-mode-v1", { kind: "raw", re: /^(sum|full)$/, label: "โหมดอ่าน", count: v => (v ? 1 : 0) });
+learnerKey("atlas-offline-v1", { kind: "obj", label: "วิชาที่เก็บไว้อ่านออฟไลน์", count: nKeys });
+learnerKey(METAKEY, { kind: "obj", label: "รุ่นข้อมูล", count: v => (v ? 1 : 0), meta: true });
+
 const KEY = "atlas-sula-v1";
 let DONE = new Set();
 try { const r = localStorage.getItem(KEY); if (r) DONE = new Set(JSON.parse(r)); } catch (e) {}
-const persist = () => { try { localStorage.setItem(KEY, JSON.stringify([...DONE])); } catch (e) {} };
+const persist = () => store(KEY, [...DONE]);
 
 /* v2: บุ๊กมาร์ก + ตำแหน่งอ่านล่าสุด + สี/ไอคอนประจำวิชา */
 const BMKEY = "atlas-bm-v1";
 let BM = new Set();
 try { const r = localStorage.getItem(BMKEY); if (r) BM = new Set(JSON.parse(r)); } catch (e) {}
-const persistBM = () => { try { localStorage.setItem(BMKEY, JSON.stringify([...BM])); } catch (e) {} };
+const persistBM = () => store(BMKEY, [...BM]);
 const LASTKEY = "atlas-last-v1";
 let LAST = null;
 try { const r = localStorage.getItem(LASTKEY); if (r) LAST = JSON.parse(r); } catch (e) {}
-const saveLast = () => { try { localStorage.setItem(LASTKEY, JSON.stringify(LAST)); } catch (e) {} };
+const saveLast = () => store(LASTKEY, LAST);
 /* v5: ภาคเรียนของผู้อ่าน — รุ่นน้องแต่ละคนอยู่คนละภาค · ยังไม่เลือก = ใช้ภาคของผู้เรียบเรียง (PROGRAM.current) */
 const MYSEMKEY = "atlas-mysem-v1";
 let MYSEM = null;
@@ -69899,7 +69935,7 @@ const RAILKEY = "atlas-rail-v1";
 let RAILOPEN = null;
 try { const r = localStorage.getItem(RAILKEY); if (r) RAILOPEN = new Set(JSON.parse(r)); } catch (e) {}
 if (!RAILOPEN) RAILOPEN = new Set([curSem()]);
-const saveRail = () => { try { localStorage.setItem(RAILKEY, JSON.stringify([...RAILOPEN])); } catch (e) {} };
+const saveRail = () => store(RAILKEY, [...RAILOPEN]);
 /* v5: โหมดผู้ดูแล — เมนู «ปรับภาคเรียน» มีไว้ให้เจ้าของงานแก้แผนการเรียน ผู้อ่านทั่วไปไม่เห็น
    เปิดด้วย ?admin ต่อท้ายลิงก์ ปิดด้วย ?admin=0 · จำไว้ในเครื่องนั้น */
 const ADMINKEY = "atlas-admin-v1";
@@ -69998,7 +70034,7 @@ function toggleKey(k, el, cls) {
 const SEMKEY = "atlas-sem-v1";
 let SEMOVR = {};
 try { SEMOVR = JSON.parse(localStorage.getItem(SEMKEY) || "{}") || {}; } catch (e) {}
-const saveSem = () => { try { localStorage.setItem(SEMKEY, JSON.stringify(SEMOVR)); } catch (e) {} };
+const saveSem = () => store(SEMKEY, SEMOVR);
 const defSems = s => s.sems || [];
 const semsOf = s => (SEMOVR[s.id] || defSems(s)).slice().sort((a, b) => a - b);
 const semFirst = s => { const a = semsOf(s); return a.length ? a[0] : 99; };
@@ -70480,7 +70516,7 @@ function renderSubject() {
 const QKEY = "atlas-quiz-v1";
 let QUIZ = {};
 try { const r = localStorage.getItem(QKEY); if (r) QUIZ = JSON.parse(r) || {}; } catch (e) {}
-const saveQuiz = () => { try { localStorage.setItem(QKEY, JSON.stringify(QUIZ)); } catch (e) {} };
+const saveQuiz = () => store(QKEY, QUIZ);
 let SUB_IO = null;
 const TOCX = { sid: "", mode: "full", items: [], cur: null, unit: null };
 const MODMAP = { teh_el: "te" };                 // รหัสวิชาใน DEEP → รหัสกลุ่มใน MODULES ที่ไม่ตรงกัน
@@ -71673,6 +71709,92 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
+/* ข้อมูลผู้เรียนปลอดภัย — ตัวเขียน store() กับทะเบียนคีย์ LEARNER อยู่ต้นส่วน APP (ค้น «S8: ตัวเขียนเดียว»)
+   ที่นี่: แจ้งเมื่อบันทึกไม่สำเร็จ · การ์ดพื้นที่เก็บในหน้า #/progress · ล้างข้อมูลชั่วคราว */
+const atlasKeys = () => {                                 // คีย์ atlas-* ทั้งหมดในเครื่อง (ไม่รวมโหมดผู้ดูแล)
+  const out = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("atlas-") && k !== ADMINKEY) out.push(k); } } catch (e) {}
+  return out;
+};
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const keyBytes = k => { const v = lsGet(k); return v === null ? 0 : (k.length + v.length) * 2; };   // localStorage เก็บเป็น UTF-16
+const fmtBytes = b => b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(1).replace(".", ",") + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB";
+const escS8 = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* แจ้งครั้งเดียวต่อการเปิดหน้า — แถบเล็กด้านล่าง ลิงก์ไปจัดการพื้นที่ที่ #/progress */
+let S8_WARNED = false;
+function storeFailed(err) {
+  if (S8_WARNED || typeof document === "undefined" || !document.body) return;
+  S8_WARNED = true;
+  const bar = document.createElement("div");
+  bar.id = "s8bar"; bar.setAttribute("role", "alert");
+  bar.innerHTML = '<span>' + (err.quota ? "บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม" : "บันทึกไม่สำเร็จ — เบราว์เซอร์ไม่ยอมให้เก็บข้อมูลในเครื่อง") +
+    '</span> <a href="#/progress">จัดการพื้นที่เก็บ</a><button type="button" aria-label="ปิดข้อความ">×</button>';
+  bar.querySelector("button").addEventListener("click", () => bar.remove());
+  bar.querySelector("a").addEventListener("click", () => bar.remove());
+  document.body.appendChild(bar);
+}
+
+/* ล้างข้อมูลชั่วคราว — ลบเฉพาะคีย์ที่สร้างใหม่ได้ (temp ในทะเบียน) · ชุดสำรองก่อนนำเข้าถามแยกอีกครั้ง · ไม่แตะความคืบหน้า */
+function clearTemp() {
+  const temp = Object.keys(LEARNER).filter(k => LEARNER[k].temp && lsGet(k) !== null);
+  const hasPrev = lsGet(PREVKEY) !== null;
+  if (!temp.length && !hasPrev) return "ไม่มีข้อมูลชั่วคราวให้ล้าง";
+  let freed = 0, n = 0;
+  if (temp.length && confirm("ล้าง " + temp.map(k => LEARNER[k].label).join(" · ") + " (" + fmtBytes(temp.reduce((a, k) => a + keyBytes(k), 0)) + ") ?\nความคืบหน้า บุ๊กมาร์ก และผลควิซไม่ถูกลบ")) {
+    temp.forEach(k => { freed += keyBytes(k); if (store(k, undefined)) n++; });
+    if (temp.includes(LASTKEY)) LAST = null;
+  }
+  if (hasPrev && confirm("ลบชุดสำรองก่อนนำเข้าด้วยไหม (" + fmtBytes(keyBytes(PREVKEY)) + ")?\nลบแล้วจะกู้คืนความคืบหน้าชุดก่อนนำเข้าไม่ได้")) {
+    freed += keyBytes(PREVKEY); if (store(PREVKEY, undefined)) n++;
+  }
+  return n ? "ล้างแล้ว " + n + " รายการ · คืนพื้นที่ " + fmtBytes(freed) : "ยกเลิก";
+}
+
+/* การ์ดในหน้าความก้าวหน้า */
+HOOKS.html("progress", () => {
+  const keys = atlasKeys(), total = keys.reduce((a, k) => a + keyBytes(k), 0);
+  const temp = keys.filter(k => (LEARNER[k] && LEARNER[k].temp) || k === PREVKEY).reduce((a, k) => a + keyBytes(k), 0);
+  return '<section class="s8card" id="s8store" aria-labelledby="s8storeH"><h3 id="s8storeH">พื้นที่เก็บในเครื่องนี้</h3>' +
+    '<p>ความคืบหน้าทั้งหมดใช้ <b>' + fmtBytes(total) + '</b> (' + keys.length + ' รายการ) · ในนั้นเป็นข้อมูลชั่วคราวที่สร้างใหม่ได้ ' + fmtBytes(temp) +
+    '<br><span class="m" id="s8est">กำลังวัดพื้นที่ทั้งเว็บ…</span></p>' +
+    (STORE_ERR ? '<p class="s8warn">ครั้งล่าสุดบันทึก «' + escS8((LEARNER[STORE_ERR.key] || {}).label || STORE_ERR.key) + '» ไม่สำเร็จ' + (STORE_ERR.quota ? ' เพราะพื้นที่เต็ม' : '') + '</p>' : '') +
+    '<div class="qbar"><button type="button" id="s8clear">ล้างข้อมูลชั่วคราว</button><span class="m" id="s8clearMsg" role="status"></span></div></section>';
+});
+function s8Bind() {
+  const est = document.getElementById("s8est");
+  if (est) {
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(r => {
+      est.textContent = "ทั้งเว็บ (รวมไฟล์ที่เก็บไว้อ่านออฟไลน์) ใช้ " + fmtBytes(r.usage || 0) + (r.quota ? " จากที่เบราว์เซอร์ให้ราว " + fmtBytes(r.quota) : "");
+    }).catch(() => { est.textContent = ""; });
+    else est.textContent = "";
+  }
+  const cl = document.getElementById("s8clear");
+  if (cl) cl.addEventListener("click", () => { document.getElementById("s8clearMsg").textContent = clearTemp(); });
+}
+HOOKS.on("go", st => { if (st.v === "progress") s8Bind(); });
+
+/* หน้า #/progress สำรอง — ใช้เฉพาะเมื่อยังไม่มีหน้าของ S2 (ไม่ทับของจริง: เช็ก PAGES และ PAGE_DEFS) */
+if (!PAGES.includes("progress") && !PAGE_DEFS.progress) registerPage("progress", {
+  title: () => "ความก้าวหน้า",
+  render() {
+    view.innerHTML = '<div class="wrap"><div class="page-head"><p class="eyebrow">Прогресс</p><h1 class="page-title">ความก้าวหน้าและข้อมูลในเครื่อง</h1></div>' +
+      '<section class="backup s8card" aria-labelledby="s8bkH"><h3 id="s8bkH">สำรองและย้ายเครื่อง</h3>' +
+      '<p>ความคืบหน้าเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
+      '<div class="qbar"><button type="button" id="s8save">สำรองเป็นไฟล์</button><button type="button" id="s8load">นำเข้าจากไฟล์</button>' +
+      '<input type="file" id="s8file" accept="application/json,.json" hidden><span class="m" id="s8bkMsg" role="status"></span></div></section>' +
+      HOOKS.render("progress", {}) + '</div>';
+    const msg = document.getElementById("s8bkMsg"), f = document.getElementById("s8file");
+    document.getElementById("s8save").addEventListener("click", () => { msg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
+    document.getElementById("s8load").addEventListener("click", () => f.click());
+    f.addEventListener("change", async () => {
+      const file = f.files && f.files[0];
+      f.value = "";
+      if (!file) return;
+      try { await progressImport(file); } catch (e) { msg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
+    });
+  }
+});
 /* ===== SLOT S8 END ===== */
 /* ===== SLOTS END ===== */
 
