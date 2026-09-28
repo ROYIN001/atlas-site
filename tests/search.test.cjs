@@ -140,7 +140,7 @@ test('index arrival refreshes only an active search page, debounced', async () =
 test('ix URLs use the manifest per-subject version when present', async () => {
   const h = harness();
   assert.equal(h.api.ixUrl('tau'), 'data/ix/tau.json?v=T1');
-  h.sandbox.manifestGet = async () => ({ subjects: { tau: { n: 1, ix: 'abc123' } } });
+  h.sandbox.manifestGet = async () => ({ subjects: { tau: { n: 1, v: 'abc123' } } });
   await h.api.loadIndex();
   assert.equal(h.api.ixUrl('tau'), 'data/ix/tau.json?v=abc123');
 });
