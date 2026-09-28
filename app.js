@@ -70387,25 +70387,28 @@ let MANIFEST = null;
 const MANIFEST_URL = "data/manifest.json?v=" + DATA_VERSION;
 const manifestGet = () => MANIFEST || (MANIFEST = fetch(MANIFEST_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .catch(() => { MANIFEST = null; return null; }));             // โหลดไม่ได้ชั่วคราว — ครั้งหน้าลองใหม่
-const SUBJ_ASSET = {};
+const SUBJ_ASSET = {}, SUBJ_OK = {};
+/* S3: onload กับ onerror แยกกัน — ไฟล์ที่โหลดไม่ได้ไม่ถูกจำว่า «มาแล้ว» · เรียกซ้ำจะโหลดใหม่เฉพาะไฟล์ที่ล้มเหลว
+   (ไฟล์ .js ที่รันไปแล้วห้ามโหลดซ้ำ — const ระดับบนสุดจะประกาศซ้ำ) · คืน true = ครบ · false = มีไฟล์ขาด (ปุ่มลองใหม่ของแบบจำลองเรียกซ้ำได้) */
 function subjAssets(sid) {
-  if (!sid) return Promise.resolve();
+  if (!sid) return Promise.resolve(true);
   return SUBJ_ASSET[sid] || (SUBJ_ASSET[sid] = manifestGet().then(man => {
-    if (!man) { delete SUBJ_ASSET[sid]; return; }
+    if (!man) { delete SUBJ_ASSET[sid]; return false; }
     const m = (man.subjects && man.subjects[sid]) || {}, jobs = [];
-    if (m.css) {
-      const l = document.createElement("link");
-      l.rel = "stylesheet"; l.href = "js/subj/" + sid + ".css?v=" + m.css;
-      jobs.push(new Promise(r => { l.onload = l.onerror = () => r(); }));
-      document.head.appendChild(l);
-    }
-    if (m.js) {
-      const sc = document.createElement("script");
-      sc.src = "js/subj/" + sid + ".js?v=" + m.js;
-      jobs.push(new Promise(r => { sc.onload = sc.onerror = () => r(); }));
-      document.head.appendChild(sc);
-    }
-    return Promise.all(jobs);
+    const load = (tag, url) => SUBJ_OK[url] ? true : new Promise(res => {
+      const el = document.createElement(tag);
+      el.onload = () => { SUBJ_OK[url] = true; res(true); };
+      el.onerror = () => { el.remove(); res(false); };
+      if (tag === "link") { el.rel = "stylesheet"; el.href = url; } else el.src = url;
+      document.head.appendChild(el);
+    });
+    if (m.css) jobs.push(load("link", "js/subj/" + sid + ".css?v=" + m.css));
+    if (m.js) jobs.push(load("script", "js/subj/" + sid + ".js?v=" + m.js));
+    return Promise.all(jobs).then(r => {
+      const ok = r.every(Boolean);
+      if (!ok) delete SUBJ_ASSET[sid];
+      return ok;
+    });
   }));
 }
 
@@ -71759,8 +71762,39 @@ function demoInstall(d, sid) {
   if (DEMO_DONE.has(d)) return;
   DEMO_DONE.add(d);
   if (DEMO_MOUNT_IO) DEMO_MOUNT_IO.unobserve(d);
-  const fn = d.dataset.demo && DEMOS[d.dataset.demo];
-  if (typeof fn === "function") fn(d);
+  const key = d.dataset.demo;
+  if (!key) return;
+  const fn = DEMOS[key];
+  if (typeof fn !== "function") { console.warn("ไม่พบแบบจำลอง " + key); demoFail(d, sid); return; }
+  try { fn(d); }
+  catch (e) {
+    console.error("แบบจำลอง " + key + " ติดตั้งไม่สำเร็จ", e);   // verify.py นับ console.error เป็นข้อผิดพลาด — ของพังต้องไม่เงียบ
+    d.textContent = "";                              // ไม่เหลือ canvas ครึ่ง ๆ กลาง ๆ (verify นับ canvas = data-demo)
+    demoFail(d, sid);
+  }
+}
+/* ---- S3: แบบจำลองที่โหลด/ติดตั้งไม่สำเร็จ ----
+   DEMOS[key] ไม่มี (ไฟล์ js/subj ของวิชาโหลดไม่ได้ · ออฟไลน์) หรือโยน error ตอนติดตั้ง → กล่องแจ้ง + ปุ่มลองใหม่
+   (subjAssets โหลดไฟล์ที่ล้มเหลวใหม่แล้วติดตั้งซ้ำ) · กล่องแจ้งเป็นพี่น้องถัดจาก host ไม่ใช่ลูก และไม่มี canvas —
+   verify.py นับ canvas และนับ host ih-… ที่มีลูกเป็น «ติดตั้งแล้ว» ของพังจึงยังนับเป็นพังเหมือนเดิม */
+function demoFail(d, sid) {
+  const nx = d.nextElementSibling;
+  if (nx && nx.classList.contains("demo-fail")) return;
+  const box = document.createElement("div");
+  box.className = "demo-fail";
+  box.setAttribute("role", "status");
+  box.innerHTML = '<span>แบบจำลองนี้โหลดไม่สำเร็จ' + (navigator.onLine === false ? ' — ตอนนี้ออฟไลน์อยู่' : '') +
+    '</span><button type="button">ลองใหม่</button>';
+  d.after(box);
+  const btn = box.querySelector("button");
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    btn.textContent = "กำลังโหลด…";
+    await subjAssets(sid);
+    box.remove();
+    DEMO_DONE.delete(d);
+    demoInstall(d, sid);
+  });
 }
 function demoMount(root, sid) {
   const hosts = [...root.querySelectorAll("[data-demo]")].filter(d => !DEMO_DONE.has(d));

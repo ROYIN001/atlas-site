@@ -3647,6 +3647,16 @@
   #view:not(.s3-all) .tbody > details, #view:not(.s3-all) .tbody > div:not(.std2) > details { contain-intrinsic-size: auto 110px; }
   #view:not(.s3-all) .tbody > .eq, #view:not(.s3-all) .tbody > div:not(.std2) > .eq { contain-intrinsic-size: auto 170px; }
 }
+/* S3: แบบจำลองที่โหลด/ติดตั้งไม่สำเร็จ (demoFail ใน app.js) */
+#view .demo-fail {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 16px 0; padding: 14px 16px;
+  border: 1px dashed var(--line-2); border-radius: var(--radius, 10px); background: var(--panel); color: var(--ink-2); font-size: 14px;
+}
+#view .demo-fail button {
+  font: inherit; font-size: 13.5px; padding: 7px 14px; min-height: 40px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line-2); background: var(--bg); color: var(--ink);
+}
+#view .demo-fail button:hover:not(:disabled) { border-color: var(--accent); }
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 BEGIN ===== */
 /* ===== SLOT S4 END ===== */
