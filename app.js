@@ -71887,6 +71887,8 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
 HOOKS.on("go", searchPlaceholder);
+HOOKS.on("offline", sid => (IX_SUBJ ? IX_SUBJ.includes(sid) : !!DEEP[sid]) ? [ixUrl(sid)] : []);   // ค้นเนื้อหาวิชาที่เก็บไว้ได้ตอนออฟไลน์
+window.addEventListener("online", () => { if (ixMissing().length) { ixRetry(); ixChanged(); } });   // เน็ตกลับมา — โหลดวิชาที่ขาดให้เอง
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
 /* ===== SLOT S5 END ===== */
