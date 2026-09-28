@@ -71762,6 +71762,25 @@ function s7RelPick(entry, own, sid) {
   return (entry.same || []).slice(0, S7_REL_SAME).map(([tid]) => ({ sid, tid, cross: false }))
     .concat((entry.cross || []).filter(x => x[2] >= S7_REL_CROSS).map(([s, tid]) => ({ sid: s, tid, cross: true })));
 }
+/* 7) ป้ายสถานะเนื้อหา — ฟิลด์เสริมในหัวข้อของ DEEP (หรือที่ระดับวิชา DEEP[<วิชา>] ใช้เป็นค่าเริ่มต้นของทุกหัวข้อ):
+     rev: "2026-09-26"  วันที่ปรับปรุงเนื้อหาครั้งล่าสุด
+     chk: true | false  ผ่านการตรวจทานทั้ง tech-reviewer และ lang-reviewer แล้วหรือยัง
+     src: "…"           ต้นทางสั้น ๆ (เช่น «สไลด์ Л5–Л6 ปี 2025 + ตำรา Лучко»)
+   ไม่มีทั้ง rev และ chk → ไม่แสดงป้าย (ยังไม่รู้สถานะ — ไม่เดาแทนเจ้าของงาน) */
+const S7_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+function s7RevTxt(rev) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(rev || ""));
+  return m && +m[2] >= 1 && +m[2] <= 12 ? +m[3] + " " + S7_MON[+m[2] - 1] + " " + m[1] : "";
+}
+function s7Status(t, subj) {
+  const pick = k => (t && t[k] !== undefined ? t[k] : subj ? subj[k] : undefined);
+  const rev = s7RevTxt(pick("rev")), chk = pick("chk"), src = pick("src");
+  let cls = "", text = "";
+  if (chk === true) { cls = "ok"; text = "✓ ตรวจทานแล้ว" + (rev ? " · " + rev : ""); }
+  else if (chk === false) { cls = "wip"; text = "ยังไม่ตรวจทาน" + (rev ? " · ปรับปรุง " + rev : ""); }
+  else if (rev) { cls = "rev"; text = "ปรับปรุง " + rev; }
+  return text || src ? { cls, text, src: typeof src === "string" ? src : "" } : null;
+}
 /* ---- S7 PURE END ---- */
 
 const S7_IDX = s7LecIndex(DEEP, S7_LECFIX);
@@ -71853,7 +71872,6 @@ window.addEventListener("scroll", () => {           // เลื่อนอ่�
   clearTimeout(S7_SCROLL_T);
   S7_SCROLL_T = setTimeout(() => { if (state.v === "subject" && state.topic) s7Visit(state.id, state.topic); }, 1000);
 }, { passive: true });
-const S7_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 const s7Date = d => d.getDate() + " " + S7_MON[d.getMonth()] + " " + d.getFullYear();
 function s7Ago(t) {
   const m = Math.round((Date.now() - t) / 60000);
@@ -72101,6 +72119,20 @@ HOOKS.on("fill", (el, t, sid) => {
   });
   addDemo();
   [1600, 5100].forEach(ms => setTimeout(() => { if (el.isConnected) addDemo(); }, ms));
+});
+
+/* ---- 7) ป้ายสถานะเนื้อหาในหัวหัวข้อ (ฟิลด์ rev / chk / src ของ DEEP — ดู s7Status ในส่วน PURE) ---- */
+HOOKS.on("fill", (el, t, sid) => {
+  const sec = el.closest("section.topic"), bar = sec && sec.querySelector(":scope > .topic-head .s7-bar");
+  const st = s7Status(t, DEEP[sid]);
+  if (!bar || !st || bar.querySelector(".s7-st")) return;
+  const tip = st.cls === "ok" ? "ผ่านการตรวจทานเชิงเทคนิคและภาษาแล้ว" : st.cls === "wip"
+    ? "เนื้อหานี้ยังไม่ผ่านการตรวจทาน — ถ้าเจอจุดผิด กด «แจ้งจุดผิด»" : "วันที่ปรับปรุงเนื้อหาครั้งล่าสุด";
+  const b = document.createElement("span");
+  b.className = "s7-st" + (st.cls ? " " + st.cls : "");
+  b.innerHTML = (st.text ? '<span class="s7-badge" title="' + tip + '">' + s7Esc(st.text) + '</span>' : '') +
+    (st.src ? '<span class="s7-src" title="' + s7Esc(st.src) + '">ที่มา: ' + s7Esc(st.src) + '</span>' : '');
+  bar.insertBefore(b, bar.firstChild);
 });
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */

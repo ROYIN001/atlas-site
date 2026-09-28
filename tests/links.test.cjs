@@ -23,7 +23,7 @@ function section(startMarker, endMarker) {
 const ctx = vm.createContext({ window: { matchMedia: () => ({ matches: false }) } });
 const S = vm.runInContext(app.slice(0, app.indexOf(APP_MARKER)) + '\n' +
   section('/* ---- S7 PURE BEGIN ---- */', '/* ---- S7 PURE END ---- */') +
-  '\n({ DEEP, S7_LECFIX, s7LecIndex, s7LecScan, s7RelPick: typeof s7RelPick === "function" ? s7RelPick : null })',
+  '\n({ DEEP, S7_LECFIX, s7LecIndex, s7LecScan, s7RelPick, s7Status })',
   ctx, { timeout: 5000 });
 const DEEP = JSON.parse(JSON.stringify(S.DEEP));
 const IDX = S.s7LecIndex(S.DEEP, S.S7_LECFIX);
@@ -138,6 +138,23 @@ test('related-topic chips: same-subject top 2 + cross-subject ≥ 0.10; manual r
     { sid: 'nav', tid: 'nav-9', cross: true }, { sid: 'toe', tid: 'toe-5', cross: true }]);
   assert.deepEqual(pick(e, ['tau-2', 'nav/nav-10'], 'tau'), [{ sid: 'tau', tid: 'tau-2', cross: false }, { sid: 'nav', tid: 'nav-10', cross: true }]);
   assert.deepEqual(pick(undefined, undefined, 'tau'), []);
+});
+
+test('content status badge from optional DEEP fields rev / chk / src (topic overrides subject)', () => {
+  const st = (t, subj) => JSON.parse(JSON.stringify(S.s7Status(t, subj)));
+  assert.deepEqual(st({ rev: '2026-09-26', chk: true, src: 'สไลด์ Л5' }), { cls: 'ok', text: '✓ ตรวจทานแล้ว · 26 ก.ย. 2026', src: 'สไลด์ Л5' });
+  assert.deepEqual(st({ chk: false, rev: '2026-10-03' }), { cls: 'wip', text: 'ยังไม่ตรวจทาน · ปรับปรุง 3 ต.ค. 2026', src: '' });
+  assert.deepEqual(st({ rev: '2026-01-05' }), { cls: 'rev', text: 'ปรับปรุง 5 ม.ค. 2026', src: '' });
+  assert.deepEqual(st({}, { chk: true, rev: '2026-09-10' }), { cls: 'ok', text: '✓ ตรวจทานแล้ว · 10 ก.ย. 2026', src: '' });
+  assert.deepEqual(st({ chk: false }, { chk: true }), { cls: 'wip', text: 'ยังไม่ตรวจทาน', src: '' });
+  assert.equal(S.s7Status({}, {}), null);                    // unknown status: no badge, no guessing
+  assert.equal(S.s7Status({ rev: '26.09.2026' }, {}), null);  // only ISO dates
+  // no topic in DEEP carries malformed status fields
+  for (const [sid, d] of Object.entries(DEEP)) for (const t of [d, ...d.topics, ...(d.summary || [])]) {
+    if (t.rev !== undefined) assert.match(t.rev, /^\d{4}-\d{2}-\d{2}$/, `${sid} ${t.id || ''} rev`);
+    if (t.chk !== undefined) assert.equal(typeof t.chk, 'boolean', `${sid} ${t.id || ''} chk`);
+    if (t.src !== undefined) assert.equal(typeof t.src, 'string', `${sid} ${t.id || ''} src`);
+  }
 });
 
 test('data/rel.json: deterministic shape, real targets, sorted by score', { skip: !fs.existsSync(path.join(ROOT, 'data', 'rel.json')) }, () => {
