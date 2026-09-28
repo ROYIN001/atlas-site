@@ -70364,10 +70364,9 @@ async function fillBody(el) {
   const release = await fillTurn();                 // S3: ใส่ html ทีละหัวข้อ เว้นให้เบราว์เซอร์วาดจอระหว่างกัน (ดูช่อง SLOT S3)
   try {
     if (!el.isConnected) return;                     // ผู้อ่านเปลี่ยนหน้าไประหว่างรอคิว
-    el.innerHTML = html + demoSlots(t);
+    if (!await fillChunks(el, html, demoSlots(t))) return;   // S3: = el.innerHTML = html + demoSlots(t) และ fitWideMath(el) แต่ใส่ทีละช่วง ~16 KB
     demoMount(el, sid);                              // S3: ติดตั้ง [data-demo] เมื่อเข้าใกล้จอ
     if (window.SUKAFIG) window.SUKAFIG(el);
-    fitWideLazy(el);                                 // S3: = fitWideMath(el) แต่การ์ดที่ข้ามการจัดวาง (content-visibility) รอจนการ์ดใกล้จอ
     tocOnFill(el);
     HOOKS.run("fill", el, t, sid);
   } finally { release(); }
@@ -71908,10 +71907,27 @@ function demoMount(root, sid) {
 function demoEager() {                              // ติดตั้งทุกกล่องที่ยังรออยู่ และกล่องของหัวข้อที่จะเติมต่อจากนี้ (จนกว่าจะเปลี่ยนหน้า)
   DEMO_EAGER = true;
   document.querySelectorAll("#view .tbody:not([data-lazy]) [data-demo]").forEach(d => demoInstall(d, DEMO_SID.get(d) || state.id));
-  view.classList.add("s3-all");                      // จัดวางทุกการ์ดตามปกติ (พิมพ์/สแกนทั้งหน้า) แล้วตรวจสูตรกว้างที่ค้างอยู่
-  view.querySelectorAll(CV_CARD).forEach(c => { if (CV_WAIT.has(c)) { CV_WAIT.delete(c); fitWideMath(c); } });
 }
 HOOKS.on("offline", () => ["data/figdim.json?v=" + DATA_VERSION]);   // S3: ขนาดรูปใช้ตอนออฟไลน์ด้วย
+
+/* ---- S3: โหลดฟอนต์ล่วงหน้าเมื่อเปิดวิชา ----
+   fonts.css แบ่งฟอนต์ตาม unicode-range — ไฟล์ของชุดอักษร/น้ำหนักใหม่มาถึงเมื่อไร เบราว์เซอร์จัดวางข้อความ «ทั้งหน้า» ใหม่
+   (trace: elob ที่เติมแล้วหลายหัวข้อ 850–970 ms ที่ CPU ×4 ต่อครั้ง) · เรียกให้มาตั้งแต่เปิดวิชาตอนหน้ายังสั้น ครั้งละหนึ่งเซสชัน
+   ไทย/ละติน/ซีริลลิกของ Sans · Sans Thai · Mono ที่ใช้จริง — Noto Sans Math (264 KB) โหลดเมื่อหัวข้อแรกที่มีสูตรมาถึง (fontWarmMath) */
+let FONT_WARM = false, FONT_MATH = false;
+function fontWarm() {
+  if (FONT_WARM || typeof document === "undefined" || !document.fonts || !document.fonts.load) return;
+  FONT_WARM = true;
+  ['400 16px "IBM Plex Sans Thai"', '500 16px "IBM Plex Sans Thai"', '600 16px "IBM Plex Sans Thai"', '400 16px "IBM Plex Sans"',
+    '400 16px "IBM Plex Mono"', '500 16px "IBM Plex Mono"', '600 16px "IBM Plex Mono"']
+    .forEach(f => document.fonts.load(f, "กขAaБбΣ").catch(() => {}));
+}
+function fontWarmMath(html) {
+  if (FONT_MATH || !html.includes("<math") || !document.fonts || !document.fonts.load) return;
+  FONT_MATH = true;
+  document.fonts.load('400 16px "Noto Sans Math"', "∑∫").catch(() => {});
+}
+HOOKS.on("subject", (s, deep) => { if (deep) fontWarm(); });
 
 /* ---- S3: การ์ด «เก็บไว้อ่านออฟไลน์» ในหน้าความก้าวหน้า #/progress (หน้านั้น S2 สร้าง · ฟังก์ชัน offline* อยู่ถัดจาก offlineUi) ---- */
 function offlineCardHtml() {
@@ -71965,22 +71981,18 @@ HOOKS.on("clear", () => {
   if (DEMO_MOUNT_IO) { DEMO_MOUNT_IO.disconnect(); DEMO_MOUNT_IO = null; }
   DEMO_EAGER = false;
   DEMO_DONE = new WeakSet(); DEMO_SID = new WeakMap();
-  view.classList.remove("s3-all");
-  CV_WAIT = new WeakSet();
 });
 
-/* ---- S3: เติมหัวข้อทีละหัวข้อ + ข้ามการจัดวางการ์ดนอกจอ ----
-   · fillTurn(): คิวของ fillBody — ใส่ html ของหัวข้อถัดไปหลังหัวข้อก่อนหน้าเสร็จและเบราว์เซอร์ได้วาดจออย่างน้อยหนึ่งเฟรม
+/* ---- S3: เติมหัวข้อทีละหัวข้อ และใส่ html ของหัวข้อยาวเป็นช่วง ๆ ----
+   · fillTurn(): คิวของ fillBody — ใส่หัวข้อถัดไปหลังหัวข้อก่อนหน้าเสร็จและเบราว์เซอร์ได้วาดจออย่างน้อยหนึ่งเฟรม
      (rAF → setTimeout 0 · สำรอง 100 ms เมื่อแท็บถูกซ่อน) — เปิดวิชาแล้ว IntersectionObserver เห็น 3 หัวข้อพร้อมกัน จะไม่รวมเป็นงานก้อนเดียว
-   · content-visibility: auto ระดับการ์ด (app.css ช่อง S3): STD2 section.sub · วิชาเดิม .call .tw details .card .eq ที่เป็นลูกของหัวข้อ
-     — ไม่ใส่ที่ wrapper ทั้งหัวข้อ (เห็นส่วนเดียวก็ต้องจัดวางทั้งก้อน) · ไม่ใส่ที่ p/ul (กันตัดหมึกตัวห้อยที่ขอบ) · ไม่ใส่ที่ details.deep
-     (paint containment จะตัดป้าย DEEP ที่ยื่นออกซ้าย) · ไม่ใส่ที่ .ifigs (รูปต้องเริ่มโหลดก่อนการ์ดถึงจอ)
-   · fitWideLazy(el): fitWideMath ทั้งหัวข้อจะบังคับจัดวางทุกการ์ดที่ถูกข้าม (nav-12: 0.8 → 1.8 s ที่ CPU ×4) — จึงตรวจเฉพาะสูตรนอกการ์ดทันที
-     ส่วนการ์ดตรวจตอนเริ่มถูกวาด (contentvisibilityautostatechange skipped = false)
-   · #view.s3-all (หลัง fillAllBodies: พิมพ์ · สแกนมือถือของ verify) ปิด content-visibility ทั้งหน้า */
-const CV_CARD = ".std2 section.sub, .tbody > :is(.call, .tw, details, .card, .eq), .tbody > div:not(.std2) > :is(.call, .tw, details, .card, .eq)";
-const CV_OK = typeof CSS !== "undefined" && CSS.supports && CSS.supports("content-visibility", "auto");
-let CV_WAIT = new WeakSet();
+   · fillChunks(el, html, tail): แยก html ด้วย <template> แล้วย้ายลูกของ wrapper (เช่น <div class="eola">) เข้าหน้าเว็บทีละ ~16 KB (~150 ms ที่ CPU ×4)
+     ตรวจสูตรกว้าง (fitWideMath) ของช่วงนั้นทันที แล้ววาดจอก่อนช่วงถัดไป — elob-lr4 เดิมจัดวางข้อความไทยทั้งก้อน 1.1 s ที่ CPU ×4
+     · ระหว่างนั้น .tload ยังอยู่ท้ายกล่อง (bodyReady / verify.py ถือว่ากล่องยังไม่เสร็จ — ลิงก์ถึง id ในหัวข้อจึงรอครบก่อน)
+     · ขนาดรูป (figdim) ใส่ก่อนย้ายเข้าหน้า — ช่วงที่วาดแล้วไม่ขยับ
+   · ลอง content-visibility: auto ระดับการ์ดแล้ว (27–28 ก.ย. 2026) ใส่ html เร็วขึ้นมาก แต่เบราว์เซอร์จัดวางการ์ดใหม่ทุกครั้งที่เลื่อนผ่าน:
+     verify.py (CPU ×6) รอบเลื่อนเดียว style/layout elob 11 → 117 s · nav 2.4 → 53 s และ elob ตกเพราะ observer ตามไม่ทัน — จึงไม่ใช้ */
+const FILL_CHUNK = 16000;
 let FILL_TAIL = Promise.resolve();
 const afterPaint = () => new Promise(r => {
   let done = false;
@@ -71995,27 +72007,44 @@ function fillTurn() {
   FILL_TAIL = turn.then(() => held);
   return turn.then(() => release);
 }
-function fitWideLazy(el) {
-  const cards = CV_OK && !view.classList.contains("s3-all") ? [...el.querySelectorAll(CV_CARD)] : [];
-  if (!cards.length) { fitWideMath(el); return; }
-  const cardSet = new Set(cards), hasCard = new Set();
-  cards.forEach(c => { CV_WAIT.add(c); for (let p = c.parentElement; p && p !== el; p = p.parentElement) hasCard.add(p); });
-  const roots = new Set();
-  let orphan = false;
-  el.querySelectorAll('math:not([display="block"])').forEach(m => {
-    for (let p = m.parentElement; p && p !== el; p = p.parentElement) if (cardSet.has(p)) return;   // ในการ์ด — รอการ์ดถูกวาด
-    let r = m;
-    while (r.parentElement && r.parentElement !== el && !hasCard.has(r.parentElement)) r = r.parentElement;
-    if (r === m) orphan = true; else roots.add(r);
-  });
-  if (orphan) { cards.forEach(c => CV_WAIT.delete(c)); fitWideMath(el); return; }   // สูตรที่อยู่ติดกับการ์ดโดยตรง (ไม่พบในเนื้อหาปัจจุบัน) — ตรวจทั้งหัวข้อแบบเดิม
-  roots.forEach(fitWideMath);
+async function fillChunks(el, html, tail) {
+  fontWarmMath(html);
+  if (html.length <= FILL_CHUNK) { el.innerHTML = html + tail; fitWideMath(el); return true; }
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  const top = [...tpl.content.childNodes], elems = top.filter(n => n.nodeType === 1);
+  const wrap = elems.length === 1 && elems[0].childElementCount > 1 &&
+    top.every(n => n === elems[0] || n.nodeType === 8 || (n.nodeType === 3 && !n.data.trim())) ? elems[0] : null;
+  const items = wrap ? [...wrap.childNodes] : top;
+  const mark = document.createElement("div");
+  mark.className = "tload";
+  mark.textContent = "กำลังโหลดหัวข้อ…";
+  el.replaceChildren(mark);
+  const dst = wrap ? el.insertBefore(wrap.cloneNode(false), mark) : null;
+  if (html.includes("data-fig=")) await figDims();   // ขนาดรูปมาก่อน (ไฟล์เดียวทั้งเซสชัน — ปกติมีแล้วตั้งแต่หัวข้อแรก)
+  let i = 0, orphan = false;
+  while (i < items.length) {
+    const f = document.createDocumentFragment(), batch = [];
+    for (let size = 0; i < items.length && (size < FILL_CHUNK || !batch.length); i++) {
+      const n = items[i];
+      size += n.nodeType === 1 ? n.outerHTML.length : (n.nodeValue || "").length;
+      batch.push(n);
+      f.appendChild(n);
+    }
+    if (FIGDIM) f.querySelectorAll("figure.ifig[data-fig]").forEach(figSize);
+    if (dst) dst.appendChild(f); else el.insertBefore(f, mark);
+    batch.forEach(n => {
+      if (n.nodeType !== 1) return;
+      if (n.matches("math") || /^inline/.test(getComputedStyle(n).display)) { if (n.querySelector("math") || n.matches("math")) orphan = true; }
+      else fitWideMath(n);
+    });
+    if (i < items.length) { await afterPaint(); if (!el.isConnected) return false; }
+  }
+  if (orphan) fitWideMath(el);                       // สูตร/ข้อความในบรรทัดที่เป็นลูกของ wrapper โดยตรง — ตรวจทั้งกล่องแบบเดิม
+  mark.insertAdjacentHTML("beforebegin", tail);
+  mark.remove();
+  return true;
 }
-document.addEventListener("contentvisibilityautostatechange", e => {
-  if (e.skipped || !CV_WAIT.has(e.target)) return;
-  CV_WAIT.delete(e.target);
-  fitWideMath(e.target);
-}, true);
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
 /* ===== SLOT S4 END ===== */

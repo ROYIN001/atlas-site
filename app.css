@@ -3631,22 +3631,6 @@
 /* ===== SLOT S2 BEGIN ===== */
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
-/* S3: ข้ามการจัดวาง/วาดการ์ดที่อยู่นอกจอ (content-visibility) — หัวข้อยาวอย่าง elob-lr4 ใส่ html แล้วค้าง 1.1 s ที่ CPU ×4
-   เพราะจัดวางข้อความไทยทั้งก้อน · ระดับการ์ดเท่านั้น ไม่ใช่ wrapper ของหัวข้อ · ขนาดประมาณ = ค่ากลางที่วัดจริง
-   (auto = จำขนาดจริงหลังวาดครั้งแรก) · #view.s3-all = หลัง fillAllBodies() (พิมพ์/สแกน) ปิดทั้งหน้า · เหตุผลที่เลือกแค่ชุดนี้ ดู app.js ช่อง S3 */
-#view:not(.s3-all) .std2 section.sub { content-visibility: auto; contain-intrinsic-size: auto 1100px; }
-#view:not(.s3-all) .tbody > :is(.call, .tw, details, .card, .eq),
-#view:not(.s3-all) .tbody > div:not(.std2) > :is(.call, .tw, details, .card, .eq) { content-visibility: auto; contain-intrinsic-size: auto 180px; }
-#view:not(.s3-all) .tbody > .tw, #view:not(.s3-all) .tbody > div:not(.std2) > .tw { contain-intrinsic-size: auto 340px; }
-#view:not(.s3-all) .tbody > details, #view:not(.s3-all) .tbody > div:not(.std2) > details { contain-intrinsic-size: auto 70px; }
-#view:not(.s3-all) .tbody > .eq, #view:not(.s3-all) .tbody > div:not(.std2) > .eq { contain-intrinsic-size: auto 100px; }
-@media (max-width: 600px) {
-  #view:not(.s3-all) .std2 section.sub { contain-intrinsic-size: auto 1700px; }
-  #view:not(.s3-all) .tbody > :is(.call, .card), #view:not(.s3-all) .tbody > div:not(.std2) > :is(.call, .card) { contain-intrinsic-size: auto 300px; }
-  #view:not(.s3-all) .tbody > .tw, #view:not(.s3-all) .tbody > div:not(.std2) > .tw { contain-intrinsic-size: auto 450px; }
-  #view:not(.s3-all) .tbody > details, #view:not(.s3-all) .tbody > div:not(.std2) > details { contain-intrinsic-size: auto 110px; }
-  #view:not(.s3-all) .tbody > .eq, #view:not(.s3-all) .tbody > div:not(.std2) > .eq { contain-intrinsic-size: auto 170px; }
-}
 /* S3: แบบจำลองที่โหลด/ติดตั้งไม่สำเร็จ (demoFail ใน app.js) */
 #view .demo-fail {
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 16px 0; padding: 14px 16px;
