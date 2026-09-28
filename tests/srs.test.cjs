@@ -170,3 +170,142 @@ test('exam plan category: quota = ceil(backlog / days left); last 48 h puts most
   assert.deepEqual(norm(core.srsPlanCat([], get, T0, 4, false, 30)), { pending: 30, quota: 8, today: [] }, 'unseen oral questions count too');
   assert.deepEqual(norm(core.srsPlanCat(['c'], get, T0, 4, false)), { pending: 0, quota: 0, today: [] });
 });
+
+/* ---- เบราว์เซอร์จริง (Playwright ของ Python ตัวเดียวกับ src/verify.py) — ข้ามเมื่อเครื่องไม่มี playwright/chromium ----
+   1) ติ๊ก ✓ สองหัวข้อ → เลื่อนนาฬิกา +8 วัน (page.clock) → การ์ด «วันนี้ทวนอะไร» บนหน้าแรกมีสองรายการ «ครบกำหนด SRS»
+   2) #/cram/vhist สูง < 60 000 px ที่ 1280 px · ไม่มี canvas/รูป · ทุกลิงก์ «อ่านเต็ม» ชี้หัวข้อ/id ที่มีจริง (ตรวจ DOM ที่สร้างตอนรัน)
+   3) กด «อ่านเต็ม» แล้วไปถึงองค์ประกอบนั้นในฉบับเต็ม · กด «จำได้» ได้คีย์ q:<วิชา>/<หัวข้อ>/<id>
+   4) จอ 360 px: การ์ดบนหน้าแรกและแถบใต้หัวหน้าวิชาไม่ล้นจอ · ไม่มี page error / console error / เรียกเซิร์ฟเวอร์ภายนอก */
+const BROWSER_PY = String.raw`
+import json, sys, threading, http.server, functools, datetime
+out = {}
+try:
+    from playwright.sync_api import sync_playwright
+except Exception as e:
+    print(json.dumps({"skip": "ไม่มี playwright ของ Python: " + str(e)})); sys.exit(0)
+ROOT = sys.argv[1]
+class Q(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a): pass
+srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Q, directory=ROOT))
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+BASE = "http://127.0.0.1:%d/" % srv.server_address[1]
+errors, external = [], []
+def watch(pg):
+    pg.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
+    pg.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" else None)
+def guard(route):
+    if route.request.url.startswith(BASE): route.continue_()
+    else: external.append(route.request.url); route.abort()
+with sync_playwright() as p:
+    try:
+        b = p.chromium.launch()
+    except Exception as e:
+        print(json.dumps({"skip": "เปิด chromium ไม่ได้: " + str(e).splitlines()[0]})); sys.exit(0)
+    ctx = b.new_context(viewport={"width": 1280, "height": 900})
+    ctx.route("**/*", guard)
+    pg = ctx.new_page(); watch(pg)
+    pg.goto(BASE + "#/nav/full")
+    pg.wait_for_selector('.topic-check[data-key="k:nav-2"]')
+    for k in ("k:nav-1", "k:nav-2"):
+        pg.click('.topic-check[data-key="%s"]' % k)
+    pg.wait_for_function('window.SRS && SRS.get("k:nav-1") && SRS.get("k:nav-2")')
+    out["graded"] = pg.evaluate('[SRS.get("k:nav-1").ivl, SRS.get("k:nav-2").reps]')
+    pg.goto(BASE + "#/")
+    out["dueToday"] = pg.evaluate('document.querySelectorAll(".s6-today .s6-it").length')
+    now = pg.evaluate("Date.now()")
+    lctx = b.new_context(viewport={"width": 1280, "height": 900}, storage_state=ctx.storage_state())   # นาฬิกาของ Playwright มีผลทั้ง context
+    lctx.route("**/*", guard)
+    later = lctx.new_page(); watch(later)
+    later.clock.set_fixed_time(datetime.datetime.fromtimestamp(now / 1000 + 8 * 86400, tz=datetime.timezone.utc))
+    later.goto(BASE + "#/")
+    later.wait_for_selector(".s6-today")
+    out["later"] = later.evaluate('''() => [...document.querySelectorAll(".s6-today .s6-it")].map(li => ({
+        title: li.querySelector("b").textContent, why: li.querySelector(".s6-why").textContent, href: li.querySelector("a.s6-go").getAttribute("href") }))''')
+    out["titles"] = later.evaluate('["nav-1", "nav-2"].map(id => DEEP.nav.topics.find(t => t.id === id).th)')
+    lctx.close()
+    cram = {}
+    for sid in ("vhist", "nav", "elob"):
+        pg.goto(BASE + "#/cram/" + sid)
+        pg.wait_for_selector(".cr-list.ready", timeout=180000)
+        cram[sid] = pg.evaluate('''async sid => {
+          const links = [...document.querySelectorAll("#view a[href^='#/" + sid + "/']")].map(a => a.getAttribute("href"));
+          const bad = [], seen = new Set();
+          for (const h of links) {
+            if (seen.has(h)) continue; seen.add(h);
+            const [, s, tid, anchor] = h.split("/").map(decodeURIComponent);
+            if (s !== sid || !DEEP[sid].topics.some(t => t.id === tid)) { bad.push(h); continue; }
+            if (!anchor) continue;
+            const d = await dbGet("t", sid + "__" + tid), tpl = document.createElement("template");
+            tpl.innerHTML = d.html;
+            if (!tpl.content.getElementById(anchor)) bad.push(h);
+          }
+          return { h: document.documentElement.scrollHeight, canvas: document.querySelectorAll("#view canvas").length,
+            img: document.querySelectorAll("#view img, #view [data-demo]").length, qa: document.querySelectorAll("#view details.qa[data-srs]").length,
+            sum: document.querySelectorAll("#view .cr-sum").length, links: links.length, anchors: [...seen].filter(h => h.split("/").length > 3).length, bad };
+        }''', sid)
+    out["cram"] = cram
+    pg.goto(BASE + "#/cram/vhist")
+    pg.wait_for_selector(".cr-list.ready", timeout=180000)
+    pg.evaluate('(() => { const d = document.querySelector("details.qa[data-srs]"); d.open = true; d.scrollIntoView(); })()')
+    pg.click("details.qa[open] [data-crg='4']")
+    out["qaKey"] = pg.evaluate('Object.keys(SRS.all()).filter(k => k.startsWith("q:"))')
+    href = pg.evaluate('''[...document.querySelectorAll("#view a.cr-more")].map(a => a.getAttribute("href")).find(h => h.split("/").length > 3)''')
+    pg.evaluate("h => { location.hash = h.slice(1); }", href)
+    anchor = href.split("/")[3]
+    pg.wait_for_function('a => state.v === "subject" && document.getElementById(a)', arg=anchor, timeout=60000)
+    pg.wait_for_timeout(2500)
+    out["jump"] = {"href": href, "top": pg.evaluate('a => Math.round(document.getElementById(a).getBoundingClientRect().top)', anchor)}
+    m = ctx.new_page(); watch(m)
+    m.set_viewport_size({"width": 360, "height": 780})
+    m.goto(BASE + "#/tau")
+    m.wait_for_selector("[data-s6date]")
+    m.fill("[data-s6date]", (datetime.date.today() + datetime.timedelta(days=5)).isoformat())
+    m.wait_for_selector(".s6-plan")
+    m.click("[data-s6open]")
+    m.wait_for_timeout(300)
+    wide = 'Math.max(document.documentElement.scrollWidth, ...[...document.querySelectorAll(".s6-head, .s6-head *, .s6-today, .s6-today *")].map(e => Math.ceil(e.getBoundingClientRect().right)))'
+    out["subject360"] = m.evaluate(wide)
+    m.goto(BASE + "#/")
+    m.wait_for_selector(".s6-today .s6-chip")
+    out["overview360"] = m.evaluate(wide)
+    out["plan"] = m.evaluate('examPlan("tau") && examPlan("tau").days')
+    b.close()
+out["errors"], out["external"] = errors, external
+print(json.dumps(out, ensure_ascii=False))
+`;
+
+test('browser: due after 8 days on the overview · cram vhist < 60 000 px with live links · no overflow at 360 px', { timeout: 600000 }, t => {
+  const { execFileSync } = require('node:child_process');
+  const py = process.platform === 'win32' ? 'python' : 'python3';
+  let raw;
+  try {
+    raw = execFileSync(py, ['-', ROOT], { input: BROWSER_PY, encoding: 'utf8', timeout: 580000, maxBuffer: 1 << 24 });
+  } catch (e) {
+    if (e.code === 'ENOENT') { t.skip('ไม่มี ' + py); return; }
+    throw new Error('browser script failed: ' + (e.stderr || e.message));
+  }
+  const r = JSON.parse(raw.trim().split('\n').pop());
+  if (r.skip) { t.skip(r.skip); return; }
+  assert.deepEqual(r.errors, [], 'no page/console errors');
+  assert.deepEqual(r.external, [], 'no requests outside the site');
+  assert.deepEqual(r.graded, [1, 1], 'ticking = grade 4 → first interval 1 day');
+  assert.equal(r.dueToday, 0, 'nothing due on the day of ticking');
+  const due = r.later.filter(x => /ครบกำหนด SRS/.test(x.why));
+  assert.equal(due.length, 2, 'two topics due 8 days later: ' + JSON.stringify(r.later));
+  assert.deepEqual(due.map(x => x.title).sort(), r.titles.slice().sort());
+  assert.deepEqual(due.map(x => x.href).sort(), ['#/nav/nav-1', '#/nav/nav-2']);
+  for (const [sid, c] of Object.entries(r.cram)) {
+    assert.deepEqual(c.bad, [], `${sid}: every «อ่านเต็ม» target exists`);
+    assert.equal(c.canvas, 0, `${sid}: no canvas`);
+    assert.equal(c.img, 0, `${sid}: no images or demo slots`);
+    assert.ok(c.qa > 0 && c.links > c.qa, `${sid}: oral questions and links present`);
+  }
+  assert.ok(r.cram.vhist.h < 60000, `cram vhist height ${r.cram.vhist.h} px < 60 000`);
+  assert.ok(r.cram.vhist.sum > 0 && r.cram.nav.anchors > 0, 'STD2 subjects keep 1-minute summaries and anchored links');
+  assert.equal(r.qaKey.length, 1);
+  assert.match(r.qaKey[0], /^q:vhist\/vhist-[^/]+\/[^/]+$/);
+  assert.ok(Math.abs(r.jump.top) < 400, `«อ่านเต็ม» lands on its element (top ${r.jump.top} px, ${r.jump.href})`);
+  assert.ok(r.subject360 <= 360, `subject head fits 360 px (${r.subject360})`);
+  assert.ok(r.overview360 <= 360, `overview card fits 360 px (${r.overview360})`);
+  assert.equal(r.plan, 5);
+});
