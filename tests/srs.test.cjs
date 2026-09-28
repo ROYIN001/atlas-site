@@ -149,3 +149,8 @@ test('slot S6 owns only its storage keys and exposes the agreed API', () => {
   assert.deepEqual([...new Set(keys)].sort(), ['atlas-exam-v1', 'atlas-seen-v1', 'atlas-srs-v1'], 'no other localStorage keys written by S6');
   assert.ok(!/localStorage\.setItem\(\s*(KEY|QKEY)\b/.test(slot), 'never writes atlas-sula-v1 / atlas-quiz-v1 directly');
 });
+
+test('quiz2 block result → grade: 100 % = 5 · ≥ 80 = 4 · ≥ 60 = 3 · ≥ 40 = 2 · > 0 = 1 · 0 = 0', () => {
+  const rows = [[5, 5, 5], [4, 5, 4], [3, 5, 3], [2, 5, 2], [1, 5, 1], [0, 5, 0], [13, 16, 4], [9, 16, 2], [0, 0, 0]];
+  for (const [ok, total, g] of rows) assert.equal(core.srsQuizGrade(ok, total), g, `${ok}/${total}`);
+});

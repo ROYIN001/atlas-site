@@ -71730,6 +71730,11 @@ function srsSidOf(key, topicSid, modSid) {
   if ((m = /^g:(.+)-\d+$/.exec(key))) return modSid(m[1]) || null;
   return null;
 }
+/* ผลควิซทั้งบล็อก (%) → คะแนน 0–5 */
+const srsQuizGrade = (ok, total) => {
+  const p = total ? 100 * ok / total : 0;
+  return p >= 100 ? 5 : p >= 80 ? 4 : p >= 60 ? 3 : p >= 40 ? 2 : p > 0 ? 1 : 0;
+};
 /* ---- S6 core END ---- */
 
 (function () {
@@ -71775,6 +71780,50 @@ function srsSidOf(key, topicSid, modSid) {
     if (e.key === EXAMKEY) EXAMS = rd(EXAMKEY);
     if (e.key === SEENKEY) SEEN = rd(SEENKEY);
   });
+
+  /* ---- ตัวป้อน 1: ปุ่มติ๊ก «ทบทวนแล้ว» (หัวข้อ · สารบัญ · คลังศัพท์) → 4 เมื่อติ๊ก
+     ฟังแบบ capture บน #view (ปุ่มในคลังศัพท์หยุด bubbling) แล้วอ่าน DONE หลังตัวจัดการเดิมทำงานเสร็จ ---- */
+  view.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark], .card .tick");
+    if (!b || !view.contains(b)) return;
+    const key = b.dataset.key || b.dataset.mark || (b.closest(".card[data-k]") || { dataset: {} }).dataset.k;
+    if (key) setTimeout(() => { if (DONE.has(key)) SRS.grade(key, 4); }, 0);
+  }, true);
+
+  /* ---- ตัวป้อน 2: quiz2 ตอบครบทั้งบล็อก → z:<หัวข้อ>/<data-id ของ host>
+     (host ยังไม่มี data-id = ลำดับของ quiz2 ในหัวข้อ ตรงกับคีย์ใน atlas-quiz-v1) · ตัวรับของ v4 ยังเก็บผลเหมือนเดิม ---- */
+  document.addEventListener("std2:quiz", e => {
+    const host = e.target && e.target.closest ? e.target.closest('[data-demo="quiz2"]') : null;
+    const sec = host && host.closest("section.topic[id]");
+    const d = e.detail || {};
+    if (!sec || !d.total || d.done < d.total) return;
+    const hid = host.dataset.id || host.id || String([...sec.querySelectorAll('[data-demo="quiz2"]')].indexOf(host));
+    SRS.grade("z:" + sec.id + "/" + hid, srsQuizGrade(d.ok, d.total));
+  });
+
+  /* ---- ตัวป้อน 3: หัวข้อค้างแถบกลางจอรวม > 20 วินาทีในการเปิดหน้าครั้งนี้ → atlas-seen-v1[หัวข้อ] = { read: +1, t } ---- */
+  let SEEN_IO = null, SEEN_T = 0, seenCur = null, seenAcc = {};
+  const stopSeen = () => { if (SEEN_IO) SEEN_IO.disconnect(); SEEN_IO = null; clearInterval(SEEN_T); SEEN_T = 0; seenCur = null; };
+  function startSeen() {
+    stopSeen();
+    seenAcc = {};
+    if (!window.IntersectionObserver) return;
+    SEEN_IO = new IntersectionObserver(es => es.forEach(en => {
+      if (en.isIntersecting) seenCur = en.target.id;
+      else if (seenCur === en.target.id) seenCur = null;
+    }), { rootMargin: "-45% 0px -45% 0px" });
+    view.querySelectorAll("section.topic[id]").forEach(s => SEEN_IO.observe(s));
+    SEEN_T = setInterval(() => {
+      if (!seenCur || document.visibilityState === "hidden") return;
+      const a = seenAcc[seenCur] = (seenAcc[seenCur] || 0) + 5;
+      if (a !== 25) return;                                                         // เกิน 20 วินาที → นับหนึ่งครั้งต่อการเปิด
+      const r = SEEN[seenCur] || {};
+      SEEN[seenCur] = { read: (r.read || 0) + 1, t: Date.now() };
+      saveSeen();
+    }, 5000);
+  }
+  HOOKS.on("subject", () => startSeen());
+  HOOKS.on("clear", () => stopSeen());
 })();
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
