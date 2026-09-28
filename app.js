@@ -71985,6 +71985,53 @@ searchEl.addEventListener("focus", () => unread());
   scrollToTarget = function () { unread(true); return st2.apply(this, arguments); };
 }
 
+/* ---- ท้ายหัวข้อ: ✓ ทบทวนแล้ว (ซิงก์กับปุ่มบนหัว) · ผลควิซ · ฝึกเรื่องนี้ · ก่อนหน้า/ถัดไป ---- */
+function s2SyncKey(k) {
+  const on = DONE.has(k);
+  view.querySelectorAll('.topic-check[data-key="' + k + '"]').forEach(b => b.classList.toggle("done", on));
+  view.querySelectorAll('[data-s2key="' + k + '"]').forEach(b => {
+    b.classList.toggle("done", on);
+    b.setAttribute("aria-pressed", String(on));
+    b.querySelector(".l").textContent = on ? "ทบทวนแล้ว" : "ทำเครื่องหมายว่าทบทวนแล้ว";
+  });
+}
+function tendQuiz(sec) {
+  const box = sec && sec.querySelector(".tend-q");
+  if (!box) return;
+  const hosts = sec.querySelectorAll('[data-demo="quiz2"]').length;
+  const q = topicQuiz(sec.id, practiceStore());
+  box.hidden = !hosts && !q;
+  box.innerHTML = q ? 'ควิซหัวข้อนี้ <b>' + q.pct + ' %</b> <small>(ถูก ' + q.ok + '/' + q.done + (q.n > q.done ? ' · ทำแล้ว ' + q.done + ' จาก ' + q.n + ' ข้อ' : '') + ')</small>'
+    : 'ควิซหัวข้อนี้ยังไม่ได้ทำ';
+}
+function topicEnd(el, t, sid) {
+  const deep = DEEP[sid], sec = el.closest("section.topic[id]");
+  if (!deep || !sec || el.querySelector(":scope > .tend")) return;
+  const full = deep.topics.some(x => x.id === t.id);
+  const items = full ? deep.topics : (deep.summary || []);
+  const i = items.findIndex(x => x.id === t.id), prev = items[i - 1], next = items[i + 1], k = "k:" + t.id;
+  const lnk = (x, dir) => x ? '<a class="' + dir + '" href="#/' + sid + '/' + x.id + '"><span>' + (dir === "prev" ? '← ก่อนหน้า' : 'ถัดไป →') + '</span><b>' +
+    (full ? (items.indexOf(x) + 1) + '. ' : '') + escT(x.th) + '</b></a>' : '<span></span>';
+  el.insertAdjacentHTML("beforeend", '<nav class="tend" aria-label="ท้ายหัวข้อ"><div class="tend-row">' +
+    (full ? '<button type="button" class="tend-chk' + (DONE.has(k) ? ' done' : '') + '" data-s2key="' + k + '" aria-pressed="' + DONE.has(k) + '">' +
+      '<span class="b" aria-hidden="true">✓</span><span class="l">' + (DONE.has(k) ? 'ทบทวนแล้ว' : 'ทำเครื่องหมายว่าทบทวนแล้ว') + '</span></button>' : '') +
+    '<span class="tend-q" hidden></span>' +
+    (PAGE_DEFS.practice ? '<a class="tend-pr" href="' + practiceHref(sid, t.id) + '">ฝึกเรื่องนี้ →</a>' : '') + '</div>' +
+    (prev || next ? '<div class="tend-np">' + lnk(prev, "prev") + lnk(next, "next") + '</div>' : '') + '</nav>');
+  const chk = el.querySelector(":scope > .tend .tend-chk");
+  if (chk) chk.addEventListener("click", () => { toggleKey(k); s2SyncKey(k); });
+  tendQuiz(sec);
+}
+HOOKS.on("fill", topicEnd);
+view.addEventListener("click", e => {                 // ✓ บนหัวหัวข้อ / ในสารบัญ v4 → ปุ่มท้ายหัวข้อตามไปด้วย
+  const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark]");
+  if (b) s2SyncKey(b.dataset.key || b.dataset.mark);
+});
+document.addEventListener("std2:quiz", e => {         // ตัวเก็บผลของ v4/S5 ลงทะเบียนก่อน → อ่านค่าใหม่ได้เลย
+  const sec = e.target && e.target.closest && e.target.closest("section.topic[id]");
+  if (sec) tendQuiz(sec);
+});
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ===== SLOT S3 END ===== */

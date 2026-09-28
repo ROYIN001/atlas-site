@@ -3816,6 +3816,24 @@ html.s2-modal { overflow: hidden; }
   .topbar, #bbar, .topic-nav { transition: none !important; }
 }
 
+/* ---- ท้ายหัวข้อ ---- */
+.tend { margin: 26px 0 6px; padding: 14px 0 4px; border-top: 1px dashed var(--line-2); font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; }
+.tend-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.tend-chk { display: inline-flex; align-items: center; gap: 9px; min-height: 42px; padding: 7px 14px 7px 8px; font-family: inherit; font-size: 14px; color: var(--ink); border-radius: 99px; }
+.tend-chk .b { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); color: transparent; font-size: 13px; }
+.tend-chk.done { border-color: var(--ok); }
+.tend-chk.done .b { background: var(--ok); border-color: var(--ok); color: #fff; }
+.tend-q { font-size: 13.5px; color: var(--ink-2); }
+.tend-q b { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink); }
+.tend-q small { color: var(--ink-3); font-size: 12.5px; }
+.tend-pr { font-size: 14px; font-weight: 600; color: var(--accent); padding: 8px 2px; }
+.tend-np { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.tend-np a { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.tend-np a:hover { border-color: var(--accent); }
+.tend-np a span { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.tend-np a b { font-weight: 500; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.tend-np a.next { text-align: right; grid-column: 2; }
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* ===== SLOT S3 END ===== */
