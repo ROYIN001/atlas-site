@@ -98,11 +98,22 @@ _work/                          (อยู่ใน .gitignore — บนเค�
 · เพิ่ม `--mobile` = ตรวจจอ 360 px ทั้งสองโหมด เปิดเจาะลึกทุกกล่อง ว่าไม่มีตาราง/สูตร/ป้ายไหนล้นจอ (บอกหัวข้อและองค์ประกอบที่ล้น)
 · ทุกครั้ง: หน้าเว็บต้องไม่เรียกเซิร์ฟเวอร์ภายนอก (verify แจ้ง «เรียกเซิร์ฟเวอร์ภายนอก» = FAIL)
 
-ค่าอ้างอิงจากการวัดครั้งล่าสุด (10 ก.ย. 2026 หลังยกระดับ ТАУ Т.6–Т.11): 10 วิชา ·
-198 กล่องเนื้อหา · 351 แบบจำลอง · 738 ช่องรูป · ไม่มี `.tfail` · ไม่มีข้อผิดพลาด ·
-แบบไม่ถ่วง CPU (`--no-throttle`): หน้าแรก 1,38 วินาที รวม 551 วินาที · ТАУ เดี่ยวถ่วง 6 เท่า:
-หน้าแรก 6,46 วินาที 13 กล่อง 33 แบบจำลอง 95 ช่องรูป รวม 115 วินาที
-(ค่าก่อนหน้า 10 ก.ย. หลังเพิ่ม ЭОЛА: 194 กล่อง · 321 แบบจำลอง · 643 ช่องรูป · 889 วินาที ถ่วง 6 เท่า)
+**ด่านอัตโนมัติ (S1 · 28 ก.ย. 2026)** — ลำดับก่อน commit ทุกครั้ง: `python src/build_data.py` → `node --test tests/*.test.cjs` → `python src/verify.py …`
+- **จำนวนต้องไม่ลดลง: `src/counts-baseline.json`** (ไฟล์เดียว ใช้ทั้ง tests และ verify · แทน MINIMUM เดิมและ `src/verify-baseline.json` ที่ลบแล้ว)
+  นับต่อวิชาจากไฟล์: หัวข้อ · บล็อกสรุป · ช่อง data-demo · เดโมใน DEEP · คีย์ DEMOS · ช่อง data-fig · ไฟล์รูป · id · ขนาด html (ลดได้ ≤ 5 %)
+  · วิชาใน manifest ที่ไม่มีใน baseline หรือจำนวนใดต่ำกว่า = ตก · ตั้งใจเพิ่ม/ลดเนื้อหา: `python src/counts.py --update` (พิมพ์ diff ก่อนเขียน) แล้ว commit baseline
+  · verify เทียบสิ่งที่หน้าเว็บวาด (สองโหมดรวม) กับ baseline เดียวกัน
+- **เลขเวอร์ชันแคชไม่ต้องแก้มือแล้ว** — `build_data.py` เขียน hash ลง `app.css?v=` / `app.js?v=` ใน index.html และ `DATA_VERSION` · `manifest.subjects.<วิชา>.v` = ?v= ของ data/t, data/ix ของวิชานั้น (ลืมรัน build_data → tests ตก «รัน python src/build_data.py»)
+- **กติกาเนื้อหา `tests/content-rules.test.cjs`**: ไทยติดซีริลลิก · บรรทัดอ้างอิงต้นทางท้ายหัวข้อ · id ซ้ำในวิชา · ข้อความถึงเจ้าของงาน/อ้างโฟลเดอร์หรือไฟล์ .pptx/.docx/.pdf ในเครื่อง
+  — เนื้อหาเดิมที่ยังผิดอยู่ใน `tests/content-allow.json` (ลดได้เท่านั้น · ดูรายการด้วย `node tests/content-rules.test.cjs --list 2> ค้าง.json`)
+- **บล็อกประกอบอัตโนมัติ `src/blocks.json`** — แก้ในบล็อกตรง ๆ แล้ว `tests/blocks.test.cjs` ตก พร้อมบอกต้นฉบับใน `_work/` · หลังรันสคริปต์ประกอบจริง: `python src/blocks.py --update <ชื่อบล็อก>`
+- **CI `.github/workflows/check.yml`**: ทุก PR/push เข้า main รัน tests + verify `--no-throttle --timeout 240` รายวิชา (PR = วิชาที่ diff แตะ + toe) · กลางคืนรัน `--mobile` ทั้งเว็บ · ผลอยู่ในแท็บ Actions ของ PR
+
+ค่าอ้างอิงล่าสุด (28 ก.ย. 2026 · `counts-baseline.json`): 12 วิชา · 288 ไฟล์หัวข้อ (สรุป 48) · 1 422 ช่องเดโมใน html + 6 ใน DEEP ·
+439 ฟังก์ชันใน DEMOS · 1 332 ช่องรูป · 1 158 ไฟล์รูป · 3 374 id · html 30,2 MB
+· verify `--no-throttle` ทั้งเว็บ: หน้าแรก 0,85 วินาที · 240 กล่องฉบับเต็ม + 48 สรุป · 1 113 แบบจำลองฉบับเต็ม · 1 332 ช่องรูป · ไม่มี `.tfail` · รวม 810 วินาที
+(ค่าก่อนหน้า 10 ก.ย. 2026 หลังยกระดับ ТАУ Т.6–Т.11: 10 วิชา · 198 กล่อง · 351 แบบจำลอง · 738 ช่องรูป · `--no-throttle` รวม 551 วินาที ·
+ТАУ เดี่ยวถ่วง 6 เท่า: หน้าแรก 6,46 วินาที รวม 115 วินาที)
 `src/build_data.py` ทำงานบน OneDrive ได้แล้ว (mkdir exist_ok + ลบเฉพาะ `data/ix/*.json`)
 
 **ЭОЛА ยาวกว่าวิชาอื่นมาก** — หน้าฉบับเต็มสูงราว 830 000 px มี 86 แบบจำลองกับ
@@ -373,7 +384,12 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 **บันทึกของแต่ละ session** (เขียนเฉพาะใต้หัวข้อของตัวเอง 3–8 บรรทัด: ทำอะไร คีย์/ไฟล์/hook ที่เพิ่ม ข้อควรระวัง)
 
 #### 14.1 S1 — ด่านอัตโนมัติ
-(ยังไม่ทำ)
+- ของใหม่: `src/counts.py` → `src/counts-baseline.json` (ใช้ทั้ง tests/verify · ลบ `verify-baseline.json`) · `src/registry.cjs` (อ่าน DEEP/DEMOS จาก app.js ใน vm — tests และ counts ใช้ร่วม) · `tests/content-rules.test.cjs` + `tests/content-allow.json` (ratchet) · `src/blocks.py` + `src/blocks.json` + `tests/blocks.test.cjs` · `src/ci_subjects.py` + `.github/workflows/check.yml`
+- `build_data.py` เขียนเลขเวอร์ชันเอง (index.html `?v=` + `DATA_VERSION`) และ `manifest.subjects.<วิชา>.v` — **สคริปต์ใน `_work/` ที่เคยตั้ง VER/`?v=` เอง (เช่น `integrate_hist.py`) ยังรันได้ แต่ build_data เขียนทับทุกครั้ง** · hash แปลง CRLF → LF ก่อน (เครื่อง Windows ได้ค่าเดียวกับ CI)
+- app.js: `dbVer(coll, name)` / `dbUrl(coll, name)` คืน Promise ของ ?v= / URL ที่ถูกต้องของไฟล์ใน data/ (S3: `saveOffline` ควรดึง data/t ผ่าน `dbUrl` ให้ URL ตรงกับที่ dbGet ใช้) · `DBCACHE` เป็น LRU เก็บ ≤ 40 หัวข้อ (`DB_KEEP`)
+- ทุก session: เพิ่ม/ลดเนื้อหาโดยตั้งใจ → `python src/counts.py --update` · แก้ข้อความในหัวข้อเดิมที่อยู่ใน `content-allow.json` จนผ่าน → ลบออกจากรายการและลด `CAP` ใน `tests/content-rules.test.cjs` (ไม่งั้นเทสต์ตกว่า «รายการยกเว้นค้าง»)
+- ข้อความตรวจ «ถึงเจ้าของงาน» ใน app.js ตรวจเฉพาะสตริง (ไม่ใช่คอมเมนต์) — ป้ายบนจอห้ามมี «บอกผม» «ให้ผม» «ส่งกลับมาให้» «ตามที่สั่งไว้» «เจ้าของงาน/โปรเจกต์» «Russian lesson» «_work/» «ในโฟลเดอร์…» ชื่อไฟล์ .pptx/.docx/.pdf (ลิงก์ภายนอกได้)
+- ค้าง: 9 หัวข้อยังอ้างชื่อไฟล์ต้นฉบับ/เจ้าของโปรเจกต์ (elob-lr1/lr4/pz1–3/rgr · asu-13 · nas-sem · ppo-14) · ไทยติดซีริลลิก 7 หัวข้อ (suka, teh_el) + 6 สตริงในเดโม app.js · 37 หัวข้อไม่มีบรรทัดอ้างอิง (suka, surn, tau T.1–5, toe) — แก้ตอนยกระดับวิชานั้น
 
 #### 14.2 S2 — เปลือกนำทาง
 - เมนูหลัก 5 พื้นที่ชื่อเดียวกันใน `#bbar` (index.html) และบนสุดของแถบซ้าย (`buildNav`): หน้าหลัก `#/` · รายวิชา `#/subjects` · ฝึกทบทวน (`practiceHref(sid, tid)` = `#/practice[/<sid>[/<tid>]]` เมื่อมี `PAGE_DEFS.practice` ไม่งั้น `#/flash` · ชี้ใหม่ทุกครั้งใน hook `go`) · ค้นหา (`focusSearch()`) · ความก้าวหน้า `#/progress` · ในหน้าวิชาที่มีเนื้อหาเต็ม «หน้าหลัก» ใน `#bbar` สลับเป็นปุ่ม «สารบัญ» · ปุ่มที่พาไปหน้าอื่นเป็น `<a href>` ทั้งหมด รวมการ์ดวิชา `a.subj[data-go]` (verify.py หาด้วยตัวเลือกนี้ — อย่าเปลี่ยน)
@@ -384,7 +400,13 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - คีย์ใหม่ `atlas-ui-v1` = `{ subjF: {sem, status, deep} }` (ตัวกรองหน้ารายวิชา) · ตรวจรับ `node tests/shell.browser.cjs` (ต้องมี playwright ของ Node · จอ 390 px + 1500 px)
 
 #### 14.3 S3 — ประสิทธิภาพ/ออฟไลน์
-(ยังไม่ทำ)
+- **วัดด้วย `node tests/perf.browser.cjs [idle full longtask scroll cls offline manage] [--subject] [--cpu] [--root <worktree รุ่นเก่า>]`** (รันมือ · elob 390 px dpr 2 CPU ×4): canvas ที่มีขนาดบนสุดหน้า 9 → 0 · หลัง fillAllBodies 86 canvas 120 MB → 0 · rAF ขณะนิ่ง 597 → 0 /วินาที (CPU ×1) · long task สูงสุดตอนกระโดดไป elob-lr4 1 769 → 383–474 ms (ไม่นับการรัน app.js ~850 ms) · ปัดเลื่อน 90 000 px 590 → 320 ms · layout shift ตอนรูปโหลด 1 → 0 · ปิดเซิร์ฟเวอร์แล้ว elob ที่เก็บไว้เปิดได้ 32/32 หัวข้อ 86/86 แบบจำลอง 241/241 รูป
+- **แบบจำลอง (buildDemo · `demoWatch(el, rec)`):** ห่างจอ > 1 500 px → `rec.suspend()` (หยุดลูป, canvas 0×0, `rec.suspended = true` — `draw()` ไม่ทำงาน) · กลับมา → `rec.resume()` วาดใหม่จาก state เดิม · ลูปวิ่งเฉพาะ `animate` ที่เห็นบนจอและแท็บไม่ถูกซ่อน · บล็อกที่มีลูปของตัวเอง (VHMAP/STD2 ยังไม่ได้ย้าย) เข้าระบบได้ด้วย `demoWatch(host, {suspend(), resume(), tick?()})`
+- **ติดตั้ง `[data-demo]` เมื่อห่างจอ ≤ 600 px** (`demoMount` ใน fillBody · `demoInstall(host, sid)` = ทันที) · ทันทีเสมอ: ใน `<details>` ที่ปิด · หลัง `fillAllBodies()` · ติดตั้งไม่ได้ → กล่อง `.demo-fail` (พี่น้องถัดจาก host ไม่มี canvas) + ลองใหม่ (`subjAssets` โหลดเฉพาะไฟล์ที่ล้มเหลวใหม่ คืน true/false)
+- **เติมหัวข้อทีละหัวข้อ** (`fillTurn`) · **หัวข้อยาวใส่ทีละ ~16 KB** (`fillChunks` — แยกด้วย `<template>` ย้ายลูกของ wrapper ทีละช่วง ตรวจ `.m-wide` ของช่วงนั้น แล้ววาดจอก่อนช่วงถัดไป · `.tload` อยู่ท้ายกล่องจนครบ bodyReady/verify จึงรอครบ) · **โหลดฟอนต์ล่วงหน้าเมื่อเปิดวิชา** (`fontWarm`/`fontWarmMath`) — ไฟล์ฟอนต์ชุดอักษรใหม่ที่มาถึงทีหลังทำให้จัดวางทั้งหน้าใหม่ 850–970 ms · **ห้ามใช้ `content-visibility: auto` กับการ์ดในหัวข้อ** — ลองแล้ว ใส่ html เร็วขึ้นแต่จัดวางซ้ำทุกครั้งที่เลื่อนผ่าน (verify CPU ×6 รอบเลื่อนเดียว style/layout elob 11 → 117 s · nav 2.4 → 53 s) และ verify แบบถ่วงของ elob ตก
+- **รูป:** `src/build_steps/figdim.py` → `data/figdim.json` · SUKAFIG ใส่ width/height ก่อน src — เพิ่มรูปใหม่แล้วรัน `python src/build_data.py`
+- **ออฟไลน์:** `atlas-offline-v1[sid] = {t, n, bytes, v, urls}` · `offlineList()` `offlineRemove(sid)` `offlineUpdate(sid)` `offlineSave(sid, say)` · การ์ดผ่าน `HOOKS.html("progress")` (`#s3Offl`) · sw.js: `cache: "reload"` = เน็ตก่อน · CACHE ยัง `atlas-v1`
+- **เดโมใหม่ใน `js/subj/`:** ใช้ `buildDemo` (ได้ยุบ/หยุดลูปฟรี) · ลูปของตัวเองต้องผ่าน `demoWatch` และหยุดเมื่อ `document.hidden` · ห้ามวาด/วัดขนาดตอนโหลดไฟล์ — ทำในฟังก์ชัน `DEMOS[key](host)` ซึ่งถูกเรียกตอนใกล้จอ · อย่าพึ่งว่า host อื่นในหัวข้อติดตั้งแล้ว (เรียก `demoInstall` ถ้าจำเป็น) · error ตอนติดตั้งจะขึ้นกล่องลองใหม่ + console.error
 
 #### 14.4 S4 — ค้นหา
 (ยังไม่ทำ)
