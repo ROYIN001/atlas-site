@@ -945,8 +945,9 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "1908250654";
-const DBCACHE = new Map();
+const DATA_VERSION = "a1beb6b538";
+const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
+const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
 
 /* ?v= ของไฟล์ข้อมูล: data/t กับ data/ix ใช้ manifest.subjects[<วิชา>].v (hash ของเนื้อหาวิชานั้น) — แก้เนื้อหาวิชาเดียว
@@ -965,11 +966,19 @@ function dbUrl(coll, name) {
 
 function dbGet(coll, name) {
   const key = coll + "/" + name;
-  if (DBCACHE.has(key)) return DBCACHE.get(key);
+  if (DBCACHE.has(key)) {
+    const hit = DBCACHE.get(key);
+    DBCACHE.delete(key); DBCACHE.set(key, hit);        // LRU: ย้ายไปท้ายสุด = ใช้ล่าสุด
+    return hit;
+  }
   const p = dbUrl(coll, name).then(url => fetch(url))
     .then(r => r.ok ? r.json() : null)
     .catch(() => { DB_FAILED = true; return null; });
   DBCACHE.set(key, p);
+  if (coll === "t") {                                  // เกิน DB_KEEP หัวข้อ ทิ้งหัวข้อที่ไม่ได้ใช้นานที่สุด (ดัชนี ix ไม่นับ)
+    const topics = [...DBCACHE.keys()].filter(k => k.startsWith("t/"));
+    for (let i = 0; i < topics.length - DB_KEEP; i++) DBCACHE.delete(topics[i]);
+  }
   return p;
 }
 
