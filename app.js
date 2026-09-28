@@ -71865,12 +71865,14 @@ function s7Ago(t) {
 const s7Chip = (x, extra) => { const t = s7Topic(x.sid, x.tid);
   return '<a class="chip" href="#/' + x.sid + '/' + x.tid + '" title="' + s7Esc(s7Plain(t.ru)) + '"><span aria-hidden="true">' + (ICONS[x.sid] || "📘") + '</span> ' +
     s7Esc(s7Plain(t.th)) + (extra || "") + '</a>'; };
-/* หน้าแรก: แถวชิปสั้น ๆ ใต้การ์ดหลักสูตร */
+/* หน้าแรก: แถวชิปสั้น ๆ ใต้การ์ดหลักสูตร — ปักไว้ (ข้อ 4) + อ่านล่าสุด */
 HOOKS.html("overview-top", () => {
-  const rec = s7Recent().slice(0, 6);
-  if (!rec.length) return "";
-  return '<section class="s7-strip" aria-labelledby="s7RecH"><div class="nowhead"><h2 id="s7RecH">อ่านล่าสุด</h2>' +
-    '<a class="year-note" href="#/progress">ดูทั้งหมด</a></div><div class="chiprow">' + rec.map(x => s7Chip(x)).join("") + '</div></section>';
+  const pins = s7Pins(), rec = s7Recent().slice(0, 6);
+  if (!pins.length && !rec.length) return "";
+  return '<section class="s7-strip" aria-labelledby="s7RecH"><div class="nowhead"><h2 id="s7RecH">' +
+    (rec.length ? "อ่านล่าสุด" : "หัวข้อที่ปักไว้") + '</h2><a class="year-note" href="#/progress">ดูทั้งหมด</a></div>' +
+    (pins.length ? '<div class="chiprow s7-pins"><span class="s7-row-l" aria-label="ปักไว้">★</span>' + pins.map(x => s7Chip(x)).join("") + '</div>' : '') +
+    (rec.length ? '<div class="chiprow">' + rec.map(x => s7Chip(x)).join("") + '</div>' : '') + '</section>';
 });
 /* หน้าความก้าวหน้า #/progress (S2): รายการเต็มพร้อมเวลา */
 HOOKS.html("progress", () => {
@@ -71884,6 +71886,128 @@ HOOKS.on("go", st => {
   if (st.v !== "progress") return;
   const b = view.querySelector('[data-s7-clear="recent"]');
   if (b) b.addEventListener("click", () => { if (confirm("ล้างประวัติการอ่านทั้งหมดในเครื่องนี้?")) { s7Save(S7_RECENT, []); go({ v: "progress" }, { replace: true }); } });
+});
+
+/* ---- 4) ปักหัวข้อ ☆ (atlas-pins-v1 = [{ sid, tid, t }] ใหม่สุดก่อน) · คัดลอกลิงก์ตรงจุด ⧉ · ไฮไลต์ปลายทางของลิงก์ ---- */
+const S7_PINS = "atlas-pins-v1";
+function s7Pins() { const a = s7Load(S7_PINS, []); return Array.isArray(a) ? a.filter(x => x && s7Topic(x.sid, x.tid)) : []; }
+const s7Pinned = (sid, tid) => s7Pins().some(x => x.sid === sid && x.tid === tid);
+function s7PinToggle(sid, tid) {
+  const a = s7Pins(), on = !a.some(x => x.sid === sid && x.tid === tid);
+  s7Save(S7_PINS, on ? [{ sid, tid, t: Date.now() }].concat(a) : a.filter(x => !(x.sid === sid && x.tid === tid)));
+  return on;
+}
+const s7Url = (sid, tid, id) => location.origin + location.pathname + "#/" + sid + "/" + tid + (id ? "/" + encodeURIComponent(id) : "");
+let S7_TOAST_T = 0;
+function s7Toast(msg) {
+  let t = document.getElementById("s7toast");
+  if (!t) { t = document.createElement("div"); t.id = "s7toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(S7_TOAST_T);
+  S7_TOAST_T = setTimeout(() => t.classList.remove("on"), 3200);
+}
+async function s7Copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  const ta = document.createElement("textarea");             // เบราว์เซอร์เก่า / http ธรรมดา
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) {}
+  ta.remove();
+  return ok;
+}
+/* มือถือ (จอสัมผัส) ใช้แผงแชร์ของเครื่อง · คอมคัดลอกลงคลิปบอร์ด (แผงแชร์บนคอมไม่ใช่สิ่งที่ผู้อ่านคาดหวังจากปุ่ม «คัดลอกลิงก์») */
+async function s7ShareLink(url, title) {
+  if (navigator.share && window.matchMedia && matchMedia("(pointer: coarse)").matches) {
+    try { await navigator.share({ title, url }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  if (await s7Copy(url)) s7Toast("คัดลอกลิงก์แล้ว — วางส่งต่อได้เลย");
+  else window.prompt("คัดลอกลิงก์นี้", url);
+}
+/* ปุ่มของ S7: ใน .demo-head ใช้ <span role="button"> เพราะแบบจำลองหลายตัววนแก้ «.demo-head button» ทุกปุ่ม (ข้อความ/สไตล์/ลำดับ) */
+function s7Btn(cls, label, aria, fn, span) {
+  const b = document.createElement(span ? "span" : "button");
+  if (span) { b.setAttribute("role", "button"); b.tabIndex = 0; } else b.type = "button";
+  b.className = "s7-b " + cls;
+  b.textContent = label;
+  b.title = aria;
+  b.setAttribute("aria-label", aria);
+  const run = e => { e.preventDefault(); e.stopPropagation(); fn(b, e); };
+  b.addEventListener("click", run);
+  if (span) b.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") run(e); });
+  return b;
+}
+const s7TopicName = (sid, tid) => { const t = s7Topic(sid, tid), s = ALL_SUBJ.find(x => x.id === sid);
+  return (t ? s7Plain(t.th) : tid) + (s ? " — " + s.th : ""); };
+/* แถบเครื่องมือใต้ชื่อหัวข้อ (ใน .topic-head) — ข้อ 6/7 เติมปุ่ม/ป้ายต่อในแถบเดียวกัน */
+function s7HeadBar(el, t, sid) {
+  const sec = el.closest("section.topic"), head = sec && sec.querySelector(":scope > .topic-head");
+  const title = head && head.querySelector(":scope > div");
+  if (!title || title.querySelector(".s7-bar")) return null;
+  const bar = document.createElement("div");
+  bar.className = "s7-bar";
+  bar.addEventListener("click", e => e.stopPropagation());   // คลิกในแถบไม่ย่อ/ขยายหัวข้อ
+  const pin = s7Btn("s7-pin", "", "", b => { const on = s7PinToggle(sid, t.id); paint(); s7Toast(on ? "ปักหัวข้อนี้ไว้แล้ว — ดูได้ที่หน้าแรก" : "เลิกปักแล้ว"); });
+  const paint = () => { const on = s7Pinned(sid, t.id); pin.textContent = on ? "★" : "☆"; pin.classList.toggle("on", on);
+    pin.setAttribute("aria-pressed", String(on)); const l = on ? "เลิกปักหัวข้อนี้" : "ปักหัวข้อนี้ไว้ที่หน้าแรก"; pin.title = l; pin.setAttribute("aria-label", l); };
+  paint();
+  bar.appendChild(pin);
+  bar.appendChild(s7Btn("s7-cp", "⧉", "คัดลอกลิงก์ของหัวข้อนี้", () => s7ShareLink(s7Url(sid, t.id), s7TopicName(sid, t.id))));
+  title.appendChild(bar);
+  return bar;
+}
+/* ปุ่ม ⧉ ของคำถามปากเปล่า (details.qa ที่มี id) และแบบจำลอง (.demo-head · ใช้ id ของกล่อง [data-demo] ถ้าไม่มีตั้งเป็น <หัวข้อ>-dm<ลำดับ>) */
+function s7ElemTools(el, t, sid) {
+  el.querySelectorAll("details.qa[id] > summary").forEach(sm => {
+    if (sm.querySelector(".s7-cp")) return;
+    const id = sm.parentElement.id;
+    sm.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของคำถามนี้", () => s7ShareLink(s7Url(sid, t.id, id), s7TopicName(sid, t.id))));
+  });
+  const hosts = [...el.querySelectorAll("[data-demo]")];
+  el.querySelectorAll(".demo-head").forEach(h => {
+    if (h.querySelector(".s7-cp")) return;
+    const host = h.closest("[data-demo]");
+    if (!host || !el.contains(host)) return;
+    if (!host.id) host.id = t.id + "-dm" + (hosts.indexOf(host) + 1);
+    h.appendChild(s7Btn("s7-cp s7-mini", "⧉", "คัดลอกลิงก์ของแบบจำลองนี้", () => s7ShareLink(s7Url(sid, t.id, host.id), s7TopicName(sid, t.id)), true));
+  });
+}
+HOOKS.on("fill", (el, t, sid) => {
+  s7HeadBar(el, t, sid);
+  s7ElemTools(el, t, sid);
+  [1500, 5000].forEach(ms => setTimeout(() => { if (el.isConnected) s7ElemTools(el, t, sid); }, ms));   // แบบจำลองที่วาดหัวทีหลัง (โหลดข้อมูลก่อน)
+});
+/* เปิดลิงก์ที่ชี้องค์ประกอบ (#/<วิชา>/<หัวข้อ>/<id>) → ไฮไลต์เป้าหมาย 2 วินาทีหลังเลื่อนไปถึง */
+let S7_HL = 0;
+function s7Hl(id) {
+  const job = ++S7_HL, t0 = Date.now();
+  (function look() {
+    if (job !== S7_HL) return;
+    const e = document.getElementById(id);
+    if (e && view.contains(e) && !e.closest(".tbody[data-lazy]")) {
+      setTimeout(() => {
+        if (job !== S7_HL) return;
+        e.classList.remove("s7-hl"); void e.offsetWidth; e.classList.add("s7-hl");
+        setTimeout(() => e.classList.remove("s7-hl"), 2200);
+      }, 350);
+    } else if (Date.now() - t0 < 9000) setTimeout(look, 120);
+  })();
+}
+HOOKS.on("go", st => { if (st.v === "subject" && st.anchor) s7Hl(st.anchor); });
+document.addEventListener("click", e => {               // ลิงก์ภายในวิชาเดียวกัน (router เลื่อนไปเองโดยไม่เรียก hook "go")
+  const a = e.target.closest && e.target.closest('a[href^="#/"]');
+  if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const st = parseRoute(a.getAttribute("href"));
+  if (st && st.v === "subject" && st.anchor) s7Hl(st.anchor);
+});
+window.addEventListener("popstate", () => { const st = parseRoute(location.hash); if (st && st.anchor) s7Hl(st.anchor); });
+/* หน้าความก้าวหน้า: หัวข้อที่ปักไว้ทั้งหมด */
+HOOKS.html("progress", () => {
+  const pins = s7Pins();
+  return '<section class="s7-card" aria-labelledby="s7PinAll"><h2 id="s7PinAll">หัวข้อที่ปักไว้ ★</h2>' +
+    (pins.length ? '<ol class="s7-list">' + pins.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">ปักเมื่อ ' + s7Ago(x.t) + '</span></li>').join("") + '</ol>'
+      : '<p class="m">ยังไม่มี — กด ☆ ใต้ชื่อหัวข้อไหนก็ได้ หัวข้อนั้นจะมาอยู่ที่นี่และที่หน้าแรก</p>') + '</section>';
 });
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */

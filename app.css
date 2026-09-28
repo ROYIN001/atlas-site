@@ -3664,6 +3664,26 @@
 .s7-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .s7-when { font-size: 12px; color: var(--ink-3); }
 .s7-clear { font-size: 12px; }
+.s7-strip .s7-row-l { color: var(--accent-2); font-size: 15px; align-self: center; }
+/* แถบเครื่องมือใต้ชื่อหัวข้อ */
+.s7-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 7px; }
+.s7-b { font: 14px/1 "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; min-width: 30px; height: 28px; padding: 0 8px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); border-radius: var(--radius); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.s7-b:hover, .s7-b:focus-visible { border-color: var(--accent); color: var(--accent); }
+#view .s7-b.on { background: var(--wash-2); color: var(--accent-2); border-color: var(--accent-2); }
+.s7-mini { min-width: 24px; height: 22px; padding: 0 5px; font-size: 12px; margin-left: 6px; vertical-align: middle; }
+.demo-head .s7-mini { margin-left: 4px; flex: none; }
+@media (pointer: coarse) { .s7-b { min-width: 36px; height: 34px; } .s7-mini { min-width: 32px; height: 30px; } }
+/* ไฮไลต์ปลายทางของลิงก์ตรงจุด */
+.s7-hl { animation: s7flash 2.2s ease-out; border-radius: var(--radius); }
+@keyframes s7flash { 0%, 55% { box-shadow: 0 0 0 3px var(--accent); background-color: var(--wash); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@media (prefers-reduced-motion: reduce) { .s7-hl { animation: none; outline: 3px solid var(--accent); } }
+#s7toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 90; max-width: calc(100vw - 32px);
+  background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 8px; font-size: 14px; line-height: 1.45;
+  box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+#s7toast.on { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 900px) { #s7toast { bottom: 84px; } }
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 BEGIN ===== */
 /* ===== SLOT S8 END ===== */
