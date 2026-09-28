@@ -71666,59 +71666,157 @@ if (SW_OK) {
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (state.v === "subject") offlineUi(ALL_SUBJ.find(x => x.id === state.id)); });
 }
 const OFFKEY = "atlas-offline-v1";
+/* ---- S3: สำเนาออฟไลน์ที่จัดการได้ ----
+   atlas-offline-v1 = { <sid>: { t, n, bytes, v, urls } } — t เวลาเก็บ (ms) · n จำนวนไฟล์ · bytes ขนาดรวม · v DATA_VERSION ตอนเก็บ
+   · urls ไฟล์เฉพาะของวิชา (หัวข้อ รูป แผนที่ js/subj ไฟล์จาก HOOKS "offline") — ตัวโปรแกรม ฟอนต์ หน้าเว็บ ใช้ร่วมกันทุกวิชา ไม่ลบ
+   รุ่นก่อน S3 เก็บเป็นตัวเลขเวลาอย่างเดียว — offlineRead() แปลงให้ (ไม่มี urls → ลบโดยอ่านรายการจากหัวข้อในสำเนาเอง)
+   · offlineList() รายการที่เก็บ (ใหม่สุดก่อน) · offlineRemove(sid) ลบเฉพาะไฟล์ของวิชานั้นออกจาก Cache API (ไฟล์ที่วิชาอื่นที่เก็บไว้ใช้ด้วยคงไว้ ·
+     ไม่แตะความคืบหน้า) · offlineUpdate(sid) ดึงทุกไฟล์ใหม่จากเน็ต (cache: "reload" — sw.js เก็บตัวใหม่แทน) แล้วลบไฟล์ที่วิชาไม่ใช้แล้ว
+   · การ์ดในหน้าความก้าวหน้า: HOOKS.html("progress") + ผูกปุ่มใน HOOKS.on("go") (ช่อง SLOT S3) */
+function offlineRead() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem(OFFKEY) || "{}") || {}; } catch (e) {}
+  for (const k of Object.keys(o)) {
+    if (typeof o[k] === "number") o[k] = { t: o[k], n: 0, bytes: 0, v: "" };
+    else if (!o[k] || typeof o[k] !== "object") delete o[k];
+  }
+  return o;
+}
+function offlineWrite(o) {
+  try { localStorage.setItem(OFFKEY, JSON.stringify(o)); return true; } catch (e) {}
+  try {                                              // เต็ม — เก็บแบบไม่มีรายการไฟล์ (ลบทีหลังยังได้ โดยอ่านรายการจากสำเนา)
+    const lite = {};
+    for (const k in o) { lite[k] = Object.assign({}, o[k]); delete lite[k].urls; }
+    localStorage.setItem(OFFKEY, JSON.stringify(lite)); return true;
+  } catch (e) { return false; }
+}
+function offlineList() {
+  const o = offlineRead();
+  return Object.keys(o).filter(k => ALL_SUBJ.some(s => s.id === k)).map(k => Object.assign({ id: k }, o[k])).sort((a, b) => b.t - a.t);
+}
+const offlineMB = b => (b / 1048576).toLocaleString("th-TH", { maximumFractionDigits: 1, minimumFractionDigits: b ? 1 : 0 }) + " MB";
+function offlineMeta(r) {
+  return "เก็บเมื่อ " + new Date(r.t).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) +
+    (r.bytes ? " · " + offlineMB(r.bytes) : "") + (r.n ? " · " + r.n + " ไฟล์" : "") +
+    (!r.v ? "" : r.v === DATA_VERSION ? " · รุ่นล่าสุด" : " · มีเนื้อหารุ่นใหม่กว่า — กดอัปเดต");
+}
+const offlineReady = () => SW_OK && !!navigator.serviceWorker.controller;
+// ไฟล์เฉพาะของวิชา — อ่านหัวข้อด้วย get(url) → ข้อความ JSON ("" ถ้าอ่านไม่ได้)
+async function offlineUrls(s, get) {                // s = วิชา ({ id }) · ไฟล์จาก HOOKS "offline" ของ session อื่นรวมด้วย
+  const sid = s.id, own = new Set(), topics = topicsOf(sid);
+  const bodies = await Promise.all(topics.map(async t => {
+    const u = "data/t/" + sid + "__" + t.id + ".json?v=" + DATA_VERSION;
+    own.add(u);
+    try { const txt = await get(u); return txt ? JSON.parse(txt).html || "" : ""; } catch (e) { return ""; }
+  }));
+  bodies.forEach(h => {
+    for (const m of h.matchAll(/data-fig="([A-Za-z0-9_.-]+)"/g)) own.add("figs/" + m[1] + ".webp");
+    for (const m of h.matchAll(/data-demo="vh-([a-z0-9-]+)"/g)) own.add("data/vh/" + m[1] + ".json");
+  });
+  topics.forEach(t => (t.demos || (t.demo ? [t.demo] : [])).forEach(k => { const m = /^vh-([a-z0-9-]+)$/.exec(k); if (m) own.add("data/vh/" + m[1] + ".json"); }));
+  if (bodies.some(h => h.includes('data-demo="ih-'))) { own.add("data/ih/atlas.json"); own.add("data/ih/world.json"); }
+  HOOKS.collect("offline", s.id).forEach(u => own.add(u));
+  try { const m = (((await manifestGet()) || {}).subjects || {})[sid] || {}; if (m.js) own.add("js/subj/" + sid + ".js?v=" + m.js); if (m.css) own.add("js/subj/" + sid + ".css?v=" + m.css); } catch (e) {}
+  return own;
+}
+async function offlineDrop(urls) {                   // ลบออกจากสำเนาของ service worker (ทุกรุ่น ?v= ของไฟล์นั้น)
+  if (!urls.length || typeof caches === "undefined") return 0;
+  let n = 0;
+  for (const k of await caches.keys()) {
+    if (!k.startsWith("atlas-")) continue;
+    const c = await caches.open(k);
+    for (const u of urls) if (await c.delete(new URL(u, location.href).href, { ignoreSearch: true })) n++;
+  }
+  return n;
+}
+async function offlineRemove(sid) {
+  const o = offlineRead(), rec = o[sid];
+  if (!rec) return 0;
+  delete o[sid];
+  offlineWrite(o);
+  const keep = new Set(Object.values(o).flatMap(r => r.urls || []));
+  let urls = rec.urls;
+  if (!urls) urls = [...await offlineUrls({ id: sid }, u => fetch(u).then(r => r.ok ? r.text() : "").catch(() => ""))];
+  return offlineDrop(urls.filter(u => !keep.has(u)));
+}
+// เก็บ/อัปเดตทุกไฟล์ของวิชา · say(ข้อความ) รายงานความคืบหน้า · คืน { ok, fails, n, bytes }
+async function offlineSave(sid, say) {
+  say = say || (() => {});
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  let fails = 0, bytes = 0;
+  const pull = async u => {
+    try {
+      const r = await fetch(u, { cache: "reload" });   // sw.js: cache "reload" = เน็ตก่อนแล้วเก็บตัวใหม่
+      if (!r.ok) { fails++; return null; }
+      const b = await r.blob();
+      bytes += b.size;
+      return b;
+    } catch (e) { fails++; return null; }
+  };
+  say("กำลังรวบรวมรายการไฟล์…");
+  const own = await offlineUrls({ id: sid }, async u => { const b = await pull(u); return b ? b.text() : ""; });
+  const shell = new Set(["./", "manifest.webmanifest", "fonts/fonts.css", MANIFEST_URL]);
+  document.querySelectorAll('script[src], link[rel="stylesheet"][href], link[rel~="icon"][href]').forEach(e => {
+    const u = e.getAttribute("src") || e.getAttribute("href");
+    if (!/^(https?:)?\/\//.test(u) && !own.has(u) && !/^js\/subj\//.test(u)) shell.add(u);
+  });
+  try { const css = await (await fetch("fonts/fonts.css")).text(); for (const m of css.matchAll(/url\(([^)]+\.woff2)\)/g)) shell.add("fonts/" + m[1]); } catch (e) {}
+  const nTopics = topicsOf(sid).length;
+  const list = [...shell, ...[...own].filter(u => !/^data\/t\//.test(u))], total = list.length + nTopics;
+  let i = 0, done = nTopics;
+  await Promise.all(Array.from({ length: 6 }, async () => {
+    while (i < list.length) { await pull(list[i++]); done++; say("กำลังเก็บ " + done + "/" + total + " ไฟล์…"); }
+  }));
+  if (!fails) {
+    const o = offlineRead(), prev = o[sid];
+    o[sid] = { t: Date.now(), n: total, bytes, v: DATA_VERSION, urls: [...own] };
+    offlineWrite(o);
+    if (prev && prev.urls) {                         // ไฟล์ที่วิชานี้ไม่ใช้แล้ว (เช่นรูปที่ถูกลบ) และวิชาอื่นไม่ใช้
+      const keep = new Set([...own, ...Object.keys(o).filter(k => k !== sid).flatMap(k => o[k].urls || [])]);
+      offlineDrop(prev.urls.filter(u => !keep.has(u)));
+    }
+  }
+  return { ok: !fails, fails, n: total, bytes };
+}
+const offlineUpdate = (sid, say) => offlineSave(sid, say);
+
 function offlineUi(s) {
   const box = document.getElementById("offl");
   if (!box || !s) return;
-  if (!(SW_OK && navigator.serviceWorker.controller)) { box.hidden = true; return; }
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(OFFKEY) || "{}") || {}; } catch (e) {}
-  const when = saved[s.id];
+  if (!offlineReady()) { box.hidden = true; return; }
+  const rec = offlineRead()[s.id];
   box.hidden = false;
-  box.innerHTML = '<button type="button" id="offlBtn">' + (when ? "↻ อัปเดตสำเนาออฟไลน์" : "⤓ เก็บวิชานี้ไว้อ่านออฟไลน์") + '</button>' +
-    '<span class="m" id="offlMsg" role="status">' + (when ? "เก็บไว้แล้วเมื่อ " + new Date(when).toLocaleDateString("th-TH") + " — เปิดอ่านได้แม้ไม่มีเน็ต"
+  box.innerHTML = '<button type="button" id="offlBtn">' + (rec ? "↻ อัปเดตสำเนาออฟไลน์" : "⤓ เก็บวิชานี้ไว้อ่านออฟไลน์") + '</button>' +
+    (rec ? '<button type="button" id="offlDel">ลบสำเนา</button>' : '') +
+    '<span class="m" id="offlMsg" role="status">' + (rec ? offlineMeta(rec) + " — เปิดอ่านได้แม้ไม่มีเน็ต"
       : "ดาวน์โหลดทุกหัวข้อ รูป และแผนที่ของวิชานี้เก็บไว้ในเครื่อง") + '</span>';
   document.getElementById("offlBtn").addEventListener("click", () => saveOffline(s));
+  const del = document.getElementById("offlDel");
+  if (del) del.addEventListener("click", async () => {
+    del.disabled = true;
+    await offlineRemove(s.id);
+    offlineUi(s);
+    const msg = document.getElementById("offlMsg");
+    if (msg) msg.textContent = "ลบสำเนาออฟไลน์ของวิชานี้แล้ว (ความคืบหน้าการอ่านยังอยู่ครบ)";
+  });
 }
 async function saveOffline(s) {
   const btn = document.getElementById("offlBtn"), msg = document.getElementById("offlMsg");
   if (!btn) return;
   btn.disabled = true;
-  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-  const urls = new Set(["./", "manifest.webmanifest", "fonts/fonts.css"]);
-  document.querySelectorAll('script[src], link[rel="stylesheet"][href], link[rel~="icon"][href]').forEach(e => urls.add(e.getAttribute("src") || e.getAttribute("href")));
-  let fails = 0, done = 0;
+  const del = document.getElementById("offlDel");
+  if (del) del.disabled = true;
   const say = t => { if (msg.isConnected) msg.textContent = t; };
-  const pull = async u => { try { const r = await fetch(u); if (!r.ok) fails++; return r; } catch (e) { fails++; return null; } };
-  say("กำลังรวบรวมรายการไฟล์…");
-  const topics = topicsOf(s.id);
-  const bodies = await Promise.all(topics.map(async t => {
-    const r = await pull("data/t/" + s.id + "__" + t.id + ".json?v=" + DATA_VERSION);
-    try { return r && r.ok ? (await r.json()).html || "" : ""; } catch (e) { return ""; }
-  }));
-  bodies.forEach(h => {
-    for (const m of h.matchAll(/data-fig="([A-Za-z0-9_.-]+)"/g)) urls.add("figs/" + m[1] + ".webp");
-    for (const m of h.matchAll(/data-demo="vh-([a-z0-9-]+)"/g)) urls.add("data/vh/" + m[1] + ".json");
-  });
-  topics.forEach(t => (t.demos || (t.demo ? [t.demo] : [])).forEach(k => { const m = /^vh-([a-z0-9-]+)$/.exec(k); if (m) urls.add("data/vh/" + m[1] + ".json"); }));
-  if (bodies.some(h => h.includes('data-demo="ih-'))) { urls.add("data/ih/atlas.json"); urls.add("data/ih/world.json"); }
-  urls.add(MANIFEST_URL);
-  HOOKS.collect("offline", s.id).forEach(u => urls.add(u));
-  try { const m = (((await manifestGet()) || {}).subjects || {})[s.id] || {}; if (m.js) urls.add("js/subj/" + s.id + ".js?v=" + m.js); if (m.css) urls.add("js/subj/" + s.id + ".css?v=" + m.css); } catch (e) {}
-  try { const css = await (await fetch("fonts/fonts.css")).text(); for (const m of css.matchAll(/url\(([^)]+\.woff2)\)/g)) urls.add("fonts/" + m[1]); } catch (e) {}
-  const list = [...urls], total = list.length + topics.length;
-  done = topics.length;
-  let i = 0;
-  await Promise.all(Array.from({ length: 6 }, async () => {
-    while (i < list.length) { await pull(list[i++]); done++; say("กำลังเก็บ " + done + "/" + total + " ไฟล์…"); }
-  }));
-  if (!fails) {
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(OFFKEY) || "{}") || {}; } catch (e) {}
-    saved[s.id] = Date.now();
-    try { localStorage.setItem(OFFKEY, JSON.stringify(saved)); } catch (e) {}
-    say("เก็บครบ " + total + " ไฟล์แล้ว — เปิดวิชานี้ได้แม้ไม่มีเน็ต");
-  } else say("โหลดไม่สำเร็จ " + fails + " จาก " + total + " ไฟล์ — ต่อเน็ตแล้วกดอีกครั้ง");
-  btn.disabled = false;
+  const r = await offlineSave(s.id, say);
+  if (r.ok) {
+    if (btn.isConnected) offlineUi(s);
+    const m2 = document.getElementById("offlMsg");
+    if (m2) m2.textContent = "เก็บครบ " + r.n + " ไฟล์ (" + offlineMB(r.bytes) + ") แล้ว — เปิดวิชานี้ได้แม้ไม่มีเน็ต";
+  } else {
+    say("โหลดไม่สำเร็จ " + r.fails + " จาก " + r.n + " ไฟล์ — ต่อเน็ตแล้วกดอีกครั้ง");
+    btn.disabled = false;
+    if (del) del.disabled = false;
+  }
 }
 function netBar() {                                  // แถบบอกว่าออฟไลน์อยู่
   let bar = document.getElementById("netbar");
@@ -71814,6 +71912,55 @@ function demoEager() {                              // ติดตั้งท�
   view.querySelectorAll(CV_CARD).forEach(c => { if (CV_WAIT.has(c)) { CV_WAIT.delete(c); fitWideMath(c); } });
 }
 HOOKS.on("offline", () => ["data/figdim.json?v=" + DATA_VERSION]);   // S3: ขนาดรูปใช้ตอนออฟไลน์ด้วย
+
+/* ---- S3: การ์ด «เก็บไว้อ่านออฟไลน์» ในหน้าความก้าวหน้า #/progress (หน้านั้น S2 สร้าง · ฟังก์ชัน offline* อยู่ถัดจาก offlineUi) ---- */
+function offlineCardHtml() {
+  const list = offlineList();
+  if (!list.length && !SW_OK) return "";
+  const tot = list.reduce((n, r) => n + (r.bytes || 0), 0);
+  return '<section class="s3-offl" id="s3Offl"><h2>เก็บไว้อ่านออฟไลน์</h2>' +
+    (list.length
+      ? '<p class="m">' + list.length + ' วิชา' + (tot ? ' · รวม ' + offlineMB(tot) : '') + ' · ลบสำเนาแล้วความคืบหน้าการอ่านยังอยู่ครบ</p><ul>' +
+        list.map(r => {
+          const s = ALL_SUBJ.find(x => x.id === r.id);
+          return '<li data-sid="' + r.id + '"><a href="#/' + r.id + '"><b>' + (ICONS[r.id] ? ICONS[r.id] + ' ' : '') + s.th + '</b></a>' +
+            '<span class="m">' + offlineMeta(r) + '</span><span class="acts">' +
+            '<button type="button" data-offl-upd' + (offlineReady() ? '' : ' disabled title="ต้องเปิดจากเว็บจริงและต่อเน็ต"') + '>อัปเดต</button>' +
+            '<button type="button" data-offl-del>ลบ</button></span><span class="m msg" role="status"></span></li>';
+        }).join("") + '</ul>'
+      : '<p class="m">ยังไม่ได้เก็บวิชาใดไว้ — เปิดหน้าวิชาที่มีเนื้อหาเต็มแล้วกด «เก็บวิชานี้ไว้อ่านออฟไลน์»</p>') +
+    '</section>';
+}
+function offlineCardBind() {
+  const box = document.getElementById("s3Offl");
+  if (!box) return;
+  const redraw = note => {
+    const cur = document.getElementById("s3Offl");
+    if (!cur) return;
+    const html = offlineCardHtml();
+    if (!html) { cur.remove(); return; }
+    cur.outerHTML = html;
+    offlineCardBind();
+    if (note) { const p = document.querySelector("#s3Offl > p.m"); if (p) p.textContent = note; }
+  };
+  box.querySelectorAll("li[data-sid]").forEach(li => {
+    const sid = li.dataset.sid, msg = li.querySelector(".msg"), btns = li.querySelectorAll("button");
+    const busy = on => btns.forEach(b => { b.disabled = on || (b.hasAttribute("data-offl-upd") && !offlineReady()); });
+    li.querySelector("[data-offl-del]").addEventListener("click", async () => {
+      busy(true);
+      await offlineRemove(sid);
+      redraw("ลบสำเนาของ " + ALL_SUBJ.find(x => x.id === sid).th + " แล้ว");
+    });
+    li.querySelector("[data-offl-upd]").addEventListener("click", async () => {
+      busy(true);
+      const r = await offlineUpdate(sid, t => { msg.textContent = t; });
+      if (r.ok) redraw("อัปเดต " + ALL_SUBJ.find(x => x.id === sid).th + " แล้ว (" + r.n + " ไฟล์)");
+      else { msg.textContent = "โหลดไม่สำเร็จ " + r.fails + " จาก " + r.n + " ไฟล์ — ต่อเน็ตแล้วกดอีกครั้ง"; busy(false); }
+    });
+  });
+}
+HOOKS.html("progress", offlineCardHtml);
+HOOKS.on("go", st => { if (st.v === "progress") offlineCardBind(); });
 HOOKS.on("clear", () => {
   if (DEMO_MOUNT_IO) { DEMO_MOUNT_IO.disconnect(); DEMO_MOUNT_IO = null; }
   DEMO_EAGER = false;

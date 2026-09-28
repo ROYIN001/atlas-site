@@ -3657,6 +3657,23 @@
   border: 1px solid var(--line-2); background: var(--bg); color: var(--ink);
 }
 #view .demo-fail button:hover:not(:disabled) { border-color: var(--accent); }
+/* S3: ปุ่มลบสำเนาในหน้าวิชา + การ์ดในหน้าความก้าวหน้า (offlineCardHtml) */
+#offlDel { margin-left: 8px; }
+.s3-offl { margin: 22px 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius, 10px); background: var(--panel); }
+.s3-offl h2 { margin: 0 0 6px; font-size: 18px; }
+.s3-offl > p.m { margin: 0 0 12px; color: var(--ink-2); }
+.s3-offl ul { list-style: none; margin: 0; padding: 0; }
+.s3-offl li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.s3-offl li > a { color: var(--ink); text-decoration: none; }
+.s3-offl li > a:hover b { color: var(--accent); }
+.s3-offl li > .m { grid-column: 1; color: var(--ink-3); font-size: 13px; }
+.s3-offl .acts { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 8px; }
+.s3-offl .acts button { font: inherit; font-size: 13.5px; min-height: 40px; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line-2); background: var(--bg); color: var(--ink); }
+.s3-offl .acts button:disabled { opacity: .55; cursor: default; }
+.s3-offl .msg { grid-column: 1 / -1; color: var(--ink-2); font-size: 13px; }
+.s3-offl .msg:empty { display: none; }
+@media (max-width: 600px) { .s3-offl li { grid-template-columns: 1fr; } .s3-offl .acts { grid-column: 1; grid-row: auto; } }
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 BEGIN ===== */
 /* ===== SLOT S4 END ===== */

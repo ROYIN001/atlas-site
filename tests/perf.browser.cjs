@@ -11,6 +11,7 @@
 //   longtask  เปิดวิชาแล้วกระโดดไปหัวข้อยาว (elob-lr4): long task สูงสุดหลังโหลดตัวโปรแกรมเสร็จ (< 500 ms) · bootLongMs = ตอนรัน app.js (แยกไว้ ไม่ใช่งานเติมหัวข้อ)
 //   scroll    เลื่อนลงทีละ 1 500 px 60 ก้าว: long task สูงสุดระหว่างเลื่อน · canvas ที่มีขนาด > 0 ท้ายทาง
 //   cls       เติมหัวข้อรอบจุดที่อ่านให้ครบก่อน แล้วค่อยปล่อยให้รูปโหลด: จำนวน layout-shift (= 0)
+//   manage    ?sw=1 เก็บสองวิชา → การ์ด HOOKS.html("progress") → ลบวิชาหนึ่ง (ไฟล์ของอีกวิชา/ไฟล์ร่วม/ความคืบหน้าต้องอยู่) → อัปเดต
 //   offline   ?sw=1 → กด «เก็บวิชานี้ไว้อ่านออฟไลน์» → ปิดเซิร์ฟเวอร์ → เปิดวิชาใหม่: เนื้อหา รูป แบบจำลองต้องมาครบ
 //
 // พึ่ง playwright ของ node (npm i -g playwright หรือในโปรเจกต์) · เปิดเซิร์ฟเวอร์ python -m http.server เอง
@@ -33,7 +34,7 @@ const SID = opt('subject', 'elob');
 const CPU = +opt('cpu', 4);
 const LONG_TID = opt('topic', SID === 'elob' ? 'elob-lr4' : null);
 const picked = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
-const WANT = picked.length ? picked : ['idle', 'full', 'longtask', 'scroll', 'cls', 'offline'];
+const WANT = picked.length ? picked : ['idle', 'full', 'longtask', 'scroll', 'cls', 'offline', 'manage'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function freePort() {
@@ -232,7 +233,57 @@ const TESTS = {
         figs: imgs.length, imgsOk: imgs.filter(i => i.naturalWidth > 0).length };
     });
     await ctx.close();
-    return Object.assign({ saveMsg, saveMs, stored: rec, steps }, r);
+    return Object.assign({ saveMsg, saveMs, stored: rec && { n: rec.n, mb: +(rec.bytes / 1048576).toFixed(1), v: rec.v, urls: (rec.urls || []).length }, steps }, r);
+  },
+
+  async manage(browser) {
+    // จัดการสำเนา: เก็บ 2 วิชา → การ์ดในหน้าความก้าวหน้า (HOOKS.html "progress") → ลบวิชาหนึ่ง → อีกวิชาและความคืบหน้ายังอยู่ → อัปเดต
+    const port = await freePort();
+    const srv = await startServer(port);
+    const base = `http://127.0.0.1:${port}/?sw=1`;
+    const other = SID === 'tau' ? 'elob' : 'tau';
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addInitScript(() => { try { localStorage.setItem('atlas-sula-v1', JSON.stringify(['k:s3-probe'])); } catch (e) {} });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => console.log('   ! pageerror', String(e).slice(0, 200)));
+    const save = async sid => {
+      await page.goto(base + '#/' + sid + '/full');
+      await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null, { timeout: 30000 })
+        .catch(() => page.reload().then(() => page.waitForFunction(() => navigator.serviceWorker.controller, null, { timeout: 30000 })));
+      await page.waitForSelector('#offlBtn', { timeout: 30000 });
+      await page.click('#offlBtn');
+      await page.waitForFunction(() => /เก็บครบ|ไม่สำเร็จ/.test((document.getElementById('offlMsg') || {}).textContent || ''), null, { timeout: 300000 });
+      return page.evaluate(() => document.getElementById('offlMsg').textContent);
+    };
+    const inCache = sid => page.evaluate(async sid => {
+      const c = await caches.open((await caches.keys()).find(k => k.startsWith('atlas-')));
+      const keys = (await c.keys()).map(r => r.url);
+      const rec = JSON.parse(localStorage.getItem('atlas-offline-v1') || '{}')[sid];
+      const figs = new Set(((rec && rec.urls) || []).filter(u => u.startsWith('figs/')));
+      return { topics: keys.filter(u => u.includes('/data/t/' + sid + '__')).length, figdim: keys.some(u => u.includes('figdim.json')),
+        app: keys.some(u => /app\.js/.test(u)), total: keys.length };
+    }, sid);
+    const out = { save1: await save(SID), save2: await save(other) };
+    out.before = { [SID]: await inCache(SID), [other]: await inCache(other) };
+    // การ์ดในหน้าความก้าวหน้า — หน้า #/progress เป็นของ S2 จึงวาดการ์ดลงหน้าปัจจุบันผ่านจุดเกี่ยวเดียวกับที่หน้านั้นเรียก
+    out.card = await page.evaluate(() => {
+      view.insertAdjacentHTML('beforeend', HOOKS.render('progress', {}));
+      HOOKS.run('go', { v: 'progress' });
+      return [...document.querySelectorAll('#s3Offl li')].map(li => li.dataset.sid + ': ' + li.querySelector('.m').textContent);
+    });
+    await page.click('#s3Offl li[data-sid="' + other + '"] [data-offl-del]');
+    await page.waitForFunction(o => !document.querySelector('#s3Offl li[data-sid="' + o + '"]'), other, { timeout: 30000 });
+    out.afterRemove = { [SID]: await inCache(SID), [other]: await inCache(other),
+      stored: await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('atlas-offline-v1') || '{}'))),
+      progressKept: await page.evaluate(() => localStorage.getItem('atlas-sula-v1')), note: await page.evaluate(() => document.querySelector('#s3Offl > p.m').textContent) };
+    const t0 = await page.evaluate(sid => JSON.parse(localStorage.getItem('atlas-offline-v1'))[sid].t, SID);
+    await page.click('#s3Offl li[data-sid="' + SID + '"] [data-offl-upd]');
+    await page.waitForFunction(() => /อัปเดต|ไม่สำเร็จ/.test((document.querySelector('#s3Offl > p.m') || {}).textContent + (document.querySelector('#s3Offl .msg') || {}).textContent), null, { timeout: 300000 });
+    out.update = await page.evaluate(([sid, t0]) => ({ newer: JSON.parse(localStorage.getItem('atlas-offline-v1'))[sid].t > t0,
+      note: document.querySelector('#s3Offl > p.m').textContent }), [SID, t0]);
+    await ctx.close();
+    srv.kill();
+    return out;
   },
 };
 
