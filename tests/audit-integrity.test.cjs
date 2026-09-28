@@ -47,6 +47,11 @@ function attrValues(html, attribute) {
     .map(match => match[2]);
 }
 
+function lf(buffer) {
+  // CRLF → LF before hashing (Windows checkouts under .gitattributes text=auto) — same as lf() in src/build_data.py
+  return Buffer.from(buffer.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
+}
+
 function tagAttrs(html, name) {
   // Same counting as tag_attrs() in src/counts.py: attributes of opening tags only,
   // after dropping comments and <script> bodies (quiz/widget JSON).
@@ -221,13 +226,38 @@ test('Per-subject JS/CSS files are listed in the manifest with their current has
   for (const name of files) {
     const [subject, ext] = [name.replace(/\.(js|css)$/, ''), name.split('.').pop()];
     assert.ok(manifest.subjects[subject], `js/subj/${name}: subject has no topics in data/t`);
-    const hash = crypto.createHash('sha1').update(fs.readFileSync(path.join(dir, name))).digest('hex').slice(0, 10);
+    const hash = crypto.createHash('sha1').update(lf(fs.readFileSync(path.join(dir, name)))).digest('hex').slice(0, 10);
     assert.equal(manifest.subjects[subject][ext], hash, `js/subj/${name}: stale manifest; run python src/build_data.py`);
   }
   for (const [subject, entry] of Object.entries(manifest.subjects)) {
     for (const ext of ['js', 'css']) {
       if (entry[ext]) assert.ok(files.includes(`${subject}.${ext}`), `manifest lists missing js/subj/${subject}.${ext}`);
     }
+  }
+});
+
+test('Cache versions: index.html app.css?v= / app.js?v= and DATA_VERSION equal the build hash; manifest v per subject', () => {
+  // Same formula as build_version() / subject_version() in src/build_data.py.
+  const crypto = require('node:crypto');
+  const RUN = 'รัน python src/build_data.py (เลขเวอร์ชันแคชไม่ตรงกับไฟล์ปัจจุบัน)';
+  const DV = /(const DATA_VERSION = ")[^"]*(";)/g;
+  const dv = [...source.matchAll(DV)];
+  assert.equal(dv.length, 1, 'app.js must declare const DATA_VERSION = "…"; exactly once');
+  const expected = crypto.createHash('sha1')
+    .update(lf(Buffer.from(source.replace(DV, '$1$2'), 'utf8'))).update('\0')
+    .update(lf(read('app.css'))).update('\0')
+    .update(lf(read('data/manifest.json'))).digest('hex').slice(0, 10);
+  const html = read('index.html').toString('utf8');
+  const token = re => { const m = [...html.matchAll(re)]; assert.equal(m.length, 1, `index.html must contain ${re.source} exactly once`); return m[0][1]; };
+  const got = { 'app.css?v=': token(/app\.css\?v=([^"'&\s>]+)/g), 'app.js?v=': token(/app\.js\?v=([^"'&\s>]+)/g),
+    DATA_VERSION: source.match(/const DATA_VERSION = "([^"]*)";/)[1] };
+  assert.deepEqual(got, { 'app.css?v=': expected, 'app.js?v=': expected, DATA_VERSION: expected }, RUN);
+  const manifest = parseJson(read('data/manifest.json'), 'data/manifest.json');
+  for (const subject of Object.keys(manifest.subjects)) {
+    const h = crypto.createHash('sha1');
+    topicFiles.filter(file => file.startsWith(`${subject}__`))
+      .forEach((file, i) => h.update((i ? '\n' : '') + topics.get(file).html, 'utf8'));
+    assert.equal(manifest.subjects[subject].v, h.digest('hex').slice(0, 10), `${subject}: manifest v — ${RUN}`);
   }
 });
 

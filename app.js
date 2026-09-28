@@ -944,14 +944,29 @@ function FIGS_LOAD() {
    เลื่อนไปถึงหัวข้อนั้นจริง ๆ ส่วนรูปเป็นไฟล์ .webp แยกที่เบราว์เซอร์
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
-const DATA_VERSION = "20260926-terms1";
+// DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
+const DATA_VERSION = "1908250654";
 const DBCACHE = new Map();
 let DB_FAILED = false;
+
+/* ?v= ของไฟล์ข้อมูล: data/t กับ data/ix ใช้ manifest.subjects[<วิชา>].v (hash ของเนื้อหาวิชานั้น) — แก้เนื้อหาวิชาเดียว
+   แคชของวิชาอื่นยังใช้ได้ · manifest โหลดไม่ได้หรือไม่มี v ใช้ DATA_VERSION (เปลี่ยนทุกครั้งที่อะไรก็ตามเปลี่ยน จึงไม่เก่า) */
+function dbVer(coll, name) {
+  if (coll !== "t" && coll !== "ix") return Promise.resolve(DATA_VERSION);
+  let man = null;
+  try { man = manifestGet(); } catch (e) {}          // manifestGet ประกาศทีหลัง (ส่วน js/subj) — ก่อนนั้นใช้ DATA_VERSION
+  const sid = name.split("__")[0];
+  return Promise.resolve(man).then(m => (m && m.subjects && m.subjects[sid] && m.subjects[sid].v) || DATA_VERSION,
+    () => DATA_VERSION);
+}
+function dbUrl(coll, name) {
+  return dbVer(coll, name).then(v => "data/" + coll + "/" + name + ".json?v=" + v);
+}
 
 function dbGet(coll, name) {
   const key = coll + "/" + name;
   if (DBCACHE.has(key)) return DBCACHE.get(key);
-  const p = fetch("data/" + coll + "/" + name + ".json?v=" + DATA_VERSION)
+  const p = dbUrl(coll, name).then(url => fetch(url))
     .then(r => r.ok ? r.json() : null)
     .catch(() => { DB_FAILED = true; return null; });
   DBCACHE.set(key, p);
