@@ -3,11 +3,12 @@
 //   node tests/perf.browser.cjs                 # ทุกข้อ · elob ฉบับเต็ม · มือถือ 390 px dpr 2 · CPU ×4
 //   node tests/perf.browser.cjs idle longtask   # เลือกเฉพาะบางข้อ: idle longtask scroll cls offline
 //   node tests/perf.browser.cjs --subject tau --cpu 1
+//   node tests/perf.browser.cjs --root ../base          # วัดรุ่นก่อนแก้: git worktree add ../base <commit>
 //
 // ข้อที่วัด (เกณฑ์ตรวจรับของ S3 ใน CLAUDE.md หัวข้อ 14)
 //   idle      เปิดวิชาแล้วนิ่งบนสุดหน้า: canvas ทั้งหมด · canvas ที่มีขนาด > 0 (≤ 6) · หน่วยความจำ canvas · rAF/วินาที (< 60)
 //   full      fillAllBodies() (เส้นทางพิมพ์/ตรวจมือถือ) แล้วกลับบนสุด: canvas ที่มีขนาด > 0 · MB · rAF/วินาที
-//   longtask  เปิดวิชาแล้วกระโดดไปหัวข้อยาว (elob-lr4): long task สูงสุด (< 500 ms)
+//   longtask  เปิดวิชาแล้วกระโดดไปหัวข้อยาว (elob-lr4): long task สูงสุดหลังโหลดตัวโปรแกรมเสร็จ (< 500 ms) · bootLongMs = ตอนรัน app.js (แยกไว้ ไม่ใช่งานเติมหัวข้อ)
 //   scroll    เลื่อนลงทีละ 1 500 px 60 ก้าว: long task สูงสุดระหว่างเลื่อน · canvas ที่มีขนาด > 0 ท้ายทาง
 //   cls       เติมหัวข้อรอบจุดที่อ่านให้ครบก่อน แล้วค่อยปล่อยให้รูปโหลด: จำนวน layout-shift (= 0)
 //   offline   ?sw=1 → กด «เก็บวิชานี้ไว้อ่านออฟไลน์» → ปิดเซิร์ฟเวอร์ → เปิดวิชาใหม่: เนื้อหา รูป แบบจำลองต้องมาครบ
@@ -24,9 +25,10 @@ function loadPlaywright() {
 }
 const { chromium } = loadPlaywright();
 
-const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : def; };
+// --root <โฟลเดอร์> = วัดสำเนาอื่นของเว็บ (เช่น git worktree ของรุ่นก่อนแก้) ด้วยสคริปต์รุ่นนี้
+const ROOT = path.resolve(opt('root', path.join(__dirname, '..')));
 const SID = opt('subject', 'elob');
 const CPU = +opt('cpu', 4);
 const LONG_TID = opt('topic', SID === 'elob' ? 'elob-lr4' : null);
@@ -54,7 +56,11 @@ const INIT = `
   const _raf = window.requestAnimationFrame.bind(window);
   window.requestAnimationFrame = cb => _raf(t => { window.__raf++; cb(t); });
   window.__long = []; window.__shift = [];
-  try { new PerformanceObserver(l => l.getEntries().forEach(e => window.__long.push(e.duration))).observe({ type: 'longtask', buffered: true }); } catch (e) {}
+  // app.js (defer) รันจบก่อน DOMContentLoaded — long task ก่อนนั้นคือการโหลดตัวโปรแกรม ไม่ใช่การเติมหัวข้อ
+  window.__boot = 0; document.addEventListener('DOMContentLoaded', () => { window.__boot = performance.now(); });
+  window.__bootLong = [];
+  try { new PerformanceObserver(l => l.getEntries().forEach(e => (window.__boot && e.startTime >= window.__boot ? window.__long : window.__bootLong).push(e.duration)))
+    .observe({ type: 'longtask', buffered: true }); } catch (e) {}
   try { new PerformanceObserver(l => l.getEntries().forEach(e => { if (!e.hadRecentInput) window.__shift.push({ v: e.value, t: e.startTime,
     n: (e.sources || []).map(s => s.node ? (s.node.nodeName + '.' + (s.node.className || '')).slice(0, 40) : '?').join(',') }); }))
     .observe({ type: 'layout-shift', buffered: true }); } catch (e) {}
@@ -122,9 +128,10 @@ const TESTS = {
       LONG_TID, { timeout: 120000 });
     await sleep(6000);
     const long = await page.evaluate('window.__long');
+    const boot = await page.evaluate('Math.round(Math.max(0, ...window.__bootLong))');
     const c = await page.evaluate('(' + CANVAS + ')()');
     await ctx.close();
-    return { maxLongMs: Math.round(Math.max(0, ...long)), longCount: long.length, sumLongMs: Math.round(long.reduce((a, b) => a + b, 0)), sized: c.sized };
+    return { bootLongMs: boot, maxLongMs: Math.round(Math.max(0, ...long)), longCount: long.length, sumLongMs: Math.round(long.reduce((a, b) => a + b, 0)), sized: c.sized };
   },
 
   async scroll(browser, base) {

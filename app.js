@@ -70341,12 +70341,16 @@ async function fillBody(el) {
     });
     return;
   }
-  el.innerHTML = html + demoSlots(t);
-  demoMount(el, sid);                                // S3: ติดตั้ง [data-demo] เมื่อเข้าใกล้จอ (ดูช่อง SLOT S3)
-  if (window.SUKAFIG) window.SUKAFIG(el);
-  fitWideMath(el);
-  tocOnFill(el);
-  HOOKS.run("fill", el, t, sid);
+  const release = await fillTurn();                 // S3: ใส่ html ทีละหัวข้อ เว้นให้เบราว์เซอร์วาดจอระหว่างกัน (ดูช่อง SLOT S3)
+  try {
+    if (!el.isConnected) return;                     // ผู้อ่านเปลี่ยนหน้าไประหว่างรอคิว
+    el.innerHTML = html + demoSlots(t);
+    demoMount(el, sid);                              // S3: ติดตั้ง [data-demo] เมื่อเข้าใกล้จอ
+    if (window.SUKAFIG) window.SUKAFIG(el);
+    fitWideLazy(el);                                 // S3: = fitWideMath(el) แต่การ์ดที่ข้ามการจัดวาง (content-visibility) รอจนการ์ดใกล้จอ
+    tocOnFill(el);
+    HOOKS.run("fill", el, t, sid);
+  } finally { release(); }
 }
 function fillAllBodies() {
   demoEager();                                       // S3: พิมพ์/สแกนทั้งหน้า — แบบจำลองทุกตัวติดตั้งทันที ไม่รอเข้าใกล้จอ
@@ -71752,12 +71756,64 @@ function demoMount(root, sid) {
 function demoEager() {                              // ติดตั้งทุกกล่องที่ยังรออยู่ และกล่องของหัวข้อที่จะเติมต่อจากนี้ (จนกว่าจะเปลี่ยนหน้า)
   DEMO_EAGER = true;
   document.querySelectorAll("#view .tbody:not([data-lazy]) [data-demo]").forEach(d => demoInstall(d, DEMO_SID.get(d) || state.id));
+  view.classList.add("s3-all");                      // จัดวางทุกการ์ดตามปกติ (พิมพ์/สแกนทั้งหน้า) แล้วตรวจสูตรกว้างที่ค้างอยู่
+  view.querySelectorAll(CV_CARD).forEach(c => { if (CV_WAIT.has(c)) { CV_WAIT.delete(c); fitWideMath(c); } });
 }
 HOOKS.on("clear", () => {
   if (DEMO_MOUNT_IO) { DEMO_MOUNT_IO.disconnect(); DEMO_MOUNT_IO = null; }
   DEMO_EAGER = false;
   DEMO_DONE = new WeakSet(); DEMO_SID = new WeakMap();
+  view.classList.remove("s3-all");
+  CV_WAIT = new WeakSet();
 });
+
+/* ---- S3: เติมหัวข้อทีละหัวข้อ + ข้ามการจัดวางการ์ดนอกจอ ----
+   · fillTurn(): คิวของ fillBody — ใส่ html ของหัวข้อถัดไปหลังหัวข้อก่อนหน้าเสร็จและเบราว์เซอร์ได้วาดจออย่างน้อยหนึ่งเฟรม
+     (rAF → setTimeout 0 · สำรอง 100 ms เมื่อแท็บถูกซ่อน) — เปิดวิชาแล้ว IntersectionObserver เห็น 3 หัวข้อพร้อมกัน จะไม่รวมเป็นงานก้อนเดียว
+   · content-visibility: auto ระดับการ์ด (app.css ช่อง S3): STD2 section.sub · วิชาเดิม .call .tw details .card .eq ที่เป็นลูกของหัวข้อ
+     — ไม่ใส่ที่ wrapper ทั้งหัวข้อ (เห็นส่วนเดียวก็ต้องจัดวางทั้งก้อน) · ไม่ใส่ที่ p/ul (กันตัดหมึกตัวห้อยที่ขอบ) · ไม่ใส่ที่ details.deep
+     (paint containment จะตัดป้าย DEEP ที่ยื่นออกซ้าย) · ไม่ใส่ที่ .ifigs (รูปต้องเริ่มโหลดก่อนการ์ดถึงจอ)
+   · fitWideLazy(el): fitWideMath ทั้งหัวข้อจะบังคับจัดวางทุกการ์ดที่ถูกข้าม (nav-12: 0.8 → 1.8 s ที่ CPU ×4) — จึงตรวจเฉพาะสูตรนอกการ์ดทันที
+     ส่วนการ์ดตรวจตอนเริ่มถูกวาด (contentvisibilityautostatechange skipped = false)
+   · #view.s3-all (หลัง fillAllBodies: พิมพ์ · สแกนมือถือของ verify) ปิด content-visibility ทั้งหน้า */
+const CV_CARD = ".std2 section.sub, .tbody > :is(.call, .tw, details, .card, .eq), .tbody > div:not(.std2) > :is(.call, .tw, details, .card, .eq)";
+const CV_OK = typeof CSS !== "undefined" && CSS.supports && CSS.supports("content-visibility", "auto");
+let CV_WAIT = new WeakSet();
+let FILL_TAIL = Promise.resolve();
+const afterPaint = () => new Promise(r => {
+  let done = false;
+  const go = () => { if (!done) { done = true; r(); } };
+  setTimeout(go, 100);
+  requestAnimationFrame(() => setTimeout(go, 0));
+});
+function fillTurn() {
+  let release;
+  const held = new Promise(r => { release = r; });
+  const turn = FILL_TAIL.then(afterPaint);
+  FILL_TAIL = turn.then(() => held);
+  return turn.then(() => release);
+}
+function fitWideLazy(el) {
+  const cards = CV_OK && !view.classList.contains("s3-all") ? [...el.querySelectorAll(CV_CARD)] : [];
+  if (!cards.length) { fitWideMath(el); return; }
+  const cardSet = new Set(cards), hasCard = new Set();
+  cards.forEach(c => { CV_WAIT.add(c); for (let p = c.parentElement; p && p !== el; p = p.parentElement) hasCard.add(p); });
+  const roots = new Set();
+  let orphan = false;
+  el.querySelectorAll('math:not([display="block"])').forEach(m => {
+    for (let p = m.parentElement; p && p !== el; p = p.parentElement) if (cardSet.has(p)) return;   // ในการ์ด — รอการ์ดถูกวาด
+    let r = m;
+    while (r.parentElement && r.parentElement !== el && !hasCard.has(r.parentElement)) r = r.parentElement;
+    if (r === m) orphan = true; else roots.add(r);
+  });
+  if (orphan) { cards.forEach(c => CV_WAIT.delete(c)); fitWideMath(el); return; }   // สูตรที่อยู่ติดกับการ์ดโดยตรง (ไม่พบในเนื้อหาปัจจุบัน) — ตรวจทั้งหัวข้อแบบเดิม
+  roots.forEach(fitWideMath);
+}
+document.addEventListener("contentvisibilityautostatechange", e => {
+  if (e.skipped || !CV_WAIT.has(e.target)) return;
+  CV_WAIT.delete(e.target);
+  fitWideMath(e.target);
+}, true);
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
 /* ===== SLOT S4 END ===== */
