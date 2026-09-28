@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "de3bbbcae1";
+const DATA_VERSION = "29314ffada";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -72425,9 +72425,10 @@ function topicEnd(el, t, sid) {
     '<span class="tend-q" hidden></span>' +
     (PAGE_DEFS.practice ? '<a class="tend-pr" href="' + practiceHref(sid, t.id) + '">ฝึกเรื่องนี้ →</a>' : '') + '</div>' +
     (prev || next ? '<div class="tend-np">' + lnk(prev, "prev") + lnk(next, "next") + '</div>' : '') + '</nav>');
-  const chk = el.querySelector(":scope > .tend .tend-chk");
+  const nav = el.querySelector(":scope > .tend"), chk = nav.querySelector(".tend-chk");
   if (chk) chk.addEventListener("click", () => { toggleKey(k); s2SyncKey(k); });
   tendQuiz(sec);
+  queueMicrotask(() => { if (nav.isConnected && nav.nextElementSibling) el.appendChild(nav); });   // hook fill ของ session อื่นที่ต่อท้ายทีหลัง (เช่นบันทึกของ S7) — ท้ายหัวข้อต้องอยู่ล่างสุด
 }
 HOOKS.on("fill", topicEnd);
 view.addEventListener("click", e => {                 // ✓ บนหัวหัวข้อ / ในสารบัญ v4 → ปุ่มท้ายหัวข้อตามไปด้วย
