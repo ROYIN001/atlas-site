@@ -3633,6 +3633,18 @@
 /* ===== SLOT S3 BEGIN ===== */
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 BEGIN ===== */
+/* S4: หน้าผลค้นหา — กล่องสถานะดัชนี · ไม่พบ */
+.sx .sx-st { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; padding: 10px 12px; font-size: 13px; line-height: 1.5;
+  color: var(--ink-2); background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+.sx .sx-st > span { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.sx .sx-st[data-st="part"] { border-left-color: var(--hl-ink); background: var(--wash); }
+.sx .sx-st[data-st="fail"] { border-left-color: var(--crit); }
+.sx .sx-prog { display: block; height: 3px; margin-top: 7px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.sx .sx-prog i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.sx .sx-empty .empty { padding: 22px 0 10px; }
+.sx .sx-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.sx .sx-ex { font-size: 13px; color: var(--ink-3); margin: 14px 0 0; }
+.sx .sx-ex a { color: var(--accent-2); }
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 BEGIN ===== */
 /* ===== SLOT S5 END ===== */

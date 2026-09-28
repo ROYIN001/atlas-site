@@ -71436,37 +71436,82 @@ function markTerms(root, terms) {
   }
   return first;
 }
+let SX_HITS = [];
+const SX_EX = ["устойч", "เสถียร", "Kalman", "передаточная функция"];
 function renderSearch() {
-  if (!IX_LOADED) loadIndex();
-  buildIndex();
   const q = state.q;
-  const queries = searchQueries(q);
+  loadIndex();
+  view.innerHTML = '<div class="wrap sx"><div class="page-head"><p class="eyebrow">Поиск</p>' +
+    '<h1 class="page-title">ผลการค้นหา “' + escapeText(q) + '”</h1>' +
+    '<div class="page-title-th" id="sxCount"></div>' +
+    '<div id="sxStatus" role="status"></div></div>' +
+    '<div class="res" id="sxRes"></div></div>';
+  view.querySelector(".sx").addEventListener("click", sxClick);
+  searchRefresh();
+}
+/* วาดส่วนที่เปลี่ยนได้ของหน้าผลค้นหา — เรียกซ้ำเมื่อดัชนีแต่ละวิชามาถึง โดยไม่แตะช่องค้นหาและตำแหน่งเลื่อน */
+function searchRefresh() {
+  const box = document.getElementById("sxRes");
+  if (state.v !== "search" || !box) return;
+  if (IX_SUBJ && !IX_READY && !ixBusy() && IX_SUBJ.some(s => !IXST[s])) loadIndex();
+  buildIndex();
+  const q = state.q, queries = searchQueries(q);
   const all = [];
   INDEX.forEach((x, i) => { const hit = searchHit(x, queries); if (hit) all.push({ x, hit, i }); });
   all.sort((a, b) => b.hit.score - a.hit.score || a.i - b.i);
-  const hits = all.slice(0, 60);
-  const miss = ixMissing();
-  let h = '<div class="wrap"><div class="page-head"><p class="eyebrow">Поиск</p>' +
-    '<h1 class="page-title">ผลการค้นหา “' + escapeText(q) + '”</h1>' +
-    '<div class="page-title-th">พบ ' + all.length + ' รายการ' + (all.length > 60 ? " (แสดง 60 รายการที่ตรงที่สุด)" : "") + '</div>' +
-    (IX_READY ? '' : '<p class="ix-wait" role="status"><span>' + (ixBusy() ? "กำลังโหลดข้อความเต็ม " + IX_DONE + "/" + IX_TOTAL + " วิชา…" : "ค้นได้ " + IX_DONE + "/" + IX_TOTAL + " วิชา") +
-      (miss.length ? " — ขาด: " + miss.map(s => escapeText(ixName(s))).join(", ") : "") + '</span> ผลจะเติมเองเมื่อแต่ละวิชามาถึง</p>') +
-    '</div><div class="res">';
-  if (!hits.length) h += '<p class="empty">ไม่พบ ลองพิมพ์บางส่วนของคำรัสเซีย เช่น «устойч» หรือคำไทย เช่น «เสถียร»</p>';
-  hits.forEach(({ x, hit }, i) => {
-    const snip = searchSnippet(x, hit);
+  SX_HITS = all.slice(0, 60);
+  document.getElementById("sxCount").textContent = "พบ " + all.length + " รายการ" + (all.length > 60 ? " (แสดง 60 รายการที่ตรงที่สุด)" : "");
+  document.getElementById("sxStatus").innerHTML = sxStatusHtml();
+  let h = "";
+  if (!all.length) {
+    const busy = ixBusy(), miss = ixMissing().length > 0;
+    h = '<div class="sx-empty"><p class="empty">' + (busy ? "ยังไม่พบ «" + escapeText(q) + "» ในส่วนที่โหลดแล้ว — ผลจะเพิ่มเองเมื่อโหลดข้อความเต็มครบ"
+      : "ไม่พบ «" + escapeText(q) + "»" + (miss ? " — อาจอยู่ในวิชาที่โหลดไม่สำเร็จ" : "")) + '</p>';
+    if (!busy) {
+      h += '<div class="sx-acts"><button type="button" data-sx="edit">เปลี่ยนคำค้น</button></div>' +
+        '<p class="sx-ex">ลองพิมพ์บางส่วนของคำรัสเซียหรือคำไทย เช่น ' +
+        SX_EX.map(w => '<a href="#/search/' + encodeURIComponent(w.toLowerCase()) + '">' + escapeText(w) + '</a>').join(" · ") + '</p>';
+    }
+    h += '</div>';
+  }
+  SX_HITS.forEach((r, i) => {
+    const x = r.x, snip = searchSnippet(x, r.hit);
     h += '<button class="res-item" data-i="' + i + '"><span class="k">' + x.kind + '</span>' +
       '<span class="t">' + x.title + '</span><span class="s">' + escapeText(x.sub.slice(0, 150)) + '</span>' +
       (snip ? '<span class="snip">' + snip + '</span>' : '') + '</button>';
   });
-  h += '</div></div>';
-  view.innerHTML = h;
-  view.querySelectorAll(".res-item").forEach(b => b.addEventListener("click", () => {
-    const x = hits[+b.dataset.i].x;
-    go(x.go.topic ? Object.assign({}, x.go, { hl: q }) : x.go);
-  }));
+  box.innerHTML = h;
 }
-function searchRefresh() { renderSearch(); }      // ดัชนีวิชาหนึ่งมาถึง → วาดผลใหม่
+function sxStatusHtml() {
+  const off = typeof navigator !== "undefined" && navigator.onLine === false;
+  const offTxt = off ? " — เครื่องนี้ออฟไลน์อยู่ ค้นเนื้อหาได้เฉพาะวิชาที่เก็บไว้อ่านออฟไลน์" : "";
+  const box = (st, txt, retry) => '<div class="sx-st" data-st="' + st + '"><span>' + txt + '</span>' +
+    (retry ? '<button type="button" data-sx="retry">' + retry + '</button>' : "") + '</div>';
+  const titlesOnly = "ตอนนี้ค้นได้แค่ชื่อวิชา ชื่อหัวข้อ และคลังศัพท์";
+  if (!IX_SUBJ) return IX_MANST === "fail"
+    ? box("fail", "โหลดดัชนีค้นหาไม่สำเร็จ — " + titlesOnly + offTxt, "ลองใหม่")
+    : box("load", "กำลังเตรียมดัชนีค้นหา… " + titlesOnly + " ผลจะเติมเอง");
+  if (IX_READY) return "";
+  const miss = ixMissing(), names = miss.map(s => escapeText(ixName(s))).join(", ");
+  if (ixBusy()) return box("load", "กำลังโหลดข้อความเต็ม " + IX_DONE + "/" + IX_TOTAL + " วิชา… ผลจะเติมเองเมื่อแต่ละวิชามาถึง" + (miss.length ? " · ขาด: " + names : "") +
+    '<span class="sx-prog" aria-hidden="true"><i style="width:' + Math.round(100 * (IX_DONE + miss.length) / Math.max(1, IX_TOTAL)) + '%"></i></span>');
+  if (miss.length && miss.length === IX_TOTAL) return box("fail", "โหลดข้อความเต็มไม่สำเร็จ — " + titlesOnly + offTxt, "ลองใหม่");
+  if (miss.length) return box("part", "ค้นได้ " + IX_DONE + "/" + IX_TOTAL + " วิชา — ขาด: " + names + offTxt, "ลองโหลดวิชาที่ขาดอีกครั้ง");
+  return box("load", "กำลังเตรียมดัชนีค้นหา…");
+}
+function sxClick(e) {
+  const t = e.target.closest("[data-sx], .res-item");
+  if (!t || !view.contains(t)) return;
+  if (t.matches(".res-item")) {
+    const r = SX_HITS[+t.dataset.i];
+    if (r) go(r.x.go.topic ? Object.assign({}, r.x.go, { hl: state.q }) : r.x.go);
+  } else if (t.dataset.sx === "retry") {
+    ixRetry(); searchRefresh();
+  } else if (t.dataset.sx === "edit") {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    searchEl.focus(); searchEl.select();
+  }
+}
 
 /* ---- flashcards ---- */
 function renderFlash() {
