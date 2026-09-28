@@ -71393,92 +71393,162 @@ function renderSearch() {
   }));
 }
 
-/* ---- flashcards ---- */
-function renderFlash() {
-  let src = "all", deck = [], idx = 0, flip = false, okCount = 0;
-  const allCards = MODULES.flatMap(m => m.terms.map((t, i) => ({ t, mod: m.th, k: termKey(m, t, i) })));
+/* ---- flashcards ----
+   #/flash[/<กลุ่ม|วิชา>][/weak] (ขอบเขตจาก termScope ในช่อง S5) · การ์ดเป็น <button> — Tab ถึง Enter/Space พลิก · 1 = ยังไม่แม่น · 2 = จำได้
+   โฟกัสอยู่บนการ์ดตลอดเมื่อเปลี่ยนใบ (การ์ดสร้างครั้งเดียวแล้วเปลี่ยนแค่เนื้อใน) · ผลต่อคำ → termResult(termKey(...)) (atlas-practice-v1._terms + SRS) */
+function renderFlash(st) {
+  const o = termScope(st && st.seg);
+  let src = o.weak ? "weak" : "all", deck = [], idx = 0, flip = false, okCount = 0;
+  let dir = s5opt("dir") === "th" ? "th" : "ru";
+  const mods = MODULES.filter(m => !o.mod || m.id === o.mod);
+  const allCards = mods.flatMap(m => m.terms.map((t, i) => ({ t, mod: m.th, k: termKey(m, t, i) })));
   const build = () => {
-    deck = allCards.filter(c => src === "all" ? true : src === "unk" ? !DONE.has(c.k) : BM.has(c.k));
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
+    deck = s5shuffle(allCards.filter(c => src === "all" ? true : src === "unk" ? !DONE.has(c.k) : src === "weak" ? termIsWeak(c.k) : BM.has(c.k)));
+    if (o.n) deck = deck.slice(0, o.n);
     idx = 0; flip = false; okCount = 0;
   };
+  const srcBtn = (v, t) => '<button type="button" data-src="' + v + '" aria-pressed="' + (src === v) + '"' + (src === v ? ' class="on"' : '') + '>' + t + '</button>';
   view.innerHTML = '<div class="wrap flash"><div class="page-head">' +
     '<p class="eyebrow">Карточки</p>' +
     '<h1 class="page-title">Flashcard คำศัพท์</h1>' +
-    '<div class="page-title-th">แตะการ์ดเพื่อเปิดคำแปล — «จำได้» จะติ๊กเข้าคลังศัพท์ให้อัตโนมัติ</div>' +
-    '<div class="fsrc"><button data-src="all" class="on">ทั้งหมด</button>' +
-    '<button data-src="unk">ที่ยังไม่ติ๊ก</button>' +
-    '<button data-src="bm">★ บุ๊กมาร์ก</button></div></div>' +
-    '<div class="fmeta"><span id="fPos"></span><span id="fOk"></span></div><div id="fBox"></div></div>';
-  const box = document.getElementById("fBox");
+    '<div class="page-title-th">กดการ์ด (หรือ Enter/Space) เพื่อพลิก — «จำได้» จะติ๊กเข้าคลังศัพท์ให้อัตโนมัติ</div>' +
+    (o.note ? '<p class="s5-note">' + escT(o.note) + '</p>' : '') +
+    '<div class="fopts"><label>กลุ่มศัพท์ <select id="fMod">' + groupOptions(o.mod) + '</select></label>' +
+    '<span class="fdir" role="group" aria-label="ทิศทาง"><button type="button" data-dir="ru" aria-pressed="' + (dir === "ru") + '"' + (dir === "ru" ? ' class="on"' : '') + '>รัสเซีย → ไทย</button>' +
+    '<button type="button" data-dir="th" aria-pressed="' + (dir === "th") + '"' + (dir === "th" ? ' class="on"' : '') + '>ไทย → รัสเซีย</button></span></div>' +
+    '<div class="fsrc">' + srcBtn("all", "ทั้งหมด") + srcBtn("unk", "ที่ยังไม่ติ๊ก") + srcBtn("weak", "ยังไม่แม่น") + srcBtn("bm", "★ บุ๊กมาร์ก") + '</div></div>' +
+    '<div class="fmeta"><span id="fPos"></span><span id="fOk"></span></div>' +
+    '<div id="fBox"><button type="button" class="fcard" id="fc" aria-describedby="fKeys"></button>' +
+    '<div class="fbtns"><button type="button" id="fNo">ยังไม่แม่น <kbd>1</kbd></button><button type="button" id="fYes" class="yes">จำได้ ✓ <kbd>2</kbd></button></div>' +
+    '<div class="fsay" id="fSay"></div>' +
+    '<p class="fkeys" id="fKeys">คีย์บอร์ด: Enter หรือ Space พลิก · 1 ยังไม่แม่น · 2 จำได้</p></div>' +
+    '<div id="fEnd" hidden></div><p class="sr" id="fLive" aria-live="polite"></p></div>';
+  const box = document.getElementById("fBox"), end = document.getElementById("fEnd"), card = document.getElementById("fc");
+  const live = document.getElementById("fLive");
+  document.getElementById("fSay").appendChild(sayButton(() => deck[idx] ? deck[idx].t.ru : "", "ฟังคำภาษารัสเซีย"));
   function draw() {
     document.getElementById("fPos").textContent = deck.length ? Math.min(idx + 1, deck.length) + " / " + deck.length : "0 / 0";
     document.getElementById("fOk").textContent = "จำได้ " + okCount;
-    if (!deck.length) {
-      box.innerHTML = '<p class="empty">ไม่มีการ์ดในชุดนี้' + (src === "bm" ? " — กด ★ ในคลังศัพท์เพื่อบุ๊กมาร์กคำก่อน" : " — ติ๊กครบทุกคำแล้ว เก่งมาก") + '</p>';
-      return;
-    }
-    if (idx >= deck.length) {
-      box.innerHTML = '<div class="fcard" style="cursor:default"><div class="fru">จบชุดแล้ว</div>' +
+    if (!deck.length || idx >= deck.length) {
+      box.hidden = true; end.hidden = false;
+      if (!deck.length) {
+        end.innerHTML = '<p class="empty">ไม่มีการ์ดในชุดนี้' + (src === "bm" ? " — กด ★ ในคลังศัพท์เพื่อบุ๊กมาร์กคำก่อน" : src === "weak" ? " — ยังไม่มีคำที่กด «ยังไม่แม่น»" : " — ติ๊กครบทุกคำแล้ว เก่งมาก") + '</p>' +
+          '<div class="fbtns"><button type="button" data-src-all>ดูการ์ดทั้งหมด</button></div>';
+        end.querySelector("[data-src-all]").addEventListener("click", () => setSrc("all"));
+        return;
+      }
+      const weakN = deck.filter(c => termIsWeak(c.k)).length;
+      end.innerHTML = '<div class="fcard fdone" tabindex="-1" id="fDone"><div class="fru">จบชุดแล้ว</div>' +
         '<div class="fnote">จำได้ ' + okCount + ' จาก ' + deck.length + ' ใบ</div></div>' +
-        '<div class="fbtns"><button id="fAgain">สับไพ่ใหม่อีกรอบ</button><button id="fGloss">ไปคลังศัพท์</button></div>';
-      document.getElementById("fAgain").addEventListener("click", () => { build(); draw(); });
-      document.getElementById("fGloss").addEventListener("click", () => go({ v: "glossary" }));
+        '<div class="fbtns"><button type="button" id="fAgain">สับไพ่ใหม่อีกรอบ</button>' +
+        (weakN ? '<button type="button" id="fWeak">ทวนเฉพาะที่ยังไม่แม่น (' + weakN + ')</button>' : '') +
+        '<a class="btn" href="#/quiz' + (termSeg(o).length ? "/" + termSeg(o).join("/") : "") + '">ควิซศัพท์กลุ่มนี้</a><a class="btn" href="#/glossary">ไปคลังศัพท์</a></div>';
+      document.getElementById("fAgain").addEventListener("click", () => { build(); draw(); card.focus(); });
+      const w = document.getElementById("fWeak");
+      if (w) w.addEventListener("click", () => setSrc("weak"));
+      document.getElementById("fDone").focus();
       return;
     }
+    box.hidden = false; end.hidden = true;
     const c = deck[idx], t = c.t;
-    box.innerHTML = '<div class="fcard" id="fc"><div class="fmod">' + c.mod + '</div>' +
-      '<div class="fru">' + t.ru + (t.abbr ? ' <span class="fabbr">' + t.abbr + '</span>' : '') + '</div>' +
-      (flip
-        ? '<div class="fth">' + t.th + '</div><div class="fnote">' + t.note + '</div>' + (t.f ? '<div class="ff">' + t.f + '</div>' : '')
-        : '') +
-      '<div class="hint">' + (flip ? "แตะอีกครั้งเพื่อปิดคำแปล" : "แตะการ์ดเพื่อดูคำแปล") + '</div></div>' +
-      '<div class="fbtns"><button id="fNo">ยังไม่แม่น</button><button id="fYes" class="yes">จำได้ ✓</button></div>';
-    document.getElementById("fc").addEventListener("click", () => { flip = !flip; draw(); });
-    document.getElementById("fNo").addEventListener("click", () => { flip = false; idx++; draw(); });
-    document.getElementById("fYes").addEventListener("click", () => {
-      if (!DONE.has(c.k)) { DONE.add(c.k); persist(); syncProgress(); }
-      okCount++; flip = false; idx++; draw();
-    });
+    const ru = '<span class="fru" lang="ru">' + t.ru + (t.abbr ? ' <span class="fabbr">' + t.abbr + '</span>' : '') + '</span>';
+    const th = '<span class="fth">' + t.th + '</span>';
+    card.setAttribute("aria-pressed", flip);
+    card.innerHTML = '<span class="fmod">' + c.mod + '</span>' + (dir === "th" ? th : ru) +
+      (flip ? (dir === "th" ? ru : th) + '<span class="fnote">' + t.note + '</span>' + (t.f ? '<span class="ff">' + t.f + '</span>' : '') : '') +
+      '<span class="hint">' + (flip ? "กดอีกครั้งเพื่อปิดคำแปล" : "กดการ์ดเพื่อดูคำแปล") + '</span>';
+    live.textContent = flip ? (dir === "th" ? t.ru : t.th) : "";
   }
-  view.querySelectorAll("[data-src]").forEach(b => b.addEventListener("click", () => {
-    src = b.dataset.src;
-    view.querySelectorAll("[data-src]").forEach(x => x.classList.toggle("on", x === b));
+  function rate(ok) {
+    const c = deck[idx];
+    if (!c) return;
+    if (ok && !DONE.has(c.k)) { DONE.add(c.k); persist(); syncProgress(); }
+    termResult(c.k, ok);
+    if (ok) okCount++;
+    SAY.stop(); flip = false; idx++; draw();
+    if (idx < deck.length) card.focus();
+  }
+  function setSrc(v) {
+    src = v;
+    view.querySelectorAll("[data-src]").forEach(x => { x.classList.toggle("on", x.dataset.src === v); x.setAttribute("aria-pressed", x.dataset.src === v); });
     build(); draw();
+    if (deck.length) card.focus();
+  }
+  card.addEventListener("click", () => { flip = !flip; draw(); });
+  document.getElementById("fNo").addEventListener("click", () => rate(false));
+  document.getElementById("fYes").addEventListener("click", () => rate(true));
+  view.querySelector(".flash").addEventListener("keydown", e => {
+    if (e.altKey || e.ctrlKey || e.metaKey || box.hidden || /^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)) return;
+    if (e.key === "1" || e.key === "2") { e.preventDefault(); rate(e.key === "2"); }
+  });
+  view.querySelectorAll("[data-src]").forEach(b => b.addEventListener("click", () => setSrc(b.dataset.src)));
+  view.querySelectorAll("[data-dir]").forEach(b => b.addEventListener("click", () => {
+    dir = b.dataset.dir; s5opt("dir", dir);
+    view.querySelectorAll("[data-dir]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });
+    flip = false; draw();
   }));
+  document.getElementById("fMod").addEventListener("change", e => {
+    const st2 = { v: "flash", seg: termSeg({ mod: e.target.value, weak: src === "weak" }) };
+    s5replace("flash", st2.seg);
+    document.title = pageTitle(st2);
+    renderFlash(st2);
+    document.getElementById("fMod").focus();
+  });
   build(); draw();
 }
 
-/* ---- quiz ---- */
-const POOL = () => MODULES.flatMap(m => m.terms.map(t => ({ ru: t.ru, th: t.th, mod: m.th, note: t.note || "" })));
-function renderQuiz() {
-  const pool = POOL();
+/* ---- quiz ----
+   #/quiz[/<กลุ่ม|วิชา>][/n<จำนวน>][/weak] · ตัวลวงมาจากกลุ่มเดียวกันก่อน (ไม่พอค่อยเติมจากทั้งคลัง) · ถูก/ผิด → termResult()
+   ส่วนนี้ถูกทดสอบใน tests/ui-learning.test.cjs ด้วย DOM จำลองที่ไม่มีของในช่อง S5 — ของจากช่อง S5 ต้องเรียกผ่าน typeof เสมอ */
+const POOL = () => termPool("");                     // ทั้งคลัง (ชื่อ/รูปแบบนี้ tests/ui-learning ใช้หาส่วนนี้)
+function termPool(mod) {                              // mod = รหัสกลุ่มใน MODULES ("" = ทั้งคลัง)
+  return MODULES.filter(m => !mod || m.id === mod).flatMap(m => m.terms.map((t, i) => ({
+    ru: t.ru, th: t.th, mod: m.th, note: t.note || "", g: m.id, k: typeof termKey === "function" && m.id ? termKey(m, t, i) : ""
+  })));
+}
+function renderQuiz(st) {
+  const o = typeof quizScope === "function" ? quizScope(st && st.seg) : { mod: "", n: 0, weak: false, note: "" };
+  const everything = POOL(), pool = o.mod ? termPool(o.mod) : everything;
+  let base = pool;
+  if (o.weak && typeof termIsWeak === "function") { const w = pool.filter(x => termIsWeak(x.k)); if (w.length) base = w; }
+  const N = Math.min(o.n || 10, base.length);
   let round = [], idx = 0, score = 0, streak = 0, best = 0;
   const pick = () => {
     round = [];
     const used = new Set();
-    while (round.length < 10) {
-      const i = Math.floor(Math.random() * pool.length);
+    while (round.length < N) {
+      const i = Math.floor(Math.random() * base.length);
       if (used.has(i)) continue;
       used.add(i);
-      const right = pool[i];
-      const opts = [right];
-      while (opts.length < 4) {
-        const c = pool[Math.floor(Math.random() * pool.length)];
-        if (!opts.some(o => o.th === c.th)) opts.push(c);
-      }
+      const right = base[i];
+      const opts = [right], seen = new Set([right.th]);
+      [pool.filter(c => c.g === right.g), everything].forEach(src => {   // ตัวลวงจากกลุ่มเดียวกันก่อน
+        const cand = src.filter(c => !seen.has(c.th));
+        while (opts.length < 4 && cand.length) {
+          const c = cand.splice(Math.floor(Math.random() * cand.length), 1)[0];
+          if (!seen.has(c.th)) { seen.add(c.th); opts.push(c); }
+        }
+      });
       opts.sort(() => Math.random() - .5);
       round.push({ q: right, opts });
     }
     idx = 0; score = 0; streak = 0;
   };
   view.innerHTML = '<div class="wrap"><div class="page-head"><p class="eyebrow">Тренажёр</p>' +
-    '<h1 class="page-title">ควิซคำศัพท์</h1><div class="page-title-th">รัสเซีย → ไทย ครั้งละ 10 ข้อ</div></div>' +
+    '<h1 class="page-title">ควิซคำศัพท์</h1><div class="page-title-th">รัสเซีย → ไทย ครั้งละ ' + N + ' ข้อ' + (o.weak && base !== pool ? ' · เฉพาะคำที่ยังไม่แม่น' : '') + '</div>' +
+    (o.note ? '<p class="s5-note">' + o.note + '</p>' : '') +
+    '<div class="fopts"><label>กลุ่มศัพท์ <select id="quizMod"><option value="">ทั้งคลัง</option>' +
+    MODULES.map(m => '<option value="' + (m.id || "") + '"' + (m.id && m.id === o.mod ? " selected" : "") + '>' + m.th + ' (' + m.terms.length + ')</option>').join("") +
+    '</select></label></div></div>' +
     '<div class="quiz" id="quizBox"></div></div>';
   const box = document.getElementById("quizBox");
+  document.getElementById("quizMod").addEventListener("change", e => {
+    const st2 = { v: "quiz", seg: [e.target.value, o.n ? "n" + o.n : ""].filter(Boolean) };
+    s5replace("quiz", st2.seg);
+    document.title = pageTitle(st2);
+    renderQuiz(st2);
+    document.getElementById("quizMod").focus();
+  });
 
   function draw() {
     if (idx >= round.length) {
@@ -71504,6 +71574,7 @@ function renderQuiz() {
         else if (x === b) x.classList.add("wrong");
       });
       if (ok) { score++; streak++; best = Math.max(best, streak); } else streak = 0;
+      if (typeof termResult === "function" && it.q.k) termResult(it.q.k, ok);
       const foot = box.querySelector(".quiz-foot");
       foot.innerHTML = '<span class="verdict ' + (ok ? "ok" : "no") + '">' + (ok ? "ถูกต้อง" : "คำตอบคือ: " + it.q.th) + '</span>';
       const explanation = document.createElement("div");
@@ -72123,6 +72194,35 @@ registerPage("oral", {
   title: st => { const o = s5scope(st.seg); return "ซ้อมปากเปล่า" + (o.sid ? " · " + s5subj(o.sid).th : ""); }
 });
 
+/* ---- Flashcard / ควิซศัพท์: ที่อยู่ #/flash[/<กลุ่ม|วิชา>][/weak] · #/quiz[/<กลุ่ม|วิชา>][/n<จำนวน>][/weak] ----
+   รหัสวิชาที่ไม่มีกลุ่มศัพท์ของตัวเอง (toe/ppo) → ใช้ทั้งคลังพร้อมบอกผู้อ่าน · ย้ายสองหน้านี้จาก PAGES ไปเป็น registerPage เพื่อรับส่วนต่อท้ายที่อยู่ */
+function termScope(seg) {
+  const o = { mod: "", sid: "", n: 0, weak: false, note: "" };
+  (seg || []).forEach((x, i) => {
+    const m = /^n(\d{1,3})$/.exec(x);
+    if (m) o.n = Math.max(1, +m[1]);
+    else if (x === "weak") o.weak = true;
+    else if (!i && MODULES.some(g => g.id === x)) o.mod = x;
+    else if (!i && DEEP[x]) {
+      o.sid = x; o.mod = modFor(x);
+      if (!o.mod) o.note = "วิชา " + s5subj(x).th + " ยังไม่มีกลุ่มศัพท์ของตัวเอง — ใช้ศัพท์ทั้งคลัง";
+    }
+  });
+  return o;
+}
+const quizScope = termScope;
+const termSeg = (o, keepN) => [o.sid && !o.mod ? o.sid : o.mod, keepN && o.n ? "n" + o.n : "", o.weak ? "weak" : ""].filter(Boolean);
+const groupOptions = cur => '<option value="">ทั้งคลัง (' + MODULES.reduce((a, m) => a + m.terms.length, 0) + ' คำ)</option>' +
+  MODULES.map(m => '<option value="' + m.id + '"' + (m.id === cur ? " selected" : "") + '>' + escT(m.th) + ' (' + m.terms.length + ')</option>').join("");
+["flash", "quiz"].forEach(p => { const i = PAGES.indexOf(p); if (i >= 0) PAGES.splice(i, 1); });
+registerPage("flash", {
+  render: st => renderFlash(st),
+  title: st => { const o = termScope(st.seg), g = MODULES.find(m => m.id === o.mod); return "Flashcard คำศัพท์" + (g ? " · " + g.th : ""); }
+});
+registerPage("quiz", {
+  render: st => renderQuiz(st),
+  title: st => { const o = termScope(st.seg), g = MODULES.find(m => m.id === o.mod); return "ควิซคำศัพท์" + (g ? " · " + g.th : ""); }
+});
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
 /* ===== SLOT S6 END ===== */

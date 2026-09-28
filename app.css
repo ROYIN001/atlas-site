@@ -3711,6 +3711,20 @@ details.qa[data-oral="1"] { --s5-r: var(--crit); }
 .s5-res b { font-weight: 600; margin-right: 4px; }
 .s5-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .s5-acts button { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 14px; padding: 10px 16px; }
+.fopts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+.fopts label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 100%; min-width: 0; }
+.fopts select { min-width: 0; flex: 1 1 180px; }
+.fdir { display: inline-flex; gap: 6px; }
+button.fcard { width: 100%; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; color: var(--ink); }
+button.fcard:hover { border-color: var(--accent); color: var(--ink); }
+.fcard > span { display: block; }
+.fcard .fabbr { display: inline; }
+.fcard.fdone { cursor: default; }
+.fcard.fdone:focus { outline: none; }
+.fsay { display: flex; justify-content: center; margin-top: 10px; }
+.fkeys { text-align: center; font-size: 12.5px; color: var(--ink-3); margin: 6px 0 30px; }
+.fbtns .btn { flex: 1; max-width: 190px; padding: 12px; font-size: 13px; text-align: center; text-decoration: none; }
+.fbtns { flex-wrap: wrap; }
 @media (hover: none) { .s5 kbd, .flash kbd, .fkeys { display: none; } }
 @media (max-width: 600px) {
   .s5-card { padding: 14px 14px 16px; border-radius: 10px; }
