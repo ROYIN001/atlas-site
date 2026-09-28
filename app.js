@@ -965,6 +965,19 @@ async function topicHtml(sid, t) {
   return d && typeof d.html === "string" ? d.html : null;
 }
 
+/* ---- S3: ขนาดจริงของรูป (data/figdim.json · src/build_steps/figdim.py) ---- */
+let FIGDIM = null, FIGDIM_P = null;
+function figDims() {                                 // โหลดครั้งเดียวต่อเซสชัน · โหลดไม่ได้ = {} (รูปทำงานแบบเดิม) แล้วลองใหม่ครั้งหน้าที่เปิดวิชา
+  return FIGDIM_P || (FIGDIM_P = fetch("data/figdim.json?v=" + DATA_VERSION)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(d => (FIGDIM = d || {}))
+    .catch(() => { FIGDIM_P = null; return {}; }));
+}
+function figSize(fg) {
+  const img = fg.querySelector("img"), wh = FIGDIM && FIGDIM[fg.dataset.fig];
+  if (!img || !wh || img.hasAttribute("width")) return;
+  img.width = wh[0]; img.height = wh[1];             // CSS เดิม (width:100%/auto; height:auto) + width/height = aspect-ratio ก่อนรูปมา
+}
 /* ---- СУ КА: ленивая подстановка рисунков + лайтбокс ---- */
 window.SUKAFIG = function (root) {
   if (typeof SUKAFIGS === "undefined") return;
@@ -986,15 +999,22 @@ window.SUKAFIG = function (root) {
     lb.querySelector(".cap").textContent = cap ? cap.textContent : "";
     lb.classList.add("on");
   };
+  // S3: width/height จริงจาก data/figdim.json (src/build_steps/figdim.py) ใส่ก่อน src — เบราว์เซอร์จองที่ตามสัดส่วนตั้งแต่ยังไม่โหลด
+  // (ไม่มี layout shift · ตำแหน่งหัวข้อด้านล่างถูกตั้งแต่แรก) · โหลดไฟล์ครั้งเดียวต่อเซสชัน · รูปที่ไม่มีในไฟล์ทำงานแบบเดิม
+  const figs = [...root.querySelectorAll("figure.ifig[data-fig]")];
+  const sizeAll = () => figs.forEach(figSize);
+  if (FIGDIM) sizeAll(); else if (figs.length) figDims().then(sizeAll);
   const io = new IntersectionObserver(es => {
     es.forEach(e => {
       if (!e.isIntersecting) return;
       const fg = e.target, id = fg.dataset.fig, img = fg.querySelector("img");
       io.unobserve(fg);
-      if (img && !img.src) img.src = "figs/" + id + ".webp";
+      if (!img || img.src) return;
+      const put = () => { figSize(fg); if (!img.src) img.src = "figs/" + id + ".webp"; };
+      if (FIGDIM) put(); else figDims().then(put);
     });
   }, { rootMargin: "800px 0px" });
-  root.querySelectorAll("figure.ifig[data-fig]").forEach(fg => {
+  figs.forEach(fg => {
     io.observe(fg);
     fg.tabIndex = 0;
     fg.addEventListener("click", () => open(fg));
@@ -71759,6 +71779,7 @@ function demoEager() {                              // ติดตั้งท�
   view.classList.add("s3-all");                      // จัดวางทุกการ์ดตามปกติ (พิมพ์/สแกนทั้งหน้า) แล้วตรวจสูตรกว้างที่ค้างอยู่
   view.querySelectorAll(CV_CARD).forEach(c => { if (CV_WAIT.has(c)) { CV_WAIT.delete(c); fitWideMath(c); } });
 }
+HOOKS.on("offline", () => ["data/figdim.json?v=" + DATA_VERSION]);   // S3: ขนาดรูปใช้ตอนออฟไลน์ด้วย
 HOOKS.on("clear", () => {
   if (DEMO_MOUNT_IO) { DEMO_MOUNT_IO.disconnect(); DEMO_MOUNT_IO = null; }
   DEMO_EAGER = false;
