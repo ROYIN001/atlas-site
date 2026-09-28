@@ -130,6 +130,16 @@ test('auto-links across the site: ≈ 600 links, ТАУ сводка «Схем�
   assert.ok(total >= 500 && total <= 900, `site-wide lecture links ${total}`);
 });
 
+test('related-topic chips: same-subject top 2 + cross-subject ≥ 0.10; manual rel in DEEP wins', () => {
+  const pick = (e, own, sid) => JSON.parse(JSON.stringify(S.s7RelPick(e, own, sid)));
+  const e = { same: [['tau-7', 0.4], ['tau-t8', 0.3], ['tau-8', 0.2]], cross: [['nav', 'nav-9', 0.15], ['toe', 'toe-5', 0.1], ['suka', 'suka-t2', 0.09]] };
+  assert.deepEqual(pick(e, undefined, 'tau'), [
+    { sid: 'tau', tid: 'tau-7', cross: false }, { sid: 'tau', tid: 'tau-t8', cross: false },
+    { sid: 'nav', tid: 'nav-9', cross: true }, { sid: 'toe', tid: 'toe-5', cross: true }]);
+  assert.deepEqual(pick(e, ['tau-2', 'nav/nav-10'], 'tau'), [{ sid: 'tau', tid: 'tau-2', cross: false }, { sid: 'nav', tid: 'nav-10', cross: true }]);
+  assert.deepEqual(pick(undefined, undefined, 'tau'), []);
+});
+
 test('data/rel.json: deterministic shape, real targets, sorted by score', { skip: !fs.existsSync(path.join(ROOT, 'data', 'rel.json')) }, () => {
   const rel = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'rel.json'), 'utf8'));
   assert.equal(rel.v, 1);

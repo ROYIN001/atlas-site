@@ -71753,6 +71753,15 @@ function s7LecScan(text, sid, idx) {
   }
   return out;
 }
+/* 2) หัวข้อที่เกี่ยวข้อง — data/rel.json (src/build_steps/rel.py) · entry = rel.t[<หัวข้อ>] · own = DEEP.topics[i].rel (ใส่มือ ชนะเสมอ)
+   own: ["<หัวข้อ>" (วิชาเดียวกัน) | "<วิชา>/<หัวข้อ>", …] · ค่าอัตโนมัติ: วิชาเดียวกัน 2 อันดับแรก + ข้ามวิชาคะแนน ≥ 0.10 → [{ sid, tid, cross }] */
+const S7_REL_SAME = 2, S7_REL_CROSS = 0.10;
+function s7RelPick(entry, own, sid) {
+  if (Array.isArray(own)) return own.map(x => { const p = String(x).split("/"); return p.length > 1 ? { sid: p[0], tid: p[1], cross: p[0] !== sid } : { sid, tid: p[0], cross: false }; });
+  if (!entry) return [];
+  return (entry.same || []).slice(0, S7_REL_SAME).map(([tid]) => ({ sid, tid, cross: false }))
+    .concat((entry.cross || []).filter(x => x[2] >= S7_REL_CROSS).map(([s, tid]) => ({ sid: s, tid, cross: true })));
+}
 /* ---- S7 PURE END ---- */
 
 const S7_IDX = s7LecIndex(DEEP, S7_LECFIX);
@@ -71793,6 +71802,39 @@ function s7Autolink(el, sid) {
   return count;
 }
 HOOKS.on("fill", (el, t, sid) => { if (s7AutoOn(sid, t.id)) s7Autolink(el, sid); });
+
+/* ---- 2) หัวข้อที่เกี่ยวข้อง: ชิปท้ายหัวข้อ ---- */
+const S7_REL_URL = "data/rel.json?v=" + DATA_VERSION;
+let S7_REL = null;
+const s7RelGet = () => S7_REL || (S7_REL = fetch(S7_REL_URL).then(r => r.ok ? r.json() : null)
+  .catch(() => null).then(j => { if (!j) S7_REL = null; return j; }));      // โหลดไม่ได้ชั่วคราว — ครั้งหน้าลองใหม่
+function s7Foot(el) {                                // กล่องท้ายหัวข้อของ S7 (หัวข้อเกี่ยวข้อง → บันทึกส่วนตัว) — ลำดับคงที่แม้ข้อมูลมาทีหลัง
+  let f = el.querySelector(":scope > .s7-foot");
+  if (!f) { f = document.createElement("div"); f.className = "s7-foot"; el.appendChild(f); }
+  return f;
+}
+function s7RelChips(el, t, sid) {
+  const box = document.createElement("nav");
+  box.className = "rel";
+  box.setAttribute("aria-label", "หัวข้อที่เกี่ยวข้อง");
+  box.hidden = true;
+  s7Foot(el).appendChild(box);
+  const draw = rel => {
+    const list = s7RelPick(rel && rel.t && rel.t[t.id], t.rel, sid)
+      .map(x => Object.assign(x, { t: s7Topic(x.sid, x.tid), s: ALL_SUBJ.find(y => y.id === x.sid) })).filter(x => x.t && x.s);
+    if (!list.length || !box.isConnected) return;
+    const chip = x => '<a class="chip" href="#/' + x.sid + '/' + x.tid + '" title="' + s7Esc(s7Plain(x.t.ru)) + '">' +
+      (x.cross ? '<b>' + (ICONS[x.sid] || "📘") + ' ' + s7Esc(x.s.th) + '</b> ' : '') + s7Esc(s7Plain(x.t.th)) + '</a>';
+    const same = list.filter(x => !x.cross), cross = list.filter(x => x.cross);
+    box.innerHTML = '<p class="rel-h">อ่านต่อที่เกี่ยวข้อง</p>' +
+      (same.length ? '<div class="chiprow"><span class="rel-l">ในวิชานี้</span>' + same.map(chip).join("") + '</div>' : '') +
+      (cross.length ? '<div class="chiprow"><span class="rel-l">วิชาอื่น</span>' + cross.map(chip).join("") + '</div>' : '');
+    box.hidden = false;
+  };
+  if (Array.isArray(t.rel)) draw(null); else s7RelGet().then(draw);
+}
+HOOKS.on("fill", (el, t, sid) => s7RelChips(el, t, sid));
+HOOKS.on("offline", () => [S7_REL_URL]);
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
 /* ===== SLOT S8 END ===== */
