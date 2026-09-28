@@ -70342,13 +70342,14 @@ async function fillBody(el) {
     return;
   }
   el.innerHTML = html + demoSlots(t);
-  el.querySelectorAll("[data-demo]").forEach(d => { if (d.dataset.demo && DEMOS[d.dataset.demo]) DEMOS[d.dataset.demo](d); });
+  demoMount(el, sid);                                // S3: ติดตั้ง [data-demo] เมื่อเข้าใกล้จอ (ดูช่อง SLOT S3)
   if (window.SUKAFIG) window.SUKAFIG(el);
   fitWideMath(el);
   tocOnFill(el);
   HOOKS.run("fill", el, t, sid);
 }
 function fillAllBodies() {
+  demoEager();                                       // S3: พิมพ์/สแกนทั้งหน้า — แบบจำลองทุกตัวติดตั้งทันที ไม่รอเข้าใกล้จอ
   return Promise.all([...document.querySelectorAll(".tbody[data-lazy]")].map(fillBody));
 }
 window.addEventListener("beforeprint", fillAllBodies);
@@ -71721,6 +71722,42 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S2 (มือถือ: สารบัญ ชิปหัวข้อ แถบหลบ ชุดอ่านง่าย) BEGIN ===== */
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
+/* ---- S3: ติดตั้งแบบจำลองเมื่อเข้าใกล้จอ ----
+   fillBody ใส่ html แล้วเรียก demoMount(el, sid) แทนการเรียก DEMOS[key](host) ทุกกล่องทันที — หัวข้อยาว (ЭОЛА 86 แบบจำลอง)
+   จึงไม่สร้าง canvas/ลูปของกล่องที่ผู้อ่านยังไปไม่ถึง · ติดตั้งเมื่อกล่องห่างจอ ≤ 600 px (DEMO_MOUNT_IO)
+   · ติดตั้งทันทีเสมอ: กล่องใน <details> ที่ปิดอยู่ (observer มองไม่เห็นจนกว่าจะเปิด — เดิมก็ติดตั้งทันที และ verify นับ canvas ทุกกล่อง)
+     · หลัง fillAllBodies() (พิมพ์ · สแกนมือถือของ verify) · เบราว์เซอร์ที่ไม่มี IntersectionObserver
+   · demoInstall(host, sid) ติดตั้งกล่องเดียวทันที (ครั้งเดียวต่อกล่อง) — โค้ดอื่นที่ต้องการ DOM ของแบบจำลองก่อนเลื่อนถึงเรียกได้ */
+const DEMO_MOUNT_MARGIN = "600px 0px";
+let DEMO_MOUNT_IO = null, DEMO_EAGER = false;
+let DEMO_DONE = new WeakSet(), DEMO_SID = new WeakMap();
+function demoInstall(d, sid) {
+  if (DEMO_DONE.has(d)) return;
+  DEMO_DONE.add(d);
+  if (DEMO_MOUNT_IO) DEMO_MOUNT_IO.unobserve(d);
+  const fn = d.dataset.demo && DEMOS[d.dataset.demo];
+  if (typeof fn === "function") fn(d);
+}
+function demoMount(root, sid) {
+  const hosts = [...root.querySelectorAll("[data-demo]")].filter(d => !DEMO_DONE.has(d));
+  if (DEMO_EAGER || typeof IntersectionObserver !== "function") { hosts.forEach(d => demoInstall(d, sid)); return; }
+  if (!DEMO_MOUNT_IO) DEMO_MOUNT_IO = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) demoInstall(e.target, DEMO_SID.get(e.target));
+  }), { rootMargin: DEMO_MOUNT_MARGIN });
+  hosts.forEach(d => {
+    if (d.closest("details:not([open])")) demoInstall(d, sid);
+    else { DEMO_SID.set(d, sid); DEMO_MOUNT_IO.observe(d); }
+  });
+}
+function demoEager() {                              // ติดตั้งทุกกล่องที่ยังรออยู่ และกล่องของหัวข้อที่จะเติมต่อจากนี้ (จนกว่าจะเปลี่ยนหน้า)
+  DEMO_EAGER = true;
+  document.querySelectorAll("#view .tbody:not([data-lazy]) [data-demo]").forEach(d => demoInstall(d, DEMO_SID.get(d) || state.id));
+}
+HOOKS.on("clear", () => {
+  if (DEMO_MOUNT_IO) { DEMO_MOUNT_IO.disconnect(); DEMO_MOUNT_IO = null; }
+  DEMO_EAGER = false;
+  DEMO_DONE = new WeakSet(); DEMO_SID = new WeakMap();
+});
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 (ค้นหาและดัชนี) BEGIN ===== */
 /* ===== SLOT S4 END ===== */
