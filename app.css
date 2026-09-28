@@ -3710,6 +3710,40 @@ a.subj:focus-visible, .s2-cta:focus-visible { outline-offset: 3px; }
   .s2-subjects .stat span { font-size: 11px; line-height: 1.3; display: block; }
 }
 
+/* ---- หน้า #/progress ---- */
+.s2-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.s2-kpi { display: flex; flex-direction: column; gap: 5px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.s2-kpi .l { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.s2-kpi b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 24px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.s2-kpi .s { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+.s2-pbar { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.s2-pbar span { display: block; height: 100%; background: var(--accent); }
+.s2-ptab { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.s2-prow {
+  display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 4px 12px; align-items: center;
+  padding: 9px 14px; border-top: 1px solid var(--line); font-size: 13.5px; font-variant-numeric: tabular-nums;
+}
+.s2-prow:first-child { border-top: 0; }
+.s2-phead { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+.s2-prow .nm a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.s2-prow .nm a:hover { color: var(--accent); }
+.s2-prow .nm i { font-style: normal; }
+.s2-prow > span > i { display: none; font-style: normal; color: var(--ink-3); font-size: 11.5px; }
+.s2-prow small { color: var(--ink-3); }
+.s2-prow .s2-pbar { margin-top: 4px; max-width: 120px; }
+.s2-glist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.s2-glist a { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); font-size: 13.5px; }
+.s2-glist b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--accent); }
+.s2-progress .backup { max-width: none; }
+@media (max-width: 600px) {
+  .s2-kpi { padding: 11px 14px; gap: 3px; }
+  .s2-kpi b { font-size: 20px; }
+  .s2-phead { display: none; }
+  .s2-prow { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px 12px; }
+  .s2-prow .nm { grid-column: 1 / -1; }
+  .s2-prow > span > i { display: block; }
+}
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* ===== SLOT S3 END ===== */

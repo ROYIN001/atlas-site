@@ -71783,6 +71783,58 @@ function renderSubjects() {
 }
 registerPage("subjects", { render: renderSubjects, title: () => "รายวิชา" });
 
+/* ---- หน้า #/progress: อ่าน/ทบทวนแล้ว · ผลควิซ · ศัพท์ที่จำได้ — สามส่วนแยกกัน ต่อวิชา + การ์ดของ session อื่น + สำรอง/นำเข้า ---- */
+function renderProgress() {
+  const P = practiceStore();
+  const deepAll = SUBJECTS.filter(s => DEEP[s.id]).sort(byNum);
+  const rows = deepAll.map(s => ({ s, tr: subjTrip(s, P) }));
+  const rd = rows.reduce((a, r) => [a[0] + r.tr.read, a[1] + r.tr.total], [0, 0]);
+  const outl = SUBJECTS.filter(s => !DEEP[s.id]).reduce((a, s) => a + subjKeys(s).filter(k => DONE.has(k)).length, 0);
+  let qok = 0, qdone = 0, qt = 0;
+  rows.forEach(r => { if (r.tr.quiz) { qok += r.tr.quiz.ok; qdone += r.tr.quiz.done; qt += r.tr.quiz.topics; } });
+  const gk = glossKeys(), gdone = gk.filter(k => DONE.has(k)).length;
+  const bar = (n, t) => '<span class="s2-pbar" aria-hidden="true"><span style="width:' + (t ? Math.round(100 * n / t) : 0) + '%"></span></span>';
+  let h = '<div class="wrap wide s2-progress"><div class="page-head">' +
+    '<p class="eyebrow">Прогресс</p><h1 class="page-title">ความก้าวหน้าของฉัน</h1>' +
+    '<div class="page-title-th">สามตัวเลขนี้วัดคนละอย่าง จึงแยกกันไว้ ไม่รวมเป็นคะแนนเดียว · เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น</div></div>' +
+    '<div class="s2-kpis">' +
+    '<div class="s2-kpi" data-kpi="read"><span class="l">อ่าน/ทบทวนแล้ว</span><b>' + rd[0] + ' / ' + rd[1] + '</b>' + bar(rd[0], rd[1]) +
+    '<span class="s">หัวข้อที่ทำเครื่องหมาย ✓ ในวิชาที่มีเนื้อหาเต็ม' + (outl ? ' · และหัวข้อในวิชาโครงร่างอีก ' + outl : '') + '</span></div>' +
+    '<div class="s2-kpi" data-kpi="quiz"><span class="l">ผลควิซ</span><b>' + (qdone ? Math.round(100 * qok / qdone) + ' %' : '—') + '</b>' + bar(qok, qdone) +
+    '<span class="s">' + (qdone ? 'ตอบถูก ' + qok + ' จาก ' + qdone + ' ข้อที่ทำ · ' + qt + ' หัวข้อ' : 'ยังไม่ได้ทำควิซในหัวข้อ — ควิซอยู่ในส่วน «ฝึกสอบ» ของฉบับเต็ม') + '</span></div>' +
+    '<div class="s2-kpi" data-kpi="terms"><span class="l">ศัพท์ที่จำได้</span><b>' + nfmt(gdone) + ' / ' + nfmt(gk.length) + '</b>' + bar(gdone, gk.length) +
+    '<span class="s">คำที่ติ๊ก «จำได้» ในคลังศัพท์หรือ Flashcard</span></div></div>';
+  h += '<section class="s2-sec" aria-labelledby="s2PsH"><div class="nowhead"><h2 id="s2PsH">ต่อวิชา</h2><span class="year-note">' + deepAll.length + ' วิชาที่มีเนื้อหาเต็ม</span></div>' +
+    '<div class="s2-ptab" role="table" aria-label="ความคืบหน้าต่อวิชา"><div class="s2-prow s2-phead" role="row"><span role="columnheader">วิชา</span>' +
+    '<span role="columnheader">อ่านแล้ว</span><span role="columnheader">ควิซ</span><span role="columnheader">ศัพท์</span></div>' +
+    rows.map(({ s, tr }) => '<div class="s2-prow" role="row"><span role="cell" class="nm"><a href="#/' + s.id + '">' + (ICONS[s.id] ? '<i aria-hidden="true">' + ICONS[s.id] + '</i> ' : '') + s.th + '</a></span>' +
+      '<span role="cell"><i>อ่านแล้ว</i> ' + tr.read + '/' + tr.total + bar(tr.read, tr.total) + '</span>' +
+      '<span role="cell"><i>ควิซ</i> ' + (tr.quiz ? tr.quiz.pct + ' % <small>(' + tr.quiz.ok + '/' + tr.quiz.done + ')</small>' : '—') + '</span>' +
+      '<span role="cell"><i>ศัพท์</i> ' + (tr.terms ? tr.terms.n + '/' + tr.terms.total : '—') + '</span></div>').join("") + '</div></section>';
+  const used = new Set(deepAll.map(s => modOf(s.id)));
+  const extra = MODULES.filter(m => !used.has(m.id));
+  if (extra.length) h += '<section class="s2-sec" aria-labelledby="s2PgH"><div class="nowhead"><h2 id="s2PgH">ศัพท์กลุ่มอื่นในคลังศัพท์</h2></div><div class="s2-glist">' +
+    extra.map(m => { const k = m.terms.map((t, i) => termKey(m, t, i)), n = k.filter(x => DONE.has(x)).length;
+      return '<a href="#/glossary"><span>' + m.th + '</span><b>' + n + '/' + k.length + '</b></a>'; }).join("") + '</div></section>';
+  h += HOOKS.render("progress", {});
+  h += '<section class="backup" aria-labelledby="bkH"><h3 id="bkH">สำรองความคืบหน้า</h3>' +
+    '<p>เครื่องหมาย «ทบทวนแล้ว» คำศัพท์ที่จำได้ บุ๊กมาร์ก ผลควิซ และตำแหน่งที่อ่านค้างไว้ เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ' +
+    'สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
+    '<div class="qbar"><button type="button" id="bkSave">สำรองเป็นไฟล์</button><button type="button" id="bkLoad">นำเข้าจากไฟล์</button>' +
+    '<input type="file" id="bkFile" accept="application/json,.json" hidden><span class="m" id="bkMsg" role="status"></span></div></section></div>';
+  view.innerHTML = h;
+  const bkMsg = document.getElementById("bkMsg"), bkFile = document.getElementById("bkFile");
+  document.getElementById("bkSave").addEventListener("click", () => { bkMsg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
+  document.getElementById("bkLoad").addEventListener("click", () => bkFile.click());
+  bkFile.addEventListener("change", async () => {
+    const f = bkFile.files && bkFile.files[0];
+    bkFile.value = "";
+    if (!f) return;
+    try { await progressImport(f); } catch (e) { bkMsg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
+  });
+}
+registerPage("progress", { render: renderProgress, title: () => "ความก้าวหน้า" });
+
 /* ---- #bbar: ไฮไลต์พื้นที่ที่อยู่ · ชี้ «ฝึกทบทวน» ไป #/practice เมื่อ S5 ลงทะเบียนหน้านั้นแล้ว ---- */
 const BB_AREA = { overview: "overview", subjects: "subjects", subject: "subjects", glossary: "subjects", sem: "subjects",
   practice: "practice", flash: "practice", quiz: "practice", oral: "practice", cram: "practice", search: "find", progress: "progress" };
