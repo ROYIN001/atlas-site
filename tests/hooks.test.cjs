@@ -84,7 +84,7 @@ test('termKey is the single source of glossary progress keys', () => {
   assert.equal(core.termKey({ id: 'tau', terms: [{ ru: 'y' }, { ru: 'z' }, { ru: 'w' }, t] }, t, 3), 'g:tau-' + core.stableId('x'));
   const raw = app.match(/"g:" \+ m\.id \+ "-" \+ i\b/g) || [];
   assert.equal(raw.length, 1, 'the old g:<mod>-<i> string is built only by the one-time schema migration');
-  assert.ok(section('function migrateTermKeys(', 'function learnerStart(').includes('"g:" + m.id + "-" + i'));
+  assert.ok(section('function termKeyMap(', 'function migrateTermKeys(').includes('"g:" + m.id + "-" + i'));
 });
 
 test('stableId (app.js) equals stable_id (src/buildlib.py) for Thai, Russian, tags and whitespace', () => {

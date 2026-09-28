@@ -3664,6 +3664,120 @@
 /* ===== SLOT S5 BEGIN ===== */
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 BEGIN ===== */
+/* S6 · แถบทวน/วันสอบใต้หัวหน้าวิชา (.s6-head) */
+.s6-head { margin: 14px 0 6px; font-size: 13px; }
+.s6-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.s6-ex label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink-2); }
+.s6-ex input[type="date"], .s6-ex select { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); padding: 3px 6px; max-width: 100%; }
+.s6-left { font-size: 12.5px; font-weight: 600; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--ink-2); display: inline-block; }
+.s6-left.near { border-color: var(--crit); color: var(--crit); }
+.s6-clr { font-size: 11.5px; padding: 3px 8px; }
+.s6-plan { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; font-size: 12.5px; color: var(--ink-2); }
+.s6-plan b { color: var(--ink); }
+.s6-plan .s6-pl { font-weight: 600; color: var(--accent-2); }
+.s6-plan .s6-pend { color: var(--ink-3); }
+.s6-due { font-size: 12.5px; }
+.s6-due b { color: var(--ink); }
+.s6-panel { display: grid; align-items: start; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); margin: 8px 0; font-size: 12.5px; }
+.s6-panel .mcard { margin: 0; }
+.s6-dl { list-style: none; margin: 4px 0 0; padding: 0; }
+.s6-dl li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+.s6-dl li:first-child { border-top: 0; }
+.s6-dl a { flex: 1 1 150px; min-width: 0; color: var(--accent); overflow-wrap: anywhere; }
+.s6-dl small { color: var(--ink-3); }
+/* S6 · «วันนี้ทวนอะไร» บนหน้าแรก (.s6-today) · การ์ดกำหนดทวนใน #/progress (.s6-prog) */
+.s6-today { margin: 26px 0 30px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.s6-today .nowhead { flex-wrap: wrap; row-gap: 2px; margin-bottom: 10px; }
+.s6-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.s6-chip { font-size: 12.5px; padding: 3px 9px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--ink-2); text-decoration: none; background: var(--panel-2); max-width: 100%; overflow-wrap: anywhere; }
+.s6-chip:hover { border-color: var(--accent); color: var(--ink); }
+.s6-chip.near { border-color: var(--crit); color: var(--crit); }
+.s6-list { list-style: none; margin: 0; padding: 0; }
+.s6-it { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.s6-it:first-child { border-top: 0; padding-top: 2px; }
+.s6-it.plan { background: var(--wash); padding: 10px; border-radius: var(--radius); border-top: 0; }
+.s6-what { flex: 1 1 240px; min-width: 0; }
+.s6-what b { display: block; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.s6-what small { display: block; font-size: 12px; color: var(--ink-3); overflow-wrap: anywhere; }
+.s6-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.s6-why i { font-style: normal; font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--wash-2); color: var(--ink-2); }
+.s6-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.s6-go { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; padding: 4px 2px; }
+.s6-go:hover { text-decoration: underline; }
+.s6-more { margin-top: 8px; }
+.s6-prog h3 { margin: 0 0 8px; }
+.s6-tab { border-collapse: collapse; font-size: 13px; }
+.s6-tab th, .s6-tab td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+.s6-tab th[scope="row"], .s6-tab thead th:first-child { text-align: left; font-weight: 500; }
+.s6-tab thead th { font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+.s6-exl { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+.s6-cram { font-size: 12.5px; font-weight: 600; color: var(--accent); text-decoration: none; padding: 5px 10px; border: 1px solid var(--accent); border-radius: var(--radius); }
+.s6-cram:hover { background: var(--wash); }
+/* S6 · หน้า #/cram/<วิชา> (.cram) */
+.cram .crumb a { color: var(--accent); text-decoration: none; padding: 2px 5px; border-radius: 3px; }
+.cram .crumb a:hover { background: var(--wash); }
+.cr-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 16px; }
+.cr-bar .m { font-size: 12px; color: var(--ink-3); margin-left: 4px; }
+.cr-t { margin: 0 0 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px 6px; min-width: 0; }
+.cr-t.hot { border-left: 3px solid var(--accent-2); }
+.cr-h { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.cr-n { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-3); padding-top: 3px; min-width: 20px; }
+.cr-tt { flex: 1 1 200px; min-width: 0; }
+.cr-tt h2 { margin: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; hyphens: auto; }
+.cr-tt .th { font-size: 13px; color: var(--ink-2); }
+.cr-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.cr-why i { font-style: normal; font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--wash-2); color: var(--ink-2); }
+.cr-ha { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cr-ha a, .cr-more { font-size: 12.5px; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.cr-ha a:hover, .cr-more:hover { text-decoration: underline; }
+.cr-load { font-size: 13px; color: var(--ink-3); margin: 10px 0; }
+.cr-b { min-width: 0; }
+.cr-it { margin: 10px 0; min-width: 0; }
+.cr-it > .k-sum, .cr-it > .k-trap, .cr-it > .call, .cr-it > details.qa { margin: 0; }
+.cr-sec { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; margin-top: 16px; padding-top: 8px; border-top: 1px dashed var(--line-2); }
+.cr-sec b { flex: 1 1 200px; min-width: 0; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.cr-sec span { order: 2; flex: 1 1 100%; font-size: 12.5px; color: var(--ink-3); }
+.cr-src { margin: 2px 0 0; text-align: right; }
+details.cr-due { border-left: 3px solid var(--accent-2); }
+details.cr-okq { border-left: 3px solid var(--ok); }
+details.cr-miss { border-left: 3px solid var(--crit); }
+.cr-qg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line-2); }
+.cr-qs { font-size: 12px; color: var(--ink-3); }
+.cr-qg .cr-more { margin-left: auto; }
+/* กล่องของ STD2 ในหน้านี้แน่นกว่าในฉบับเต็ม — อ่านรวดเดียวทั้งวิชา */
+.cr-b { overflow-wrap: anywhere; }
+.cram .cr-b.std2 { font-size: 14.5px; line-height: 1.55; }
+.cram .std2 .k-sum, .cram .std2 .k-trap { padding: 12px 16px 12px; border-radius: 10px; box-shadow: none; }
+.cram .std2 .blk-l { font-size: 14.5px; margin: 0 0 6px; gap: 8px; }
+.cram .std2 .blk-l::before { width: 17px; height: 17px; }
+.cram .std2 .blk-l::after { display: none; }
+.cram .blk-l .cr-more, .cram .lbl .cr-more { margin-left: auto; font-weight: 500; }
+.cram .lbl .cr-more { float: right; margin-left: 10px; }
+.cram .std2 .sum-list { gap: 3px; }
+.cram .std2 .sum-list > li { padding-left: 30px; }
+.cram .std2 .sum-list > li::before { width: 22px; height: 22px; top: 0; border-radius: 6px; font-size: 11.5px; }
+.cram .std2 .chain { margin-top: 8px; padding: 5px 10px; font-size: 13px; gap: 2px 8px; }
+.cram .std2 .ch-i { white-space: normal; }
+.cram .std2 .traps > li { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 5px 0; }
+.cram .std2 .traps p { font-size: 14px; line-height: 1.5; }
+.cram .std2 .tg { font-size: 11px; padding: 1px 0; }
+.cram .std2 details.qa { border-radius: 10px; }
+.cram .std2 details.qa > summary { min-height: 0; padding: 6px 12px; gap: 10px; }
+.cram .std2 details.qa > summary::after { padding: 3px 8px; font-size: 11.5px; }
+.cram .std2 .qa-n { min-width: 36px; padding: 3px 5px 2px; font-size: 11.5px; }
+.cram .std2 .qa-q { font-size: 14.5px; line-height: 1.45; }
+.cram .std2 details.qa > .cr-qg { margin: 0 14px 12px; }
+.cram .cr-it { margin: 7px 0; }
+.cram .cr-sec { margin-top: 12px; padding-top: 6px; }
+.cram .cr-sec b { font-size: 13.5px; }
+.cr-list.f-sum .cr-it:not(.cr-sum):not(.cr-sec),
+.cr-list.f-trap .cr-it:not(.cr-trap):not(.cr-sec),
+.cr-list.f-qa .cr-it:not(.cr-qa):not(.cr-sec),
+.cr-list.f-due .cr-t:not(.hot) { display: none; }
+@media (max-width: 600px) {
+  .s6-today { padding: 12px; margin: 18px 0 22px; }
+  .cr-t { padding: 10px 10px 4px; }
+}
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 BEGIN ===== */
 /* ===== SLOT S7 END ===== */

@@ -39,7 +39,7 @@ function fakeStorage(init) {
 
 const mod = (id, rus) => ({ id, th: id, terms: rus.map(ru => ({ ru, th: ru + '-th' })) });
 
-// ประกอบส่วนจริงของ app.js: ทะเบียน/ตัวเขียน (PROG) + termKey (CORE) + ช่อง S8 (ย้ายสคีมาตอนเริ่ม)
+// ประกอบส่วนจริงของ app.js ตามลำดับในไฟล์: ทะเบียน/ตัวเขียน (PROG) → termKey + ย้ายสคีมาตอนเริ่ม (CORE) → สำรอง/นำเข้า → ช่อง S8
 function boot({ storage, modules, extra = '' }) {
   const warned = [];
   const sb = {
@@ -50,7 +50,7 @@ function boot({ storage, modules, extra = '' }) {
   };
   vm.createContext(sb);
   // แทน storeFailed (แถบแจ้งใน DOM) ด้วยตัวจด — กำหนดก่อนโค้ดรัน จึงจับการแจ้งระหว่างย้ายสคีมาตอนเริ่มได้
-  vm.runInContext('storeFailed = e => { warned.push(e); };\n' + CORE + PROG + BACKUP + extra + SLOT +
+  vm.runInContext('storeFailed = e => { warned.push(e); };\n' + PROG + CORE + BACKUP + extra + SLOT +
     '\nObject.assign(this, { termKey, stableId, store, persist, persistBM, saveLast, DONE, BM, learnerStart, migrateTermKeys, readMeta, LEARNER, learnerKey,' +
     ' importPlan, progressImport, restorePrev, clearTemp, storeErr: () => STORE_ERR });', sb);
   return sb;
@@ -116,6 +116,16 @@ test('ย้ายสคีมา 1 → 2: คีย์ลำดับเดิ�
   assert.equal(st.getItem('atlas-sula-v1'), before);
   assert.deepEqual([...sb2.BM], ['g:tau-1']);
   assert.equal(JSON.parse(st.getItem('atlas-meta-v1')).created, meta.created);
+});
+
+test('ย้ายสคีมา 1 → 2 ย้ายคีย์ศัพท์ใน atlas-srs-v1 (S6) ด้วย · คีย์อื่นใน SRS คงเดิม', () => {
+  const modules = [mod('tau', ['а1', 'б2'])];
+  const st = fakeStorage({ 'atlas-srs-v1': JSON.stringify({ 'g:tau-1': { due: 5, reps: 2 }, 'k:tau-t1': { due: 7 } }) });
+  const sb = boot({ storage: st, modules });
+  assert.deepEqual(JSON.parse(st.getItem('atlas-srs-v1')),
+    { [sb.termKey(modules[0], modules[0].terms[1], 1)]: { due: 5, reps: 2 }, 'k:tau-t1': { due: 7 } });
+  // ย้ายต้องเกิดก่อนช่อง SLOT ทั้งหมด (ช่อง S6 อ่าน atlas-srs-v1 ตอนเริ่ม)
+  assert.ok(app.indexOf('learnerStart();') < app.indexOf('/* ===== SLOT S1 ('), 'migration runs before the session slots');
 });
 
 test('ย้ายสคีมาแล้วเขียนไม่สำเร็จ → schema ไม่ขยับ ครั้งหน้าย้ายต่อได้ ข้อมูลเดิมไม่เสีย', () => {

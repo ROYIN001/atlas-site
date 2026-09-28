@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "2facf88c16";
+const DATA_VERSION = "a2abc105f0";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -70012,6 +70012,9 @@ learnerKey("atlas-mysem-v1", { kind: "raw", re: /^[1-9]$/, label: "ภาคเ�
 learnerKey("atlas-mode-v1", { kind: "raw", re: /^(sum|full)$/, label: "โหมดอ่าน", count: v => (v ? 1 : 0) });
 learnerKey("atlas-offline-v1", { kind: "obj", label: "วิชาที่เก็บไว้อ่านออฟไลน์", count: nKeys });
 learnerKey(METAKEY, { kind: "obj", label: "รุ่นข้อมูล", count: v => (v ? 1 : 0), meta: true });
+learnerKey("atlas-srs-v1", { kind: "obj", label: "รายการทวนตามกำหนด", count: nKeys });
+learnerKey("atlas-exam-v1", { kind: "obj", label: "วันสอบ", count: nKeys });
+learnerKey("atlas-seen-v1", { kind: "obj", label: "สถิติการอ่านหัวข้อ", count: nKeys });
 
 const KEY = "atlas-sula-v1";
 let DONE = new Set();
@@ -70107,6 +70110,52 @@ function termKey(m, t, i) {
   }
   return k;
 }
+/* ---- S8: ย้ายคีย์ศัพท์รุ่น 1 ("g:" + กลุ่ม + "-" + ลำดับ) → รุ่น 2 (termKey ใหม่) ตามลำดับปัจจุบันของ MODULES ----
+   ทำครั้งเดียวเมื่อ atlas-meta-v1.schema < 2 (รวมไฟล์สำรองรุ่นเก่าที่นำเข้า — progressImport ตั้ง schema ตามไฟล์ แล้วหน้าโหลดใหม่มาย้ายที่นี่)
+   ย้าย DONE · BM · คีย์ของ atlas-srs-v1 (S6) · คีย์ที่ไม่ตรงกับคำใดในตอนนี้คงไว้ตามเดิม · เขียนไม่สำเร็จ → schema ไม่ขยับ ครั้งหน้าย้ายใหม่
+   รันตรงนี้ (ก่อนช่อง SLOT) เพราะช่อง S6 อ่าน atlas-srs-v1 เข้าหน่วยความจำตอนเริ่ม — ต้องได้คีย์ใหม่แล้ว */
+function termKeyMap() {
+  const map = new Map();
+  MODULES.forEach(m => m.terms.forEach((t, i) => map.set("g:" + m.id + "-" + i, termKey(m, t, i))));
+  return map;
+}
+function migrateTermKeys(set, map) {
+  map = map || termKeyMap();
+  const out = new Set();
+  let n = 0;
+  set.forEach(k => { const nk = map.get(k); if (nk !== undefined) n++; out.add(nk !== undefined ? nk : k); });
+  return { out, n };
+}
+function readMeta() {
+  try { const v = JSON.parse(localStorage.getItem(METAKEY)); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; }
+}
+function learnerStart() {
+  const meta = readMeta(), now = new Date().toISOString();
+  if (!meta.created) meta.created = now;
+  if (!(meta.schema >= 2)) {
+    let ok = true;
+    const map = termKeyMap();
+    [[DONE, persist], [BM, persistBM]].forEach(([set, save]) => {
+      const r = migrateTermKeys(set, map);
+      if (!r.n) return;
+      set.clear(); r.out.forEach(k => set.add(k));
+      ok = save() && ok;
+    });
+    let srs = null;
+    try { srs = JSON.parse(localStorage.getItem("atlas-srs-v1")); } catch (e) {}
+    if (srs && typeof srs === "object" && !Array.isArray(srs)) {
+      const out = {};
+      let n = 0;
+      Object.keys(srs).forEach(k => { const nk = map.get(k); if (nk !== undefined) { n++; if (!(nk in srs)) out[nk] = srs[k]; } else out[k] = srs[k]; });
+      if (n) ok = store("atlas-srs-v1", out) && ok;
+    }
+    meta.schema = ok ? SCHEMA : meta.schema || 1;
+  }
+  meta.lastActive = now;
+  store(METAKEY, meta);
+  return meta;
+}
+if (typeof MODULES !== "undefined" && typeof persist === "function") learnerStart();
 const BLKCLS = { "ГСЭ": "blk-gse", "МЕН": "blk-men", "ОПД": "blk-opd", "СД": "blk-sd", "ВПД": "blk-vpd" };
 const ICONS = { hist: "📜", elob: "🔋", tau: "🎛️", surn: "🚀", suka: "🛰️", nav: "🧭", toe: "🔌", teh_el: "⚡", asu: "📡", nadezh: "🛡️", ppo: "🔧", vhist: "🗺️" };
 
@@ -72220,6 +72269,586 @@ async function fillChunks(el, html, tail) {
 /* ===== SLOT S5 (ซ้อมสอบปากเปล่า #/oral · เสียงรัสเซีย · id เสถียร) BEGIN ===== */
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
+/* S6 — ทวนตามกำหนด (SRS) · วันสอบ · «วันนี้ทวนอะไร» · โหมดคืนก่อนสอบ #/cram/<วิชา>
+   ของที่เก็บในเครื่อง (localStorage — คีย์ของ S6 เท่านั้น ไม่แตะความหมายของ atlas-sula-v1 / atlas-quiz-v1 เดิม):
+     atlas-srs-v1   { <คีย์>: { due, ivl, ef, reps, lapses, last } }   due/last = เวลา ms (due = เที่ยงคืนของวันที่ครบกำหนด) · ivl = วัน
+     atlas-exam-v1  { <วิชา>: { date: "YYYY-MM-DD", kind: "exam"|"zach"|"zacho", qa?: จำนวนคำถามปากเปล่าที่นับได้ตอนเปิด #/cram } }
+     atlas-seen-v1  { <หัวข้อ>: { read: จำนวนครั้งที่หัวข้อค้างกลางจอ > 20 วินาที, t: เวลา ms ครั้งล่าสุด } }
+   คีย์ SRS (ข้อตกลงร่วม CLAUDE.md หัวข้อ 14): k:<หัวข้อ> · termKey() = g:<กลุ่ม>-<ลำดับ> · q:<วิชา>/<หัวข้อ>/<id คำถาม> · z:<หัวข้อ>/<data-id ของ quiz2>
+   API: window.SRS = { grade(key, g0to5, now?), due(prefix, now?), get(key), all(), reload() } · window.examPlan(sid, now?)
+   ทุกครั้งที่ให้คะแนน ส่งเหตุการณ์ "srs:grade" { key, rec } ที่ document · session อื่นเรียก window.SRS && SRS.grade(key, g) เอง */
+
+/* ---- S6 core BEGIN — ตัวคำนวณล้วน ไม่แตะ DOM/localStorage (tests/srs.test.cjs รันส่วนนี้ใน vm) ---- */
+const SRS_DAY = 864e5, SRS_MAXIVL = 365;
+const srsDay0 = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const srsAddDays = (t, n) => { const d = new Date(srsDay0(t)); d.setDate(d.getDate() + n); return d.getTime(); };   // ข้ามช่วงปรับเวลาฤดูร้อนได้
+const srsDays = (a, b) => Math.round((srsDay0(b) - srsDay0(a)) / SRS_DAY);                                        // จำนวนวันปฏิทินจาก a ถึง b
+function srsCore(o) {
+  // o = { load() → object ที่เก็บไว้, save(obj), now() → ms, cap(key, now) → ivl สูงสุด (วัน) หรือ null, onGrade(key, rec) }
+  let db = null;
+  const data = () => db || (db = (o.load && o.load()) || {});
+  const copy = r => r ? JSON.parse(JSON.stringify(r)) : null;
+  function grade(key, g, now) {
+    if (typeof key !== "string" || !key) return null;
+    g = Math.round(+g);
+    if (!isFinite(g)) return null;
+    g = Math.max(0, Math.min(5, g));
+    now = now == null ? o.now() : +now;
+    const r = Object.assign({ ivl: 0, ef: 2.5, reps: 0, lapses: 0 }, data()[key]);
+    if (g < 3) { r.reps = 0; r.lapses += 1; r.ivl = 1; }                            // ลืม → เริ่มนับใหม่ พรุ่งนี้ทวนอีก
+    else { r.reps += 1; r.ivl = r.reps === 1 ? 1 : r.reps === 2 ? 3 : Math.round(r.ivl * r.ef); }   // SM-2: 1 → 3 → ivl × ef (ef ก่อนปรับรอบนี้)
+    r.ef = Math.max(1.3, Math.round((r.ef + 0.1 - (5 - g) * (0.08 + (5 - g) * 0.02)) * 100) / 100);
+    const cap = o.cap ? o.cap(key, now) : null;                                      // ห้ามเลยวันสอบของวิชานั้น
+    r.ivl = Math.max(1, Math.min(r.ivl, SRS_MAXIVL, cap == null ? Infinity : cap));
+    r.due = srsAddDays(now, r.ivl);
+    r.last = now;
+    data()[key] = r;
+    if (o.save) o.save(db);
+    if (o.onGrade) o.onGrade(key, copy(r));
+    return copy(r);
+  }
+  function due(prefix, now) {
+    now = now == null ? o.now() : +now;
+    prefix = prefix || "";
+    return Object.keys(data()).filter(k => k.startsWith(prefix) && data()[k].due <= now)
+      .map(k => Object.assign({ key: k }, data()[k]))
+      .sort((a, b) => a.due - b.due || b.lapses - a.lapses || (a.key < b.key ? -1 : 1));
+  }
+  return {
+    grade, due,
+    get: key => copy(data()[key]),
+    all: () => copy(data()),
+    reload() { db = null; },
+  };
+}
+/* คีย์ → รหัสวิชา · topicSid(tid) และ modSid(กลุ่มศัพท์) ส่งมาจากข้อมูลของแอป */
+function srsSidOf(key, topicSid, modSid) {
+  let m;
+  if ((m = /^q:([^/]+)\//.exec(key))) return m[1];
+  if ((m = /^k:([^:]+):\d+$/.exec(key))) return m[1];                             // วิชาที่ยังเป็นโครงร่าง k:<วิชา>:<ลำดับ>
+  if ((m = /^[kz]:([^/]+)/.exec(key))) return topicSid(m[1]) || null;
+  if ((m = /^g:(.+)-\d+$/.exec(key))) return modSid(m[1]) || null;
+  return null;
+}
+/* ผลควิซทั้งบล็อก (%) → คะแนน 0–5 */
+const srsQuizGrade = (ok, total) => {
+  const p = total ? 100 * ok / total : 0;
+  return p >= 100 ? 5 : p >= 80 ? 4 : p >= 60 ? 3 : p >= 40 ? 2 : p > 0 ? 1 : 0;
+};
+/* หมวดหนึ่งของแผนสอบ: keys = ของที่ต้องพร้อมก่อนสอบ · ค้าง = ยังไม่เคยทวนตามกำหนด หรือครบกำหนดแล้ว (+ unseen = ข้อที่นับได้แต่ยังไม่มีคีย์)
+   โควตาวันนี้ = ceil(ค้าง / วันที่เหลือ) · 48 ชม.สุดท้าย เรียงลืมบ่อย (lapses) ก่อน · ไม่งั้นเรียงครบกำหนดก่อน ที่ไม่เคยทวนต่อท้าย */
+function srsPlanCat(keys, get, now, days, final, unseen) {
+  const due = x => (x.r && x.r.due) || Infinity, lap = x => (x.r && x.r.lapses) || 0;
+  const rows = keys.map(k => ({ k, r: get(k) })).filter(x => !x.r || x.r.due <= now);
+  rows.sort(final ? (a, b) => lap(b) - lap(a) || due(a) - due(b) : (a, b) => due(a) - due(b));
+  const pending = rows.length + Math.max(0, unseen || 0);
+  const quota = pending ? Math.ceil(pending / Math.max(1, days)) : 0;
+  return { pending, quota, today: rows.slice(0, quota).map(x => x.k) };
+}
+/* ---- S6 core END ---- */
+
+(function () {
+  if (typeof document === "undefined") return;
+  const SRSKEY = "atlas-srs-v1", EXAMKEY = "atlas-exam-v1", SEENKEY = "atlas-seen-v1";
+  const rd = k => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { return {}; } };
+  const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* พื้นที่เต็ม — S8 ดูแล */ } };
+  let EXAMS = rd(EXAMKEY), SEEN = rd(SEENKEY);
+  const saveExams = () => wr(EXAMKEY, EXAMS);
+  const saveSeen = () => wr(SEENKEY, SEEN);
+
+  /* ---- ตำแหน่งของคีย์: หัวข้อ → วิชา · กลุ่มศัพท์ → วิชา ---- */
+  let TSID = null;
+  const topicSid = tid => {
+    if (!TSID) { TSID = {}; Object.keys(DEEP).forEach(sid => topicsOf(sid).forEach(t => { TSID[t.id] = sid; })); }
+    return TSID[tid];
+  };
+  const modSid = mod => { for (const k in MODMAP) if (MODMAP[k] === mod) return k; return ALL_SUBJ.some(s => s.id === mod) ? mod : null; };
+  const sidOf = key => srsSidOf(key, topicSid, modSid);
+  const topicMeta = tid => { const sid = topicSid(tid); return sid ? topicsOf(sid).find(t => t.id === tid) : null; };
+
+  /* ---- วันสอบ: ivl ของคีย์ในวิชาที่ตั้งวันสอบไว้ ต้องไม่เลยวันก่อนสอบ ---- */
+  const examDay = sid => {
+    const e = EXAMS[sid], m = e && /^(\d{4})-(\d{2})-(\d{2})$/.exec(e.date || "");
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : null;
+  };
+  const daysLeft = (sid, now) => { const d = examDay(sid); return d == null ? null : srsDays(now, d); };
+  const capOf = (key, now) => {
+    const sid = sidOf(key), d = sid ? daysLeft(sid, now) : null;
+    return d == null || d < 1 ? null : Math.max(1, d - 1);
+  };
+
+  const SRS = srsCore({
+    load: () => rd(SRSKEY),
+    save: db => wr(SRSKEY, db),
+    now: () => Date.now(),
+    cap: capOf,
+    onGrade: (key, rec) => { try { document.dispatchEvent(new CustomEvent("srs:grade", { detail: { key, rec } })); } catch (e) { /* เบราว์เซอร์เก่า */ } },
+  });
+  window.SRS = SRS;
+  window.addEventListener("storage", e => {                                          // อีกแท็บ/นำเข้าไฟล์สำรอง → อ่านใหม่
+    if (e.key === SRSKEY) SRS.reload();
+    if (e.key === EXAMKEY) EXAMS = rd(EXAMKEY);
+    if (e.key === SEENKEY) SEEN = rd(SEENKEY);
+  });
+
+  /* ---- ตัวป้อน 1: ปุ่มติ๊ก «ทบทวนแล้ว» (หัวข้อ · สารบัญ · คลังศัพท์) → 4 เมื่อติ๊ก
+     ฟังแบบ capture บน #view (ปุ่มในคลังศัพท์หยุด bubbling) แล้วอ่าน DONE หลังตัวจัดการเดิมทำงานเสร็จ ---- */
+  view.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark], .card .tick");
+    if (!b || !view.contains(b)) return;
+    const key = b.dataset.key || b.dataset.mark || (b.closest(".card[data-k]") || { dataset: {} }).dataset.k;
+    if (key) setTimeout(() => { if (DONE.has(key)) SRS.grade(key, 4); }, 0);
+  }, true);
+
+  /* ---- ตัวป้อน 2: quiz2 ตอบครบทั้งบล็อก → z:<หัวข้อ>/<data-id ของ host>
+     (host ยังไม่มี data-id = ลำดับของ quiz2 ในหัวข้อ ตรงกับคีย์ใน atlas-quiz-v1) · ตัวรับของ v4 ยังเก็บผลเหมือนเดิม ---- */
+  document.addEventListener("std2:quiz", e => {
+    const host = e.target && e.target.closest ? e.target.closest('[data-demo="quiz2"]') : null;
+    const sec = host && host.closest("section.topic[id]");
+    const d = e.detail || {};
+    if (!sec || !d.total || d.done < d.total) return;
+    const hid = host.dataset.id || host.id || String([...sec.querySelectorAll('[data-demo="quiz2"]')].indexOf(host));
+    SRS.grade("z:" + sec.id + "/" + hid, srsQuizGrade(d.ok, d.total));
+  });
+
+  /* ---- ตัวป้อน 3: หัวข้อค้างแถบกลางจอรวม > 20 วินาทีในการเปิดหน้าครั้งนี้ → atlas-seen-v1[หัวข้อ] = { read: +1, t } ---- */
+  let SEEN_IO = null, SEEN_T = 0, seenCur = null, seenAcc = {};
+  const stopSeen = () => { if (SEEN_IO) SEEN_IO.disconnect(); SEEN_IO = null; clearInterval(SEEN_T); SEEN_T = 0; seenCur = null; };
+  function startSeen() {
+    stopSeen();
+    seenAcc = {};
+    if (!window.IntersectionObserver) return;
+    SEEN_IO = new IntersectionObserver(es => es.forEach(en => {
+      if (en.isIntersecting) seenCur = en.target.id;
+      else if (seenCur === en.target.id) seenCur = null;
+    }), { rootMargin: "-45% 0px -45% 0px" });
+    view.querySelectorAll("section.topic[id]").forEach(s => SEEN_IO.observe(s));
+    SEEN_T = setInterval(() => {
+      if (!seenCur || document.visibilityState === "hidden") return;
+      const a = seenAcc[seenCur] = (seenAcc[seenCur] || 0) + 5;
+      if (a !== 25) return;                                                         // เกิน 20 วินาที → นับหนึ่งครั้งต่อการเปิด
+      const r = SEEN[seenCur] || {};
+      SEEN[seenCur] = { read: (r.read || 0) + 1, t: Date.now() };
+      saveSeen();
+    }, 5000);
+  }
+  HOOKS.on("subject", () => startSeen());
+  HOOKS.on("clear", () => stopSeen());
+
+  /* ---- วันสอบ + แผนสอบ: D วันที่เหลือ → โควตาวันนี้ = ceil(ค้าง / D) แยก หัวข้อ / ปากเปล่า / ศัพท์ ---- */
+  const KINDS = { exam: "Экзамен · สอบ", zach: "Зачёт", zacho: "Зачёт с оценкой" };
+  const deepTopics = sid => (DEEP[sid] ? DEEP[sid].topics : []).filter(t => !/-map$/.test(t.id));
+  const modTerms = sid => { const m = MODULES.find(x => x.id === modOf(sid)); return m ? m.terms.map((t, i) => termKey(m, t, i)) : []; };
+  function examPlan(sid, now) {
+    now = now == null ? Date.now() : +now;
+    const e = EXAMS[sid], day = examDay(sid);
+    if (!e || day == null) return null;                                             // ไม่ตั้งวัน = ไม่มีแผน
+    const days = srsDays(now, day);
+    const plan = { sid, date: e.date, kind: KINDS[e.kind] ? e.kind : "exam", days, past: days < 0 };
+    if (plan.past) return plan;
+    const D = Math.max(1, days);
+    plan.final = day + 9 * 36e5 - now <= 48 * 36e5;                                   // 48 ชม.สุดท้าย (สอบเริ่มราว 9 โมงเช้าของวันสอบ)
+    const qKeys = Object.keys(SRS.all()).filter(k => k.startsWith("q:" + sid + "/"));
+    plan.topics = srsPlanCat(deepTopics(sid).map(t => "k:" + t.id), SRS.get, now, D, plan.final);
+    plan.oral = srsPlanCat(qKeys, SRS.get, now, D, plan.final, e.qa ? e.qa - qKeys.length : 0);
+    plan.oral.known = !!e.qa || qKeys.length > 0;                                   // จำนวนคำถามทั้งหมดรู้หลังเปิด #/cram ครั้งแรก
+    plan.terms = srsPlanCat(modTerms(sid), SRS.get, now, D, plan.final);
+    return plan;
+  }
+  window.examPlan = examPlan;
+  const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const fmtDate = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? +m[3] + " " + MONTHS[+m[2] - 1] + " " + m[1] : ""; };
+  const leftTxt = d => d === 0 ? "สอบวันนี้" : d === 1 ? "สอบพรุ่งนี้" : "อีก " + d + " วัน";
+  function planHtml(p) {
+    if (!p) return "";
+    if (p.past) return '<p class="s6-plan">วันสอบที่ตั้งไว้ผ่านไปแล้ว — เปลี่ยนวันหรือกดล้างวันสอบ</p>';
+    const part = (n, lab) => '<span><b>' + n + '</b> ' + lab + '</span>';
+    return '<p class="s6-plan"><span class="s6-pl">' + (p.final ? "48 ชม.สุดท้าย · ข้อที่ลืมบ่อยขึ้นก่อน" : "วันนี้ควรทวน") + '</span>' +
+      part(p.topics.quota, "หัวข้อ") +
+      (p.oral.known ? part(p.oral.quota, "ข้อปากเปล่า") : '<span>ปากเปล่า — เปิด<a href="#/cram/' + p.sid + '">โหมดคืนก่อนสอบ</a>หนึ่งครั้งเพื่อนับคำถาม</span>') +
+      (p.terms.pending ? part(p.terms.quota, "คำศัพท์") : "") +
+      '<span class="s6-pend">ค้างทั้งหมด ' + (p.topics.pending + p.oral.pending + p.terms.pending) + ' · แบ่งเท่า ๆ กันจนถึงวันสอบ</span></p>';
+  }
+
+  /* ---- หน้าวิชา: แถบของ S6 ใต้หัวหน้าวิชา (HOOKS.html "subject-head") ---- */
+  const subjDue = (sid, now) => SRS.due("", now).filter(r => sidOf(r.key) === sid);
+  const weakTopics = sid => deepTopics(sid).filter(t => { const r = quizOfTopic(t.id); return r && (r.pct < 80 || !r.full); });
+  function headInner(sid) {
+    const now = Date.now(), e = EXAMS[sid] || {}, d = daysLeft(sid, now);
+    return '<div class="s6-row"><button type="button" class="s6-due" data-s6open aria-expanded="false" aria-controls="s6panel">' +
+      'ครบกำหนดทวน <b>' + subjDue(sid, now).length + '</b> · ยังอ่อน <b>' + weakTopics(sid).length + '</b> <span aria-hidden="true">▾</span></button>' +
+      '<a class="s6-cram" href="#/cram/' + sid + '"' + (CRAM_OK.has(sid) ? '' : ' hidden') + '>☾ โหมดคืนก่อนสอบ</a></div>' +
+      '<div class="s6-panel" id="s6panel" hidden></div>' +
+      '<div class="s6-row s6-ex"><label>สอบวันที่ <input type="date" data-s6date value="' + escT(e.date || "") + '"></label>' +
+      '<select data-s6kind aria-label="ชนิดการสอบ">' + Object.keys(KINDS).map(k => '<option value="' + k + '"' + ((e.kind || "exam") === k ? ' selected' : '') + '>' + KINDS[k] + '</option>').join("") + '</select>' +
+      (d != null && d >= 0 ? '<span class="s6-left' + (d <= 3 ? ' near' : '') + '">' + leftTxt(d) + '</span>' : '') +
+      (e.date ? '<button type="button" class="s6-clr" data-s6clr>ล้างวันสอบ</button>' : '') + '</div>' +
+      planHtml(examPlan(sid, now));
+  }
+  HOOKS.html("subject-head", ctx => ctx && ctx.deep ? '<div class="s6-head" data-s6sid="' + ctx.s.id + '">' + headInner(ctx.s.id) + '</div>' : "");
+  function panelHtml(sid) {                                                        // รายการครบกำหนดของวิชา (รวมต่อหัวข้อ) + «จุดที่ยังอ่อน» ของบล็อก v4
+    const byTopic = new Map();
+    subjDue(sid, Date.now()).forEach(r => {
+      const m = /^[kz]:([^/:]+)/.exec(r.key) || /^q:[^/]+\/([^/]+)\//.exec(r.key);
+      const tid = m && topicMeta(m[1]) ? m[1] : r.key.startsWith("q:") ? "oral" : r.key.startsWith("g:") ? "terms" : "";
+      if (!byTopic.has(tid)) byTopic.set(tid, []);
+      byTopic.get(tid).push(r.key);
+    });
+    const n = [...byTopic.values()].reduce((a, x) => a + x.length, 0);
+    let h = '<div class="mcard"><div class="mcard-l">ครบกำหนดทวน · ' + n + '</div>';
+    if (!n) h += '<p>ยังไม่มีอะไรครบกำหนด — ติ๊ก ✓ หัวข้อที่อ่านแล้วหรือทำควิซให้ครบบล็อก ระบบจะนัดทวนให้เอง (1 วัน → 3 วัน → ห่างขึ้นตามที่จำได้)</p>';
+    else h += '<ul class="s6-dl">' + [...byTopic].map(([tid, keys]) => {
+      const t = topicMeta(tid);
+      const name = t ? escT(t.th) : tid === "oral" ? "คำถามปากเปล่า" : tid === "terms" ? "คำศัพท์" : "หัวข้อที่ติ๊กไว้";
+      const href = t ? "#/" + sid + "/" + tid : tid === "oral" ? oralHref(sid) : tid === "terms" ? "#/flash" : "#/" + sid;
+      return '<li><a href="' + href + '">' + name + '</a><small>' + keys.length + ' รายการ</small>' +
+        '<button type="button" data-s6g="4" data-s6k="' + escT(keys.join(" ")) + '">ทวนแล้ว ✓</button></li>';
+    }).join("") + '</ul>';
+    return h + '</div><div class="s6-weak"></div>';
+  }
+  function bindHead(box, sid) {
+    const refresh = open => { box.innerHTML = headInner(sid); bindHead(box, sid); if (open) box.querySelector("[data-s6open]").click(); };
+    const btn = box.querySelector("[data-s6open]"), panel = box.querySelector(".s6-panel");
+    btn.addEventListener("click", () => {
+      const open = btn.getAttribute("aria-expanded") !== "true";
+      btn.setAttribute("aria-expanded", String(open));
+      panel.hidden = !open;
+      if (!open) { panel.innerHTML = ""; return; }
+      panel.innerHTML = panelHtml(sid);
+      if (TOCX.sid === sid) { try { margWeak(panel.querySelector(".s6-weak")); } catch (e) { /* ของบล็อก v4 — เรียกอ่านอย่างเดียว */ } }
+      panel.querySelectorAll("[data-s6g]").forEach(b => b.addEventListener("click", () => {
+        b.dataset.s6k.split(" ").forEach(k => SRS.grade(k, +b.dataset.s6g));
+        refresh(true);
+      }));
+    });
+    const date = box.querySelector("[data-s6date]"), kind = box.querySelector("[data-s6kind]"), clr = box.querySelector("[data-s6clr]");
+    const save = () => {
+      if (date.value) EXAMS[sid] = Object.assign({}, EXAMS[sid], { date: date.value, kind: kind.value });
+      else delete EXAMS[sid];
+      saveExams();
+      refresh();
+    };
+    date.addEventListener("change", save);
+    kind.addEventListener("change", () => { if (date.value) save(); });
+    if (clr) clr.addEventListener("click", () => { date.value = ""; save(); });
+  }
+  /* ปุ่มโหมดคืนก่อนสอบเห็นเฉพาะวิชาที่มี .k-sum หรือ details.qa — รู้จากหัวข้อที่เติมแล้ว (hook fill)
+     หรือดูไฟล์หัวข้อต้น ๆ ของวิชาหลังเปิดหน้า 1,5 วินาที (แคช dbGet เดียวกับตัวเติมหัวข้อ ไม่โหลดซ้ำ) */
+  const CRAM_OK = new Set(), HAS_CRAM = /class="[^"]*\b(k-sum|qa)\b/;
+  const showCram = sid => {
+    CRAM_OK.add(sid);
+    const a = view.querySelector('.s6-head[data-s6sid="' + sid + '"] .s6-cram');
+    if (a) a.hidden = false;
+  };
+  let PROBE_T = 0;
+  HOOKS.on("subject", (s, deep) => {
+    const box = deep && view.querySelector('.s6-head[data-s6sid="' + s.id + '"]');
+    if (!box) return;
+    bindHead(box, s.id);
+    if (CRAM_OK.has(s.id)) return;
+    clearTimeout(PROBE_T);
+    PROBE_T = setTimeout(async () => {
+      for (const t of deep.topics.slice(0, 4)) {
+        if (CRAM_OK.has(s.id) || state.id !== s.id) return;
+        const d = await dbGet("t", s.id + "__" + t.id);
+        if (d && HAS_CRAM.test(d.html || "")) { showCram(s.id); return; }
+      }
+    }, 1500);
+  });
+  HOOKS.on("fill", (el, t, sid) => {                                               // นับเฉพาะหัวข้อฉบับเต็ม (หน้า #/cram ใช้ DEEP[sid].topics)
+    if (sid && !CRAM_OK.has(sid) && DEEP[sid] && DEEP[sid].topics.includes(t) && el.querySelector(".k-sum, details.qa")) showCram(sid);
+  });
+  HOOKS.on("clear", () => clearTimeout(PROBE_T));
+
+  /* ---- หน้าแรก: การ์ด «วันนี้ทวนอะไร» (HOOKS.html "overview-top") — รายการพร้อมเหตุผล + ปุ่มไปทำเลย + ชิปวันสอบ ---- */
+  const oralHref = sid => PAGE_DEFS.oral ? "#/oral/" + sid : "#/cram/" + sid;
+  const subjLab = sid => { const s = ALL_SUBJ.find(x => x.id === sid); return (ICONS[sid] ? ICONS[sid] + " " : "") + (s ? s.ru : sid); };
+  function todayItems(now) {
+    const map = new Map();
+    const item = (id, base) => { if (!map.has(id)) map.set(id, Object.assign({ id, why: [], keys: [], score: 0 }, base)); return map.get(id); };
+    const topicItem = tid => {
+      const sid = topicSid(tid), t = topicMeta(tid);
+      return sid && t ? item("t:" + tid, { sid, title: t.th, sub: subjLab(sid), href: "#/" + sid + "/" + tid }) : null;
+    };
+    const late = r => { const d = srsDays(r.due, now); return d >= 1 ? " · เลยมา " + d + " วัน" : ""; };
+    const oral = {}, rough = {}, terms = [];
+    SRS.due("", now).forEach(r => {                                                // 1) ครบกำหนดตาม SRS
+      const k = r.key;
+      if (k.startsWith("q:")) { const sid = sidOf(k); if (sid) (oral[sid] = oral[sid] || []).push(k); return; }
+      if (k.startsWith("g:")) { terms.push(k); return; }
+      const m = /^[kz]:([^/:]+)(:\d+)?/.exec(k);
+      if (!m) return;
+      if (m[2]) { (rough[m[1]] = rough[m[1]] || []).push(k); return; }
+      const it = topicItem(m[1]);
+      if (!it) return;
+      it.keys.push(k);
+      const w = k[0] === "z" ? "ควิซครบกำหนดทวน" : "ครบกำหนด SRS";
+      if (!it.why.some(x => x.startsWith(w))) it.why.push(w + late(r));
+      it.score = Math.max(it.score, 40 + srsDays(r.due, now) + 3 * r.lapses);
+    });
+    Object.keys(oral).forEach(sid => {
+      const it = item("q:" + sid, { sid, title: "ซ้อมปากเปล่า " + oral[sid].length + " ข้อ", sub: subjLab(sid), href: oralHref(sid), keys: oral[sid] });
+      it.why.push("ครบกำหนด SRS");
+      it.score = 38 + Math.min(10, oral[sid].length);
+    });
+    Object.keys(rough).forEach(sid => {
+      const it = item("s:" + sid, { sid, title: "หัวข้อที่ติ๊กไว้ " + rough[sid].length + " หัวข้อ", sub: subjLab(sid), href: "#/" + sid, keys: rough[sid] });
+      it.why.push("ครบกำหนด SRS");
+      it.score = 36;
+    });
+    if (terms.length) {
+      const it = item("g", { title: "คำศัพท์ " + terms.length + " คำ", sub: "Flashcard", href: "#/flash", keys: terms });
+      it.why.push("ครบกำหนด SRS");
+      it.score = 35 + Math.min(10, terms.length);
+    }
+    Object.keys(QUIZ).forEach(tid => {                                             // 2) ควิซยังอ่อน (อ่านผลเดิมใน atlas-quiz-v1)
+      const r = quizOfTopic(tid);
+      if (!r || (r.full && r.pct >= 80)) return;
+      const it = topicItem(tid);
+      if (!it) return;
+      it.why.unshift(r.full ? "ควิซ " + r.pct + " %" : "ควิซยังไม่ครบ " + r.done + "/" + r.n);
+      it.score = Math.max(it.score, 30 + (100 - r.pct) / 4);
+    });
+    DONE.forEach(k => {                                                            // 3) ติ๊กแล้วแต่ไม่ได้เปิดนาน (≥ 10 วัน)
+      const m = /^k:([^:]+)$/.exec(k);
+      if (!m) return;
+      const s = SEEN[m[1]], r = SRS.get(k), last = Math.max((s && s.t) || 0, (r && r.last) || 0);
+      const d = last ? srsDays(last, now) : 0;
+      if (d < 10) return;
+      const it = topicItem(m[1]);
+      if (!it) return;
+      it.why.push("ติ๊กแล้ว " + d + " วันไม่ได้เปิด");
+      if (!it.keys.includes(k)) it.keys.push(k);
+      it.score = Math.max(it.score, 20 + d / 2);
+    });
+    Object.keys(EXAMS).forEach(sid => {                                            // 4) สอบใกล้ (≤ 21 วัน): ของวิชานั้นขึ้นก่อน + แถวแผนสอบ
+      const p = examPlan(sid, now), s = ALL_SUBJ.find(x => x.id === sid);
+      if (!p || p.past || p.days > 21 || !s) return;
+      map.forEach(it => { if (it.sid === sid) it.score += 30 - p.days; });
+      if (!(p.topics.quota + p.oral.quota + p.terms.quota)) return;
+      const it = item("e:" + sid, { sid, title: "แผนสอบ: " + s.th, sub: subjLab(sid), href: "#/cram/" + sid, plan: true });
+      it.why.push(leftTxt(p.days) + " · วันนี้ หัวข้อ " + p.topics.quota + (p.oral.known ? " · ปากเปล่า " + p.oral.quota : "") + (p.terms.pending ? " · ศัพท์ " + p.terms.quota : ""));
+      it.score = 100 - p.days;
+    });
+    return [...map.values()].filter(it => it.why.length).sort((a, b) => b.score - a.score);
+  }
+  function examChips(now) {
+    return Object.keys(EXAMS).map(sid => ({ sid, d: daysLeft(sid, now), s: ALL_SUBJ.find(x => x.id === sid) }))
+      .filter(x => x.s && x.d != null && x.d >= 0).sort((a, b) => a.d - b.d)
+      .map(x => '<a class="s6-chip' + (x.d <= 3 ? ' near' : '') + '" href="#/' + x.sid + '">' + (ICONS[x.sid] ? '<span aria-hidden="true">' + ICONS[x.sid] + '</span> ' : '') +
+        escT(x.s.th) + ' · <b>' + leftTxt(x.d) + '</b></a>').join("");
+  }
+  const SHOW = 5;
+  function todayHtml() {
+    const now = Date.now(), items = todayItems(now), chips = examChips(now);
+    if (!items.length && !chips) return "";                                        // ผู้อ่านใหม่ยังไม่มีข้อมูล — ไม่ต้องมีการ์ด
+    const btns = it => it.keys.length
+      ? '<button type="button" data-s6g="4" data-s6k="' + escT(it.keys.join(" ")) + '" title="ทวนแล้ว — เลื่อนกำหนดครั้งถัดไป">ทวนแล้ว ✓</button>' +
+        '<button type="button" data-s6g="2" data-s6k="' + escT(it.keys.join(" ")) + '" title="ยังไม่แม่น — นัดทวนอีกพรุ่งนี้">ยังไม่แม่น</button>' : '';
+    const li = (it, i) => '<li class="s6-it' + (i >= SHOW ? ' more' : '') + (it.plan ? ' plan' : '') + '"' + (i >= SHOW ? ' hidden' : '') + '>' +
+      '<div class="s6-what"><b>' + escT(it.title) + '</b><small>' + escT(it.sub || "") + '</small>' +
+      '<span class="s6-why">' + it.why.map(w => '<i>' + escT(w) + '</i>').join("") + '</span></div>' +
+      '<div class="s6-acts"><a class="s6-go" href="' + it.href + '">ไปทำเลย →</a>' + btns(it) + '</div></li>';
+    return '<section class="s6-today" aria-labelledby="s6tH"><div class="nowhead"><h2 id="s6tH">วันนี้ทวนอะไร</h2>' +
+      '<span class="year-note">' + (items.length ? items.length + ' รายการ · จากที่ติ๊ก ผลควิซ และกำหนดทวนในเครื่องนี้' : 'วันนี้ยังไม่มีอะไรครบกำหนด') + '</span></div>' +
+      (chips ? '<div class="s6-chips" aria-label="วันสอบที่ตั้งไว้">' + chips + '</div>' : '') +
+      (items.length ? '<ol class="s6-list">' + items.map(li).join("") + '</ol>' : '') +
+      (items.length > SHOW ? '<button type="button" class="s6-more" data-s6more aria-expanded="false">ดูทั้งหมด (' + items.length + ')</button>' : '') +
+      '</section>';
+  }
+  function bindToday() {
+    const sec = view.querySelector(".s6-today");
+    if (!sec) return;
+    sec.querySelectorAll("[data-s6g]").forEach(b => b.addEventListener("click", () => {
+      b.dataset.s6k.split(" ").forEach(k => SRS.grade(k, +b.dataset.s6g));
+      const tmp = document.createElement("div");
+      tmp.innerHTML = todayHtml();
+      if (tmp.firstElementChild) { sec.replaceWith(tmp.firstElementChild); bindToday(); }
+      else sec.remove();
+    }));
+    const more = sec.querySelector("[data-s6more]");
+    if (more) more.addEventListener("click", () => {
+      const open = more.getAttribute("aria-expanded") !== "true";
+      sec.querySelectorAll(".s6-it.more").forEach(li => { li.hidden = !open; });
+      more.setAttribute("aria-expanded", String(open));
+      more.textContent = open ? "ย่อ" : "ดูทั้งหมด (" + sec.querySelectorAll(".s6-it").length + ")";
+    });
+  }
+  HOOKS.html("overview-top", todayHtml);
+  HOOKS.on("overview", bindToday);
+
+  /* ---- หน้าความก้าวหน้า #/progress: การ์ดสรุปกำหนดทวน (HOOKS.html "progress") ---- */
+  HOOKS.html("progress", () => {
+    const now = Date.now(), all = SRS.all(), keys = Object.keys(all), wk = srsAddDays(now, 8);
+    const cnt = (pre, f) => keys.filter(k => k.startsWith(pre) && f(all[k])).length;
+    const row = (lab, pre) => '<tr><th scope="row">' + lab + '</th><td>' + cnt(pre, r => r.due <= now) + '</td><td>' +
+      cnt(pre, r => r.due > now && r.due < wk) + '</td><td>' + cnt(pre, () => true) + '</td></tr>';
+    const ex = Object.keys(EXAMS).map(sid => ({ sid, p: examPlan(sid, now), s: ALL_SUBJ.find(x => x.id === sid) }))
+      .filter(x => x.s && x.p && !x.p.past).sort((a, b) => a.p.days - b.p.days);
+    return '<section class="s6-prog" aria-labelledby="s6pH"><h3 id="s6pH">กำหนดทวน</h3>' +
+      (keys.length ? '<div class="tw"><table class="s6-tab"><thead><tr><th scope="col">ชนิด</th><th scope="col">ครบวันนี้</th><th scope="col">7 วันข้างหน้า</th><th scope="col">อยู่ในตาราง</th></tr></thead><tbody>' +
+        row("หัวข้อ", "k:") + row("ควิซ", "z:") + row("ปากเปล่า", "q:") + row("คำศัพท์", "g:") + '</tbody></table></div>'
+        : '<p>ยังไม่มีอะไรในตารางทวน — ติ๊ก ✓ หัวข้อที่อ่านแล้ว ทำควิซให้ครบบล็อก หรือกด «จำได้ / ยังไม่ได้» ในโหมดคืนก่อนสอบ</p>') +
+      (ex.length ? '<ul class="s6-exl">' + ex.map(x => '<li><a href="#/' + x.sid + '">' + escT(x.s.th) + '</a> · ' + KINDS[x.p.kind].split(" · ")[0] + ' ' +
+        fmtDate(x.p.date) + ' · ' + leftTxt(x.p.days) + '</li>').join("") + '</ul>' : '') +
+      '</section>';
+  });
+
+  /* ---- หน้า #/cram/<วิชา> — คืนก่อนสอบ: หัวส่วน · สรุป 1 นาที · กับดัก · คำถามปากเปล่า ของทุกหัวข้อในหน้าเดียว
+     ดึงไฟล์หัวข้อด้วย dbGet → template (ไม่รันสคริปต์ ไม่โหลดรูป) → คัดเฉพาะกล่องเหล่านี้ ถอดแบบจำลอง/รูป/สคริปต์ → ไม่มี canvas
+     วิชารูปแบบเดิม: details.qa + กล่อง .call ที่ป้ายมีคำว่า «กับดัก»/«ออกสอบ» · เรียงหัวข้อ ยังอ่อน > ครบกำหนด > ยังไม่อ่าน ขึ้นก่อน ---- */
+  let CRAM_JOB = 0;
+  HOOKS.on("clear", () => { CRAM_JOB++; });
+  const CR_SEL = "header.sec-h, .k-sum, .k-trap, details.qa, .call";
+  const CR_STRIP = "[data-demo], figure, script, canvas, video, audio, iframe, img, details.deep, .k-exp";
+  const trapCall = el => { const l = el.querySelector(":scope > .lbl"); return !!l && /กับดัก|ออกสอบ/.test(l.textContent); };
+  const qaIdOf = d => {                                                            // ข้อตกลงร่วม: id เดิม หรือ "qa-" + stableId(คำถาม)
+    if (d.id) return d.id;
+    const s = d.querySelector(":scope > summary"), q = s && (s.querySelector(".qa-q") || s);
+    return "qa-" + stableId(q ? q.innerHTML : "");
+  };
+  const anchorOf = el => { for (let x = el; x; x = x.parentElement) if (x.id) return x.id; return ""; };
+  const nextTxt = r => r ? "ทวนครั้งหน้า " + new Date(r.due).toLocaleDateString("th-TH", { day: "numeric", month: "short" }) : "";
+  function topicState(sid, t, dueKeys) {
+    const why = [], r = quizOfTopic(t.id);
+    let score = 0;
+    if (r && (r.pct < 80 || !r.full)) { why.push(r.full ? "ควิซ " + r.pct + " %" : "ควิซยังไม่ครบ " + r.done + "/" + r.n); score += 4; }
+    const n = dueKeys.filter(k => k === "k:" + t.id || k.startsWith("z:" + t.id + "/") || k.startsWith("q:" + sid + "/" + t.id + "/")).length;
+    if (n) { why.push("ครบกำหนดทวน " + n); score += 2; }
+    if (!DONE.has("k:" + t.id) && !SRS.get("k:" + t.id) && !SEEN[t.id]) { why.push("ยังไม่อ่าน"); score += 1; }
+    return { why, score };
+  }
+  function cramExtract(sid, t, html) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html;
+    const root = tpl.content;
+    const top = root.children.length === 1 && root.firstElementChild.tagName === "DIV" ? root.firstElementChild.className : "";
+    const picked = [...root.querySelectorAll(CR_SEL)].filter(el => !el.matches(".call") || trapCall(el));
+    const items = picked.filter(el => !picked.some(p => p !== el && p.contains(el)));
+    const now = Date.now();
+    let h = "", qa = 0, lastSec = "";
+    items.forEach(el => {
+      const a = anchorOf(el) || lastSec;                                             // id ที่มีจริงในไฟล์หัวข้อ (ตัวเอง บรรพบุรุษ หรือหัวส่วนก่อนหน้า)
+      const more = '<a class="cr-more" href="#/' + sid + '/' + t.id + (a ? "/" + encodeURIComponent(a) : "") + '">อ่านเต็ม ›</a>';
+      if (el.matches("header.sec-h")) {
+        if (el.id) lastSec = el.id;
+        const no = el.querySelector(".sec-no"), tt = el.querySelector(".sec-t"), th = el.querySelector(".sec-th");
+        h += '<div class="cr-it cr-sec"><b lang="ru">' + escT(((no ? no.textContent + " " : "") + (tt || el).textContent).replace(/\s+/g, " ").trim()) + '</b>' +
+          (th ? '<span>' + escT(th.textContent.trim()) + '</span>' : '') + more + '</div>';
+        return;
+      }
+      const c = el.cloneNode(true);
+      c.querySelectorAll(CR_STRIP).forEach(x => x.remove());
+      [c, ...c.querySelectorAll("[id]")].forEach(x => x.removeAttribute("id"));
+      if (el.matches("details.qa")) {
+        qa++;
+        const key = "q:" + sid + "/" + t.id + "/" + qaIdOf(el), r = SRS.get(key);
+        c.classList.add("cr-q");
+        if (r) c.classList.add(r.due <= now ? "cr-due" : "cr-okq");
+        c.setAttribute("data-srs", key);
+        const g = document.createElement("div");
+        g.className = "cr-qg";
+        g.innerHTML = '<button type="button" data-crg="4">จำได้</button><button type="button" data-crg="1">ยังไม่ได้</button>' +
+          '<span class="cr-qs" role="status">' + nextTxt(r) + '</span>' + more;
+        c.appendChild(g);
+        h += '<div class="cr-it cr-qa">' + c.outerHTML + '</div>';
+        return;
+      }
+      const lab = c.querySelector(":scope > .blk-l, :scope > .lbl");                // «อ่านเต็ม» อยู่ในแถวป้ายของกล่อง ไม่เพิ่มบรรทัด
+      if (lab) lab.insertAdjacentHTML("beforeend", more);
+      h += '<div class="cr-it cr-' + (el.matches(".k-sum") ? "sum" : "trap") + '">' + c.outerHTML + (lab ? '' : '<p class="cr-src">' + more + '</p>') + '</div>';
+    });
+    return { html: h ? '<div class="cr-b' + (top ? " " + escT(top) : "") + '">' + h + '</div>' : "", qa };
+  }
+  function cramRender(st) {
+    const sid = (st.seg || [])[0], s = ALL_SUBJ.find(x => x.id === sid), deep = DEEP[sid];
+    const job = ++CRAM_JOB;
+    if (!s || !deep) {
+      view.innerHTML = '<div class="wrap cram"><div class="page-head"><p class="eyebrow">Перед экзаменом</p><h1 class="page-title">โหมดคืนก่อนสอบ</h1>' +
+        '<p class="lede">ใช้ได้กับวิชาที่มีเนื้อหาเต็มเท่านั้น</p><p><a href="#/">กลับหน้าแรก</a></p></div></div>';
+      return;
+    }
+    const now = Date.now(), p = examPlan(sid, now), dueKeys = SRS.due("", now).map(r => r.key);
+    const rows = deep.topics.map((t, i) => Object.assign({ t, i }, topicState(sid, t, dueKeys))).sort((a, b) => b.score - a.score || a.i - b.i);
+    const FILTERS = [["all", "ทั้งหมด"], ["sum", "สรุป"], ["trap", "กับดัก"], ["qa", "ปากเปล่า"], ["due", "เฉพาะหัวข้อที่ต้องทวน"]];
+    view.innerHTML = '<div class="wrap cram"><nav class="crumb" aria-label="ตำแหน่ง"><a href="#/">ภาพรวมหลักสูตร</a><span>›</span><a href="#/' + sid + '">' + escT(s.th) + '</a><span>›</span><b>คืนก่อนสอบ</b></nav>' +
+      '<div class="page-head"><p class="eyebrow">Перед экзаменом · คืนก่อนสอบ</p>' +
+      '<h1 class="page-title">' + (ICONS[sid] ? '<span class="ticon">' + ICONS[sid] + '</span>' : '') + escT(s.ru) + '</h1>' +
+      '<div class="page-title-th">' + escT(s.th) + ' · สรุป 1 นาที กับดักข้อสอบ และคำถามปากเปล่า ของทุกหัวข้อในหน้าเดียว</div>' +
+      '<p class="lede">หัวข้อที่ควิซยังอ่อน ครบกำหนดทวน หรือยังไม่ได้อ่าน ขึ้นก่อน · เปิดคำถามแล้วลองตอบเองก่อนดูคำตอบ จากนั้นกด «จำได้» หรือ «ยังไม่ได้» ' +
+      'ระบบจะนัดทวนข้อนั้นให้ · «อ่านเต็ม» พากลับไปที่ส่วนนั้นในฉบับเต็ม</p>' +
+      (p && !p.past ? '<p><span class="s6-left' + (p.days <= 3 ? ' near' : '') + '">' + escT(KINDS[p.kind].split(" · ")[0]) + ' ' + fmtDate(p.date) + ' · ' + leftTxt(p.days) + '</span></p>' + planHtml(p) : '') +
+      '<div class="cr-bar" role="group" aria-label="แสดงเฉพาะ">' + FILTERS.map((x, i) =>
+        '<button type="button" data-cf="' + x[0] + '"' + (i ? '' : ' class="on"') + ' aria-pressed="' + !i + '">' + x[1] + '</button>').join("") +
+      '<span class="m" id="crStat" role="status">กำลังโหลด 0/' + rows.length + ' หัวข้อ</span></div></div>' +
+      '<div class="cr-list">' + rows.map(x => '<section class="cr-t' + (x.score ? " hot" : "") + '" data-tid="' + x.t.id + '" aria-labelledby="cr-h-' + x.t.id + '">' +
+        '<header class="cr-h"><span class="cr-n">' + (x.i + 1) + '</span><div class="cr-tt"><h2 lang="ru" id="cr-h-' + x.t.id + '">' + escT(x.t.ru) + '</h2><div class="th">' + escT(x.t.th) + '</div>' +
+        (x.why.length ? '<div class="cr-why">' + x.why.map(w => '<i>' + escT(w) + '</i>').join("") + '</div>' : '') + '</div>' +
+        '<div class="cr-ha"><a href="#/' + sid + '/' + x.t.id + '">อ่านเต็ม ›</a>' +
+        '<button type="button" data-crk="k:' + x.t.id + '" title="ทวนหัวข้อนี้แล้ว — นัดทวนครั้งถัดไป และติ๊กทบทวนแล้ว">ทวนแล้ว ✓</button></div></header>' +
+        '<div class="cr-body"><p class="cr-load">กำลังโหลด…</p></div></section>').join("") + '</div></div>';
+    const list = view.querySelector(".cr-list"), stat = view.querySelector("#crStat");
+    view.querySelectorAll("[data-cf]").forEach(b => b.addEventListener("click", () => {
+      view.querySelectorAll("[data-cf]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+      list.className = "cr-list" + (b.dataset.cf === "all" ? "" : " f-" + b.dataset.cf);
+    }));
+    list.addEventListener("click", e => {
+      const kb = e.target.closest("[data-crk]");
+      if (kb) {
+        const k = kb.dataset.crk;
+        SRS.grade(k, 4);
+        if (!DONE.has(k)) toggleKey(k);                                              // ติ๊ก «ทบทวนแล้ว» ให้ตรงกับหน้าวิชา
+        kb.textContent = "ทวนแล้ว ✓ · " + nextTxt(SRS.get(k));
+        kb.disabled = true;
+        return;
+      }
+      const gb = e.target.closest("[data-crg]");
+      const d = gb && gb.closest("details[data-srs]");
+      if (!d) return;
+      const g = +gb.dataset.crg, r = SRS.grade(d.getAttribute("data-srs"), g);
+      d.classList.remove("cr-due");
+      d.classList.toggle("cr-okq", g >= 3);
+      d.classList.toggle("cr-miss", g < 3);
+      const stt = d.querySelector(".cr-qs");
+      if (stt) stt.textContent = (g >= 3 ? "จำได้ · " : "นัดทวนพรุ่งนี้ · ") + nextTxt(r);
+    });
+    let done = 0, qaN = 0, empty = 0;
+    const one = async x => {
+      const d = await dbGet("t", sid + "__" + x.t.id);
+      if (job !== CRAM_JOB) return;
+      const sec = list.querySelector('.cr-t[data-tid="' + x.t.id + '"]'), body = sec && sec.querySelector(".cr-body");
+      if (!body) return;
+      if (!d || typeof d.html !== "string") {
+        body.innerHTML = '<p class="cr-load">โหลดหัวข้อนี้ไม่สำเร็จ — <a href="#/' + sid + '/' + x.t.id + '">เปิดในฉบับเต็ม</a></p>';
+        return;
+      }
+      const r = cramExtract(sid, x.t, d.html);
+      qaN += r.qa;
+      if (r.html) body.innerHTML = r.html;
+      else { empty++; sec.classList.add("empty"); body.innerHTML = '<p class="cr-load">หัวข้อนี้ไม่มีสรุป กับดัก หรือคำถามปากเปล่า — อ่านในฉบับเต็ม</p>'; }
+    };
+    (async () => {
+      const q = rows.slice();
+      const worker = async () => {
+        while (q.length && job === CRAM_JOB) {
+          await one(q.shift());
+          done++;
+          if (job === CRAM_JOB && done < rows.length) stat.textContent = "กำลังโหลด " + done + "/" + rows.length + " หัวข้อ";
+        }
+      };
+      await Promise.all([worker(), worker(), worker(), worker()]);                   // ขนานทีละ 4 ไฟล์ ตามลำดับที่แสดง
+      if (job !== CRAM_JOB) return;
+      stat.textContent = rows.length + " หัวข้อ · คำถามปากเปล่า " + qaN + " ข้อ" + (empty ? " · " + empty + " หัวข้อไม่มีสรุป/คำถาม" : "");
+      if (qaN) CRAM_OK.add(sid);
+      if (EXAMS[sid] && qaN && EXAMS[sid].qa !== qaN) { EXAMS[sid].qa = qaN; saveExams(); }   // แผนสอบรู้จำนวนคำถามปากเปล่าทั้งหมดแล้ว
+      list.classList.add("ready");
+    })();
+  }
+  registerPage("cram", {
+    render: cramRender,
+    title: st => { const s = ALL_SUBJ.find(x => x.id === (st.seg || [])[0]); return "คืนก่อนสอบ" + (s ? " — " + s.th : ""); },
+  });
+})();
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
 /* ===== SLOT S7 END ===== */
@@ -72235,37 +72864,6 @@ const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return 
 const keyBytes = k => { const v = lsGet(k); return v === null ? 0 : (k.length + v.length) * 2; };   // localStorage เก็บเป็น UTF-16
 const fmtBytes = b => b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(1).replace(".", ",") + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB";
 const escS8 = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-/* ---- id ถาวรของศัพท์: ย้ายคีย์รุ่น 1 ("g:" + กลุ่ม + "-" + ลำดับ) → รุ่น 2 (termKey ใหม่) ตามลำดับปัจจุบันของ MODULES ----
-   ทำครั้งเดียวเมื่อ atlas-meta-v1.schema < 2 (รวมไฟล์สำรองรุ่นเก่าที่นำเข้า — progressImport ตั้ง schema ตามไฟล์ แล้วหน้าโหลดใหม่มาย้ายที่นี่)
-   คีย์ที่ไม่ตรงกับคำใดในตอนนี้คงไว้ตามเดิม (ไม่ลบข้อมูลผู้อ่าน) · เขียนไม่สำเร็จ → ไม่ขยับ schema ครั้งหน้าย้ายใหม่ (ย้ายซ้ำไม่เปลี่ยนคีย์ที่ย้ายแล้ว) */
-function migrateTermKeys(set) {
-  const map = new Map();
-  MODULES.forEach(m => m.terms.forEach((t, i) => map.set("g:" + m.id + "-" + i, termKey(m, t, i))));
-  const out = new Set();
-  let n = 0;
-  set.forEach(k => { const nk = map.get(k); if (nk !== undefined) n++; out.add(nk !== undefined ? nk : k); });
-  return { out, n };
-}
-const readMeta = () => { try { const v = JSON.parse(lsGet(METAKEY)); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } };
-function learnerStart() {
-  const meta = readMeta(), now = new Date().toISOString();
-  if (!meta.created) meta.created = now;
-  if (!(meta.schema >= 2)) {
-    let ok = true;
-    [[DONE, persist], [BM, persistBM]].forEach(([set, save]) => {
-      const r = migrateTermKeys(set);
-      if (!r.n) return;
-      set.clear(); r.out.forEach(k => set.add(k));
-      ok = save() && ok;
-    });
-    meta.schema = ok ? SCHEMA : meta.schema || 1;
-  }
-  meta.lastActive = now;
-  store(METAKEY, meta);
-  return meta;
-}
-learnerStart();
 
 /* แจ้งครั้งเดียวต่อการเปิดหน้า — แถบเล็กด้านล่าง ลิงก์ไปจัดการพื้นที่ที่ #/progress */
 let S8_WARNED = false;
