@@ -56,32 +56,13 @@
  },
  "owner-talk": {
   "asu__asu-13.json": 1,
-  "asu__asu-map.json": 2,
-  "asu__asu-s4.json": 2,
   "elob__elob-lr1.json": 4,
-  "elob__elob-lr3.json": 2,
   "elob__elob-lr4.json": 2,
   "elob__elob-pz1.json": 2,
   "elob__elob-pz2.json": 3,
   "elob__elob-pz3.json": 1,
   "elob__elob-rgr.json": 4,
-  "nadezh__nas-1.json": 1,
-  "nadezh__nas-map.json": 4,
-  "nadezh__nas-pz1.json": 1,
-  "nadezh__nas-pz10.json": 1,
-  "nadezh__nas-pz11.json": 1,
-  "nadezh__nas-pz2.json": 1,
-  "nadezh__nas-pz3.json": 1,
-  "nadezh__nas-pz4.json": 1,
-  "nadezh__nas-pz5.json": 1,
-  "nadezh__nas-pz6.json": 1,
-  "nadezh__nas-pz7.json": 1,
-  "nadezh__nas-pz8.json": 1,
-  "nadezh__nas-pz9.json": 1,
   "nadezh__nas-sem.json": 4,
-  "ppo__ppo-14.json": 1,
-  "ppo__ppo-pz.json": 1,
-  "surn__surn-17.json": 1,
-  "tau__tau-map.json": 2
+  "ppo__ppo-14.json": 1
  }
 }

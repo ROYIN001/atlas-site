@@ -19,7 +19,7 @@ const ALLOW_FILE = path.join(ROOT, 'tests', 'content-allow.json');
 const ALLOW = JSON.parse(fs.readFileSync(ALLOW_FILE, 'utf8'));
 // เพดานของรายการยกเว้น (28 ก.ย. 2026) — ลดได้เท่านั้น: แก้เนื้อหาแล้วลดตัวเลขนี้ตามจำนวนที่เหลือจริง
 // ห้ามเพิ่ม — หัวข้อใหม่ต้องผ่านกติกาตั้งแต่แรก
-const CAP = { 'source-line': 37, 'thai-cyrillic': 15, 'owner-talk': 48 };
+const CAP = { 'source-line': 37, 'thai-cyrillic': 15, 'owner-talk': 22 };
 
 const topics = fs.readdirSync(path.join(ROOT, 'data', 't')).filter(f => f.endsWith('.json')).sort()
   .map(file => {
