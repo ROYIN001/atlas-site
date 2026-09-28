@@ -3803,6 +3803,19 @@ html.s2-modal { overflow: hidden; }
   dialog.tsheet { margin: auto 0 0; width: 100vw; border-radius: 16px 16px 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
 }
 
+/* ---- แถบหลบตอนอ่าน (html.reading ใส่โดย S2 เฉพาะจอ ≤ 900 px) ---- */
+@media (max-width: 900px) {
+  .topbar, #bbar { transition: transform .22s ease; }
+  .topic-nav { transition: top .22s ease; }
+  html.reading .topbar { transform: translateY(-100%); }
+  html.reading #bbar { transform: translateY(100%); }
+  html.reading .topic-nav { top: 0; }
+  html.reading #topBtn { bottom: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar, #bbar, .topic-nav { transition: none !important; }
+}
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* ===== SLOT S3 END ===== */

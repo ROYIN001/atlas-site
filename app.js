@@ -71955,6 +71955,36 @@ HOOKS.on("go", st => {
   document.querySelectorAll('#bbar [data-bb="practice"], #nav [data-nav="practice"]').forEach(a => { if (a.getAttribute("href") !== ph) a.href = ph; });
 });
 
+/* ---- แถบหลบตอนอ่าน (≤ 900 px): เลื่อนลงต่อเนื่อง > 80 px → html.reading ซ่อนแถบบน/แถบล่าง ชิปขึ้นไปชิดขอบบน
+   เลื่อนขึ้น หรือหยุด 1.5 วินาที → แถบกลับ · ปลดทุกครั้งก่อน navTopic/scrollToTarget (navOffset วัดจากแถบที่มองเห็น) ---- */
+const S2RD = { y: window.scrollY, from: window.scrollY, dir: 0, idle: 0, hold: 0 };
+const narrowMQ = window.matchMedia("(max-width: 900px)");
+function unread(hold) {
+  document.documentElement.classList.remove("reading");
+  if (hold) S2RD.hold = performance.now() + 1200;
+  S2RD.from = window.scrollY;
+}
+window.addEventListener("scroll", () => {
+  const y = window.scrollY, dy = y - S2RD.y;
+  S2RD.y = y;
+  const html = document.documentElement;
+  clearTimeout(S2RD.idle);
+  if (!narrowMQ.matches || y < 80 || html.classList.contains("s2-modal") || document.activeElement === searchEl) { if (html.classList.contains("reading")) unread(); S2RD.from = y; return; }
+  if (performance.now() < S2RD.hold) { S2RD.from = y; return; }
+  const dir = dy > 0 ? 1 : dy < 0 ? -1 : S2RD.dir;
+  if (dir !== S2RD.dir) { S2RD.dir = dir; S2RD.from = y - dy; }
+  if (dir > 0 && y - S2RD.from > 80) html.classList.add("reading");
+  else if (dir < 0 && S2RD.from - y > 8) unread();
+  if (html.classList.contains("reading")) S2RD.idle = setTimeout(() => unread(), 1500);
+}, { passive: true });
+narrowMQ.addEventListener("change", () => unread());
+searchEl.addEventListener("focus", () => unread());
+{                                                     // ห่อตัวกระโดดของ router: ปลดแถบหลบก่อน แล้วกันไม่ให้การเลื่อนอัตโนมัติสั่งหลบซ้ำทันที
+  const nt = navTopic, st2 = scrollToTarget;
+  navTopic = function () { unread(true); return nt.apply(this, arguments); };
+  scrollToTarget = function () { unread(true); return st2.apply(this, arguments); };
+}
+
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ===== SLOT S3 END ===== */
