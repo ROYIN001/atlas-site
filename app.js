@@ -71671,6 +71671,128 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S6 (ทวนตามกำหนด (SRS) · วันสอบ · โหมดคืนก่อนสอบ #/cram) BEGIN ===== */
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 (ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด) BEGIN ===== */
+/* S7 — ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · เครื่องมือส่วนตัวของผู้อ่าน (CLAUDE.md 14.7)
+   ทุกอย่างเสียบผ่าน HOOKS ไม่แก้ฟังก์ชันร่วม · ส่วน «PURE» ข้างล่างไม่แตะ DOM — tests/links.test.cjs รันส่วนนั้นใน vm */
+
+/* ---- S7 PURE BEGIN ---- */
+/* 1) «บรรยายที่ N» / «Лекция N» / «Т.N» ในบล็อกสรุปและแผนที่วิชา → ลิงก์ไปหัวข้อของบรรยายนั้น
+   เลขบรรยาย → หัวข้อ มาจาก DEEP ตอนบูต: ชื่อรัสเซีย «Лекция N…» (หรือ «Тема N…» สำหรับ «Т.N») ก่อน แล้วจึง id แบบ <prefix>-N / <prefix>-tN
+   บางวิชาเลขบรรยายไม่ตรงกับ id — แก้ไว้ใน S7_LECFIX (ตรวจกับตารางบรรยายในแผนที่วิชาและบรรทัดที่มาของแต่ละหัวข้อแล้ว 28 ก.ย. 2026)
+   หัวข้อใน DEEP ใส่ lec: N หรือ lec: [N, M] ได้เอง (ชนะทุกอย่าง) — วิชาใหม่ที่ชื่อหัวข้อไม่ขึ้นต้นด้วย «Лекция N» ให้ใส่ฟิลด์นี้
+   L = บรรยาย (บรรยายที่/Лекция/Л.) · T = หัวข้อของหลักสูตร (Т.) · L2 = บรรยายชุดที่สอง (ข้อความตามหลังมี «ชุดที่สอง»/«2-я») · {} = ไม่ลิงก์
+   strict = ถ้าตามหลังเลขมีชื่อบรรยาย (— ชื่อ / . ชื่อ / «ชื่อ») ที่ไม่มีคำร่วมกับชื่อหัวข้อปลายทางเลย ไม่ลิงก์ (กันรายการของอีกชุดบรรยาย) */
+const S7_LECFIX = {
+  // ASU: บรรยาย 1–2 ไม่มีสไลด์ รวมเป็น asu-1 · บรรยาย N (3–15) = asu-(N−1)
+  asu: { L: { 1: "asu-1", 2: "asu-1", 3: "asu-2", 4: "asu-3", 5: "asu-4", 6: "asu-5", 7: "asu-6", 8: "asu-7", 9: "asu-8",
+    10: "asu-9", 11: "asu-10", 12: "asu-11", 13: "asu-12", 14: "asu-13", 15: "asu-14" } },
+  // ТЭ: สไลด์สองชุดนับเลขใหม่ — ชุดแรก 1–13, 15–18 · ชุดที่สอง 8–12 (ตาราง «Полный перечень 22 лекций» ใน te-map)
+  teh_el: { strict: true,
+    L: { 1: "te-1", 2: "te-2", 3: ["te-3", "te-4"], 4: "te-5", 5: "te-6", 6: "te-7", 7: "te-8", 8: "te-9", 9: "te-10", 10: "te-11",
+      11: "te-12", 12: "te-13", 13: "te-14", 15: "te-15", 16: "te-17", 17: "te-18", 18: "te-19" },
+    L2: { 8: "te-16", 9: "te-20", 10: "te-20", 11: "te-21", 12: "te-21" } },
+  // ТАУ: «Т.N» = หัวข้อ (тема) ของหลักสูตร — Т.6–Т.11 มีหัวข้อฉบับเต็มตรงตัว · Т.1–Т.5 กลั่นรวมใน tau-1…tau-5 ไม่ตรงตัว ไม่ลิงก์ · เลขบรรยาย 1–48 ไม่ตรงกับหัวข้อ
+  tau: { L: {}, T: { 6: "tau-6", 7: "tau-7", 8: "tau-t8", 9: "tau-t9", 10: "tau-t10", 11: "tau-t11" } },
+  // วิชาที่หัวข้อเรียงตามเรื่อง ไม่ใช่ตามบรรยาย
+  surn: { L: {} }, toe: { L: {} },
+};
+/* คำขึ้นต้น + เลข (+ ช่วง «–M») · คำรัสเซียต้องไม่ติดท้ายอักษรอื่น (กัน «сл.» «т. е.» ฯลฯ) · ภาษาไทยไม่เว้นวรรคจึงไม่ตรวจ */
+const S7_LEC_RX = /(บรรยายที่|(?<![А-Яа-яЁёA-Za-z0-9])(?:Лекци[яи]|Л\.|Т\.))\s?№?\s?(\d{1,2})(?!\d)(?:\s?[–-]\s?(\d{1,2})(?!\d))?/dgu;
+const S7_SERIES2 = /ชุดที่\s?สอง|2-я|втор(?:ой|ая)\s+сер/;
+const S7_TITLE = /^\s*(?:[—–:.]\s*|«)([А-Яа-яЁё][^»(·;]{3,})/;
+const s7Stems = s => (String(s).toLowerCase().replace(/ё/g, "е").match(/[а-я]{5,}/g) || []).map(w => w.slice(0, 5));
+function s7LecIndex(deep, fix) {
+  fix = fix || {};
+  const idx = {}, arr = v => [].concat(v);
+  for (const sid of Object.keys(deep)) {
+    const topics = deep[sid].topics || [], f = fix[sid] || {};
+    const base = { L: {}, T: {} }, byId = { L: {}, T: {} }, titles = {}, own = {};
+    const add = (m, n, tid) => { const a = m[n] = m[n] || []; if (!a.includes(tid)) a.push(tid); };
+    topics.forEach(t => {
+      titles[t.id] = t.ru || "";
+      if (t.lec != null) arr(t.lec).forEach(n => add(own, +n, t.id));
+      let m = /^\s*(Лекция|Тема)\s*№?\s*(\d+)/.exec(t.ru || "");
+      if (m) add(base[m[1] === "Тема" ? "T" : "L"], +m[2], t.id);
+      else if ((m = /-(t?)(\d+)$/.exec(t.id))) add(byId[m[1] ? "T" : "L"], +m[2], t.id);
+    });
+    const X = { titles, strict: !!f.strict };
+    for (const k of ["L", "T"]) {
+      X[k] = Object.assign({}, byId[k], base[k]);                  // ชื่อ «Лекция N» ชนะ id
+      if (f[k]) { X[k] = {}; for (const n in f[k]) X[k][n] = arr(f[k][n]); }
+    }
+    Object.assign(X.L, own);                                         // lec ใน DEEP ชนะทุกอย่าง
+    X.L2 = {};
+    if (f.L2) for (const n in f.L2) X.L2[n] = arr(f.L2[n]);
+    idx[sid] = X;
+  }
+  return idx;
+}
+/* หาจุดที่จะเป็นลิงก์ในข้อความหนึ่งก้อน → [{ i, j, n, tids }] (ตำแหน่งตัวอักษรใน text) */
+function s7LecScan(text, sid, idx) {
+  const X = idx[sid], out = [];
+  if (!X) return out;
+  S7_LEC_RX.lastIndex = 0;
+  let m;
+  while ((m = S7_LEC_RX.exec(text))) {
+    const end = m.index + m[0].length, rest = text.slice(end, end + 90);
+    const kind = m[1] === "Т." ? "T" : "L";
+    const near = rest.slice(0, 30).split(/บรรยายที่|Лекци|Л\.|Т\./)[0];     // ข้อความถึงคำขึ้นต้นถัดไป
+    const map = kind === "L" && S7_SERIES2.test(near) ? X.L2 : X[kind];
+    let a = (map[+m[2]] || []).slice();
+    if (!a.length) continue;
+    const tm = S7_TITLE.exec(rest);
+    if (tm) {                                                        // ตามด้วยชื่อบรรยาย — เลือกปลายทางที่ชื่อตรงที่สุด
+      const w = s7Stems(tm[1]);
+      const sc = a.map(tid => { const t = s7Stems(X.titles[tid]); return w.filter(x => t.includes(x)).length; });
+      const best = Math.max(...sc);
+      if (best > 0) a = a.filter((_, k) => sc[k] === best);
+      else if (X.strict) continue;
+    }
+    out.push({ i: m.index, j: m.indices[2][1], n: +m[2], tids: a });
+    const b = m[3] && +m[3] > +m[2] ? map[+m[3]] || [] : [];        // ช่วง «N–M» → ลิงก์ที่ M ด้วย (ถ้าไปหัวข้ออื่น)
+    if (b.some(tid => !a.includes(tid))) out.push({ i: m.indices[3][0], j: m.indices[3][1], n: +m[3], tids: b.slice() });
+  }
+  return out;
+}
+/* ---- S7 PURE END ---- */
+
+const S7_IDX = s7LecIndex(DEEP, S7_LECFIX);
+const s7Topic = (sid, tid) => topicsOf(sid).find(t => t.id === tid);
+const s7Esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const s7Plain = s => String(s || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+/* หัวข้อที่ใส่ลิงก์บรรยายอัตโนมัติ: บล็อกสรุปทบทวน + แผนที่วิชา (*-map) — หัวข้อฉบับเต็มเขียนลิงก์เองได้อยู่แล้ว */
+const s7AutoOn = (sid, tid) => /-map$/.test(tid) || !!(DEEP[sid] && (DEEP[sid].summary || []).some(t => t.id === tid));
+const S7_SKIP = "a,button,summary .qa-n,math,svg,canvas,script,style,textarea,input,select,code,[data-demo],[data-jump2],.rel,.s7-bar";
+function s7Autolink(el, sid) {
+  const nodes = [];
+  const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => /บรรยายที่|Лекци|Л\.|Т\./.test(n.data) && !n.parentElement.closest(S7_SKIP) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  for (let n = tw.nextNode(); n; n = tw.nextNode()) nodes.push(n);
+  let count = 0;
+  nodes.forEach(node => {
+    const hits = s7LecScan(node.data, sid, S7_IDX);
+    if (!hits.length) return;
+    const frag = document.createDocumentFragment(), txt = node.data;
+    let at = 0;
+    hits.forEach(h => {
+      if (h.i > at) frag.appendChild(document.createTextNode(txt.slice(at, h.i)));
+      h.tids.forEach((tid, k) => {
+        const t = s7Topic(sid, tid), a = document.createElement("a");
+        a.className = k ? "lk lk-alt" : "lk";
+        a.href = "#/" + sid + "/" + tid;
+        a.title = t ? t.th : tid;
+        if (k) { a.textContent = "⁽" + "²³⁴⁵"[k - 1] + "⁾"; a.setAttribute("aria-label", "อีกหัวข้อของบรรยายเดียวกัน: " + (t ? t.th : tid)); }
+        else a.textContent = txt.slice(h.i, h.j);
+        frag.appendChild(a);
+        count++;
+      });
+      at = h.j;
+    });
+    if (at < txt.length) frag.appendChild(document.createTextNode(txt.slice(at)));
+    node.replaceWith(frag);
+  });
+  return count;
+}
+HOOKS.on("fill", (el, t, sid) => { if (s7AutoOn(sid, t.id)) s7Autolink(el, sid); });
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
 /* ===== SLOT S8 END ===== */

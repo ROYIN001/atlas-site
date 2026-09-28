@@ -3639,6 +3639,10 @@
 /* ===== SLOT S6 BEGIN ===== */
 /* ===== SLOT S6 END ===== */
 /* ===== SLOT S7 BEGIN ===== */
+/* S7 — ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · เครื่องมือส่วนตัวของผู้อ่าน (โค้ดในช่อง S7 ของ app.js) */
+#view .tbody a.lk { color: var(--accent); text-decoration: underline dotted; text-underline-offset: 2px; }
+#view .tbody a.lk:hover { text-decoration-style: solid; }
+#view .tbody a.lk-alt { text-decoration: none; margin-left: 1px; font-size: .85em; }
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 BEGIN ===== */
 /* ===== SLOT S8 END ===== */
