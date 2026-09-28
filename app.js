@@ -71835,6 +71835,56 @@ function s7RelChips(el, t, sid) {
 }
 HOOKS.on("fill", (el, t, sid) => s7RelChips(el, t, sid));
 HOOKS.on("offline", () => [S7_REL_URL]);
+
+/* ---- 3) ประวัติการอ่านล่าสุด (atlas-recent-v1 = [{ sid, tid, t }] ใหม่สุดก่อน ≤ 12) ---- */
+const S7_RECENT = "atlas-recent-v1", S7_RECENT_N = 12;
+function s7Load(key, def) { try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; } catch (e) { return def; } }
+function s7Save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch (e) { return false; } }
+function s7Recent() { const a = s7Load(S7_RECENT, []); return Array.isArray(a) ? a.filter(x => x && s7Topic(x.sid, x.tid)) : []; }
+function s7Visit(sid, tid) {
+  if (!sid || !tid || !s7Topic(sid, tid)) return;
+  const a = s7Recent();
+  if (a[0] && a[0].sid === sid && a[0].tid === tid) return;
+  s7Save(S7_RECENT, [{ sid, tid, t: Date.now() }].concat(a.filter(x => !(x.sid === sid && x.tid === tid))).slice(0, S7_RECENT_N));
+}
+HOOKS.on("go", st => { if (st.v === "subject" && st.topic) s7Visit(st.id, st.topic); });
+let S7_SCROLL_T = 0;
+window.addEventListener("scroll", () => {           // เลื่อนอ่านไปหัวข้ออื่น — state.topic ถูกตั้งโดย writeScrollState (หน่วง 400 ms) จึงรอ 1 วินาที
+  clearTimeout(S7_SCROLL_T);
+  S7_SCROLL_T = setTimeout(() => { if (state.v === "subject" && state.topic) s7Visit(state.id, state.topic); }, 1000);
+}, { passive: true });
+const S7_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const s7Date = d => d.getDate() + " " + S7_MON[d.getMonth()] + " " + d.getFullYear();
+function s7Ago(t) {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "เมื่อสักครู่";
+  if (m < 60) return m + " นาทีที่แล้ว";
+  if (m < 60 * 24) return Math.round(m / 60) + " ชั่วโมงที่แล้ว";
+  return s7Date(new Date(t));
+}
+const s7Chip = (x, extra) => { const t = s7Topic(x.sid, x.tid);
+  return '<a class="chip" href="#/' + x.sid + '/' + x.tid + '" title="' + s7Esc(s7Plain(t.ru)) + '"><span aria-hidden="true">' + (ICONS[x.sid] || "📘") + '</span> ' +
+    s7Esc(s7Plain(t.th)) + (extra || "") + '</a>'; };
+/* หน้าแรก: แถวชิปสั้น ๆ ใต้การ์ดหลักสูตร */
+HOOKS.html("overview-top", () => {
+  const rec = s7Recent().slice(0, 6);
+  if (!rec.length) return "";
+  return '<section class="s7-strip" aria-labelledby="s7RecH"><div class="nowhead"><h2 id="s7RecH">อ่านล่าสุด</h2>' +
+    '<a class="year-note" href="#/progress">ดูทั้งหมด</a></div><div class="chiprow">' + rec.map(x => s7Chip(x)).join("") + '</div></section>';
+});
+/* หน้าความก้าวหน้า #/progress (S2): รายการเต็มพร้อมเวลา */
+HOOKS.html("progress", () => {
+  const rec = s7Recent();
+  return '<section class="s7-card" aria-labelledby="s7RecAll"><h2 id="s7RecAll">ประวัติการอ่าน</h2>' +
+    (rec.length ? '<ol class="s7-list">' + rec.map(x => '<li>' + s7Chip(x) + '<span class="s7-when">' + s7Ago(x.t) + '</span></li>').join("") + '</ol>' +
+      '<button type="button" class="s7-clear" data-s7-clear="recent">ล้างประวัติการอ่าน</button>'
+      : '<p class="m">ยังไม่มี — เปิดหัวข้อไหนก็ตาม หัวข้อนั้นจะมาอยู่ที่นี่ (เก็บในเครื่องนี้เท่านั้น)</p>') + '</section>';
+});
+HOOKS.on("go", st => {
+  if (st.v !== "progress") return;
+  const b = view.querySelector('[data-s7-clear="recent"]');
+  if (b) b.addEventListener("click", () => { if (confirm("ล้างประวัติการอ่านทั้งหมดในเครื่องนี้?")) { s7Save(S7_RECENT, []); go({ v: "progress" }, { replace: true }); } });
+});
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 (ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม) BEGIN ===== */
 /* ===== SLOT S8 END ===== */

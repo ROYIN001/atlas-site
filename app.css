@@ -3651,6 +3651,19 @@
   border: 1px solid var(--line); background: var(--panel); border-radius: var(--radius); line-height: 1.45; }
 #view .rel a.chip:hover { border-color: var(--accent); }
 #view .rel a.chip b { font-family: inherit; font-size: 12px; color: var(--accent); font-weight: 600; }
+.s7-strip { margin: 22px 0 6px; }
+.s7-strip .nowhead { margin-bottom: 6px; flex-wrap: wrap; row-gap: 2px; }
+.s7-strip .nowhead a.year-note { margin-left: auto; color: var(--accent); }
+.s7-strip .chiprow, .s7-card .chiprow { margin-top: 6px; }
+.s7-strip a.chip, .s7-card a.chip { text-decoration: none; color: var(--ink); border: 1px solid var(--line); background: var(--panel);
+  border-radius: var(--radius); max-width: 100%; overflow-wrap: anywhere; display: inline-flex; line-height: 1.4; }
+.s7-strip a.chip:hover, .s7-card a.chip:hover { border-color: var(--accent); }
+.s7-card { margin: 0 0 22px; }
+.s7-card h2 { font-size: 17px; font-weight: 600; margin: 0 0 10px; }
+.s7-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.s7-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.s7-when { font-size: 12px; color: var(--ink-3); }
+.s7-clear { font-size: 12px; }
 /* ===== SLOT S7 END ===== */
 /* ===== SLOT S8 BEGIN ===== */
 /* ===== SLOT S8 END ===== */
