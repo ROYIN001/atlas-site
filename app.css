@@ -3909,6 +3909,30 @@ a.nav-item:focus-visible, .ts-list button:focus-visible { outline-offset: -2px; 
 @media (max-width: 600px) { .s3-offl li { grid-template-columns: 1fr; } .s3-offl .acts { grid-column: 1; grid-row: auto; } }
 /* ===== SLOT S3 END ===== */
 /* ===== SLOT S4 BEGIN ===== */
+/* S4: หน้าผลค้นหา — ผลเป็นลิงก์จริง · ชิปขอบเขต/ชนิดผล · กล่องสถานะดัชนี · ไม่พบ */
+a.res-item { color: var(--ink); text-decoration: none; }
+a.res-item:focus-visible { border-color: var(--accent); }
+.sx .sx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.sx .sx-bar[hidden] { display: none; }
+.sx .sx-chip { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13px; padding: 5px 11px; border-radius: 999px; }
+.sx .sx-chip b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; color: var(--ink-3); margin-left: 2px; }
+.sx .sx-chip.on b { color: inherit; }
+.sx .sx-chip:disabled { opacity: .55; cursor: default; }
+.sx .sx-chip:disabled:hover { border-color: var(--line-2); color: var(--ink-2); }
+.sx .sx-gl { font-size: 13px; color: var(--accent-2); margin-left: 4px; overflow-wrap: anywhere; }
+.sx .sx-st { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; padding: 10px 12px; font-size: 13px; line-height: 1.5;
+  color: var(--ink-2); background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+.sx .sx-st > span { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.sx .sx-st[data-st="part"] { border-left-color: var(--hl-ink); background: var(--wash); }
+.sx .sx-st[data-st="fail"] { border-left-color: var(--crit); }
+.sx .sx-prog { display: block; height: 3px; margin-top: 7px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.sx .sx-prog i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.sx .sx-empty .empty { padding: 22px 0 10px; }
+.sx .sx-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.sx .sx-ex { font-size: 13px; color: var(--ink-3); margin: 14px 0 0; }
+.sx .sx-ex a { color: var(--accent-2); }
+.sx .sx-more { margin: 14px 0 30px; }
+.sx .sx-more:empty { display: none; }
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 BEGIN ===== */
 /* ===== SLOT S5 END ===== */
