@@ -379,7 +379,13 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 (ยังไม่ทำ)
 
 #### 14.3 S3 — ประสิทธิภาพ/ออฟไลน์
-(ยังไม่ทำ)
+- **วัดด้วย `node tests/perf.browser.cjs [idle full longtask scroll cls offline manage] [--subject] [--cpu] [--root <worktree รุ่นเก่า>]`** (รันมือ · elob 390 px dpr 2 CPU ×4): canvas ที่มีขนาดบนสุดหน้า 9 → 0 · หลัง fillAllBodies 86 canvas 120 MB → 0 · rAF ขณะนิ่ง 597 → 0 /วินาที (CPU ×1) · long task สูงสุดตอนกระโดดไป elob-lr4 1 769 → 383–474 ms (ไม่นับการรัน app.js ~850 ms) · ปัดเลื่อน 90 000 px 590 → 320 ms · layout shift ตอนรูปโหลด 1 → 0 · ปิดเซิร์ฟเวอร์แล้ว elob ที่เก็บไว้เปิดได้ 32/32 หัวข้อ 86/86 แบบจำลอง 241/241 รูป
+- **แบบจำลอง (buildDemo · `demoWatch(el, rec)`):** ห่างจอ > 1 500 px → `rec.suspend()` (หยุดลูป, canvas 0×0, `rec.suspended = true` — `draw()` ไม่ทำงาน) · กลับมา → `rec.resume()` วาดใหม่จาก state เดิม · ลูปวิ่งเฉพาะ `animate` ที่เห็นบนจอและแท็บไม่ถูกซ่อน · บล็อกที่มีลูปของตัวเอง (VHMAP/STD2 ยังไม่ได้ย้าย) เข้าระบบได้ด้วย `demoWatch(host, {suspend(), resume(), tick?()})`
+- **ติดตั้ง `[data-demo]` เมื่อห่างจอ ≤ 600 px** (`demoMount` ใน fillBody · `demoInstall(host, sid)` = ทันที) · ทันทีเสมอ: ใน `<details>` ที่ปิด · หลัง `fillAllBodies()` · ติดตั้งไม่ได้ → กล่อง `.demo-fail` (พี่น้องถัดจาก host ไม่มี canvas) + ลองใหม่ (`subjAssets` โหลดเฉพาะไฟล์ที่ล้มเหลวใหม่ คืน true/false)
+- **เติมหัวข้อทีละหัวข้อ** (`fillTurn`) · **หัวข้อยาวใส่ทีละ ~16 KB** (`fillChunks` — แยกด้วย `<template>` ย้ายลูกของ wrapper ทีละช่วง ตรวจ `.m-wide` ของช่วงนั้น แล้ววาดจอก่อนช่วงถัดไป · `.tload` อยู่ท้ายกล่องจนครบ bodyReady/verify จึงรอครบ) · **โหลดฟอนต์ล่วงหน้าเมื่อเปิดวิชา** (`fontWarm`/`fontWarmMath`) — ไฟล์ฟอนต์ชุดอักษรใหม่ที่มาถึงทีหลังทำให้จัดวางทั้งหน้าใหม่ 850–970 ms · **ห้ามใช้ `content-visibility: auto` กับการ์ดในหัวข้อ** — ลองแล้ว ใส่ html เร็วขึ้นแต่จัดวางซ้ำทุกครั้งที่เลื่อนผ่าน (verify CPU ×6 รอบเลื่อนเดียว style/layout elob 11 → 117 s · nav 2.4 → 53 s) และ verify แบบถ่วงของ elob ตก
+- **รูป:** `src/build_steps/figdim.py` → `data/figdim.json` · SUKAFIG ใส่ width/height ก่อน src — เพิ่มรูปใหม่แล้วรัน `python src/build_data.py`
+- **ออฟไลน์:** `atlas-offline-v1[sid] = {t, n, bytes, v, urls}` · `offlineList()` `offlineRemove(sid)` `offlineUpdate(sid)` `offlineSave(sid, say)` · การ์ดผ่าน `HOOKS.html("progress")` (`#s3Offl`) · sw.js: `cache: "reload"` = เน็ตก่อน · CACHE ยัง `atlas-v1`
+- **เดโมใหม่ใน `js/subj/`:** ใช้ `buildDemo` (ได้ยุบ/หยุดลูปฟรี) · ลูปของตัวเองต้องผ่าน `demoWatch` และหยุดเมื่อ `document.hidden` · ห้ามวาด/วัดขนาดตอนโหลดไฟล์ — ทำในฟังก์ชัน `DEMOS[key](host)` ซึ่งถูกเรียกตอนใกล้จอ · อย่าพึ่งว่า host อื่นในหัวข้อติดตั้งแล้ว (เรียก `demoInstall` ถ้าจำเป็น) · error ตอนติดตั้งจะขึ้นกล่องลองใหม่ + console.error
 
 #### 14.4 S4 — ค้นหา
 (ยังไม่ทำ)
