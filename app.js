@@ -1096,6 +1096,47 @@ const ticks = (a, b, n) => { const out = []; for (let i = 0; i <= n; i++) out.pu
 
 /* ---- demo scaffold ---- */
 let DEMO_DESCRIPTION_ID = 0;
+/* S3: แบบจำลองที่อยู่ไกลจอไม่กินหน่วยความจำและ CPU
+   · DEMO_NEAR (ห่างจอ ≤ 1 500 px) — ออกนอกระยะ → rec.suspend(): หยุดลูป + canvas 0×0 (คืนหน่วยความจำ · ความสูงคงเดิมเพราะ style.height)
+     กลับเข้าระยะ → rec.resume(): วาดใหม่จาก state เดิม (ค่าสไลเดอร์/ปุ่มที่ผู้อ่านปรับยังอยู่) แล้วเริ่มลูปถ้าเป็นแอนิเมชัน
+   · DEMO_VIS (ขอบจอพอดี) — ลูป requestAnimationFrame วิ่งเฉพาะตอนเห็นจริง และหยุดทุกลูปเมื่อแท็บถูกซ่อน (document.hidden)
+   · บล็อกอื่นที่มีลูป/canvas ของตัวเอง (VHMAP, STD2 …) เข้าระบบเดียวกันได้ด้วย demoWatch(el, rec)
+     rec ต้องมี suspend() / resume() · ถ้ามี tick() จะถูกเรียกเมื่อ rec.vis หรือ document.hidden เปลี่ยน */
+const DEMO_NEAR_MARGIN = "1500px 0px";
+let DEMO_NEAR = null, DEMO_VIS = null, DEMO_PRINT = false;
+const DEMO_OF = typeof WeakMap === "function" ? new WeakMap() : null;
+function demoWatch(el, rec) {
+  if (!DEMO_NEAR && typeof IntersectionObserver === "function" && DEMO_OF) {
+    DEMO_NEAR = new IntersectionObserver(es => es.forEach(e => {
+      const r = DEMO_OF.get(e.target);
+      if (r) { if (e.isIntersecting) r.resume(); else if (!DEMO_PRINT) r.suspend(); }
+    }), { rootMargin: DEMO_NEAR_MARGIN });
+    DEMO_VIS = new IntersectionObserver(es => es.forEach(e => {
+      const r = DEMO_OF.get(e.target);
+      if (r) { r.vis = e.isIntersecting; if (r.tick) r.tick(); }
+    }), { threshold: 0 });
+    if (typeof document !== "undefined" && document.addEventListener)
+      document.addEventListener("visibilitychange", () => LIVE.forEach(r => { if (r.tick) r.tick(); }));
+    if (typeof window !== "undefined" && window.addEventListener) {
+      window.addEventListener("beforeprint", () => { DEMO_PRINT = true; LIVE.forEach(r => { if (r.resume) r.resume(); }); });
+      window.addEventListener("afterprint", () => { DEMO_PRINT = false; demoRecheck(); });
+    }
+  }
+  if (!DEMO_NEAR) { rec.vis = true; return false; }   // ไม่มี IntersectionObserver — ทำงานแบบเดิม (วาดทันที ลูปวิ่งตลอด)
+  rec.vis = false;
+  rec.el = el;
+  DEMO_OF.set(el, rec);
+  DEMO_NEAR.observe(el);
+  DEMO_VIS.observe(el);
+  const prev = rec.io;
+  rec.io = { disconnect() { DEMO_NEAR.unobserve(el); DEMO_VIS.unobserve(el); DEMO_OF.delete(el); if (prev) prev.disconnect(); } };
+  return true;
+}
+function demoRecheck() {                              // ให้ observer ประเมินทุกกล่องใหม่ (หลังพิมพ์ ฯลฯ)
+  if (!DEMO_NEAR) return;
+  LIVE.forEach(r => { if (r.el && DEMO_OF.get(r.el) === r) { DEMO_NEAR.unobserve(r.el); DEMO_NEAR.observe(r.el); } });
+}
+const pageHidden = () => typeof document !== "undefined" && !!document.hidden;
 function buildDemo(host, spec) {
   const box = document.createElement("div");
   box.className = "demo";
@@ -1151,8 +1192,9 @@ function buildDemo(host, spec) {
     box.querySelector(".demo-head .spacer").after(btn);
   });
 
-  const rec = {};
+  const rec = { suspended: false, vis: true };
   function draw() {
+    if (rec.suspended) return;                       // ยุบอยู่ (ไกลจอ) — ResizeObserver/ธีม/ปุ่มไม่ต้องวาด resume() วาดให้เอง
     const { ctx, w, h } = fitCanvas(cv, spec.ratio || 0.52);
     spec.draw(ctx, w, h, state, readout, rec.t || 0);
     if (descriptionBody) descriptionBody.innerHTML = spec.describe(state);
@@ -1161,18 +1203,34 @@ function buildDemo(host, spec) {
   rec.ro = new ResizeObserver(() => draw());
   rec.ro.observe(cv.parentElement);
 
-  if (spec.animate && !REDUCED) {
-    let vis = false, t0 = performance.now();
-    rec.io = new IntersectionObserver(es => { vis = es[0].isIntersecting; }, { threshold: 0 });
-    rec.io.observe(box);
-    const loop = () => {
-      if (vis) { rec.t = (performance.now() - t0) / 1000; draw(); }
-      rec.raf = requestAnimationFrame(loop);
-    };
+  const animated = !!spec.animate && !REDUCED;
+  let t0 = 0;
+  function loop() {
+    rec.t = (performance.now() - t0) / 1000;
+    draw();
     rec.raf = requestAnimationFrame(loop);
   }
+  rec.tick = () => {                                 // เริ่ม/หยุดลูปตามสถานะ: แอนิเมชัน · ไม่ยุบ · เห็นบนจอ · แท็บไม่ถูกซ่อน
+    const run = animated && !rec.suspended && rec.vis && !pageHidden();
+    if (run && !rec.raf) { t0 = performance.now() - (rec.t || 0) * 1000; rec.raf = requestAnimationFrame(loop); }
+    else if (!run && rec.raf) { cancelAnimationFrame(rec.raf); rec.raf = 0; }
+  };
+  rec.suspend = () => {
+    if (rec.suspended) return;
+    rec.suspended = true;
+    rec.tick();
+    cv.width = cv.height = 0;                        // คืนหน่วยความจำของ canvas (dpr 2 ≈ 1 MB ต่อกล่อง)
+  };
+  rec.resume = () => {
+    if (!rec.suspended) return;
+    rec.suspended = false;
+    draw();
+    rec.tick();
+  };
+  demoWatch(box, rec);
   LIVE.push(rec);
   draw();
+  rec.tick();
   return rec;
 }
 
