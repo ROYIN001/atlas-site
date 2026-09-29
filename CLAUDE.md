@@ -92,7 +92,7 @@ _work/                          (อยู่ใน .gitignore — บนเค�
 
 สิ่งที่ต้องผ่านทุกข้อ: ทุกวิชาเปิดได้ · ไม่มีกล่องเนื้อหาไหนขึ้น `.tfail`
 · จำนวน `<canvas>` เท่ากับจำนวน `[data-demo]` (แบบจำลองติดตั้งครบ)
-· รูปทุกใบมี `naturalWidth > 0` · ค้นหาคำภาษารัสเซียแล้วเจอ · ไม่มี page error
+· รูปทุกใบมี `naturalWidth > 0` · ค้นหาคำภาษารัสเซียแล้วเจอ **และดัชนีค้นหาโหลดครบทุกวิชา** (`search_ix=<ที่โหลดได้>/<แถวใน data/ix>` ต้องเท่ากัน — พิมพ์คำค้นในหน้าแรกแบบผู้อ่าน แล้วรอดัชนีที่ S4 โหลดทีละวิชาจนครบ · วิชาที่โหลดไม่ได้ขึ้นชื่อใน «ดัชนีโหลดไม่ครบ: …») · ไม่มี page error
 
 สั่ง `python src/verify.py` (ทั้งเว็บ) หรือ `python src/verify.py --subject elob` (วิชาเดียว)
 · เพิ่ม `--mobile` = ตรวจจอ 360 px ทั้งสองโหมด เปิดเจาะลึกทุกกล่อง ว่าไม่มีตาราง/สูตร/ป้ายไหนล้นจอ (บอกหัวข้อและองค์ประกอบที่ล้น)
@@ -414,7 +414,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - หน้าผล `#/search/<คำ>[/<sid>]` (sid = ขอบเขต «วิชานี้» ตรวจกับ SUBJECTS ก่อน · `routeOnly` เก็บ `sid`) · ชิปขอบเขต ทุกวิชา/วิชานี้/คลังศัพท์ + ชนิด หัวข้อ/สรุป/ศัพท์/วิชา พร้อมจำนวน · แสดงเพิ่มทีละ 60 · ผลเป็น `<a class="res-item" href>` (คลิกธรรมดาส่ง `hl`) · `searchRefresh()` วาดเฉพาะส่วนผล — ดัชนีวิชาหนึ่งมาถึง → `ixChanged()` หน่วง 250 ms · สถานะ 4 แบบ (`.sx-st[data-st=load|part|fail]` + ไม่พบ `.sx-empty`)
 - localStorage `atlas-search-v1` = `{q, from, scope, kind, shown}` คืนตัวกรองเมื่อกด Back (history.state ของรายการค้นหาถูก `writeScrollState` เขียนทับตอนออกจากหน้า จึงใช้แทนไม่ได้)
 - คลังศัพท์กรองด้วย `searchQueries()` + `textMatch()` ชุดเดียวกับหน้าค้นหา (ชื่อพ้อง Kalman/Калман/คาลมาน · ё=е · ทุกคำในวลี) · placeholder/aria-label ของช่องเปลี่ยนตามหน้า (`searchPlaceholder` ผ่าน hook `go`) · hook `offline` คืน `ixUrl(sid)`
-- ทดสอบ: `tests/search.test.cjs` (vm) · `node tests/search.browser.cjs` (Playwright ตรวจรับ ไม่อยู่ในชุด `--test`) · ข้อควรระวัง: `verify.py` โฟกัสช่องค้นหาในหน้าแรกแล้วรอ `IX_READY` — ตอนนี้โฟกัสในหน้าแรกไม่โหลดอะไร จึงรอจนหมดเวลา `--timeout` แล้วค่อยพิมพ์ (ยังผ่านเพราะนับ `search_hits`) · เสนอ S1 ให้ `fill` ก่อนแล้วค่อยรอ
+- ทดสอบ: `tests/search.test.cjs` (vm) · `node tests/search.browser.cjs` (Playwright ตรวจรับ ไม่อยู่ในชุด `--test`) · `verify.py` พิมพ์คำค้นก่อนแล้วรอ `IX_READY` (แก้แล้ว 29 ก.ย. 2026 — เดิมโฟกัสแล้วรอจนหมดเวลา นับผลจากดัชนี 138/288 แถว) · ดัชนีไม่ครบ = FAIL
 
 #### 14.5 S5 — ฝึกทบทวน
 - **`data/qa/<sid>.json`** (จาก `src/build_steps/qa.py` · 2 666 ข้อ 12 วิชา) = `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `_index.json` = `{sid: {n, t:{tid:จำนวน}, z:{tid:จำนวน quiz2}, fix:{tid:{ลำดับ:id}}}}` · id = id เดิม หรือ `"qa-" + stable_id(ข้อความ .qa-q/<summary> ที่ขอบแท็กทุกอันเป็นช่องว่าง แปลง &…; แล้ว)` — ฝั่งหน้าเว็บคือ `qaText()` (เดินโหนด ไม่ใช่ textContent) · คำถามซ้ำข้ามหัวข้อต่อท้าย `-<tid>` (อยู่ใน `fix`) · `a_html` ไม่มี `[data-demo]`/figure/script (แทนด้วย `a.qa-see`)
