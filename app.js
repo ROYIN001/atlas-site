@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "d938e6e7b7";
+const DATA_VERSION = "f4496c6731";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -71209,6 +71209,7 @@ function currentTopicEl() {
 let WSS_T = 0;
 function writeScrollState() {                     // เขียนตำแหน่งปัจจุบันลงรายการประวัตินี้ + «อ่านต่อ» — Back/รีเฟรชกลับมาตรงนี้
   clearTimeout(WSS_T);
+  if (NAVBUSY) return;                             // กำลังกระโดด: ตำแหน่งตอนนี้เป็นกลางทาง (บนสุดของหน้า/หัวข้อระหว่างทาง) — งานกระโดดเขียนเองตอนจบ (navEnd)
   const st = routeOnly(state), extra = { y: Math.round(window.scrollY) };
   if (state.v === "subject") {
     const cur = currentTopicEl();
@@ -71224,30 +71225,41 @@ function writeScrollState() {                     // เขียนตำแห
 
 /* ---- เลื่อนไปหาเป้าหมายให้ตรงที่ ----
    กล่องหัวข้อระหว่างทางยังเป็นที่ว่างรอโหลด พอเลื่อนผ่านก็ขยาย/หดตัว ตำแหน่งที่คำนวณไว้ครั้งเดียวจึงเพี้ยน
-   (เคยวัดได้เลยเป้า 600–1 900 px) → กระโดดทันทีแล้วคอยแก้ตำแหน่งจนนิ่ง หยุดทันทีที่ผู้อ่านแตะ/เลื่อนเอง */
-let NAVJOB = 0;
+   (เคยวัดได้เลยเป้า 600–1 900 px) → กระโดดทันทีแล้วคอยแก้ตำแหน่งจนนิ่ง หยุดทันทีที่ผู้อ่านแตะ/เลื่อนเอง
+   ระหว่างงานกระโดด (NAVBUSY) writeScrollState ไม่เขียน — เดิมตัวหน่วง 400 ms หลัง scroll อ่านตำแหน่งกลางทาง (หลัง go() เลื่อนขึ้นบนสุด
+   ระหว่างรอหัวข้อโหลด หรือหัวข้อก่อนเป้าหมายระหว่างแก้ตำแหน่ง) แล้วไม่มี scroll มาแก้ ที่อยู่/«อ่านต่อ» จึงค้างผิดหัวข้อ → เขียนครั้งเดียวตอนงานจบ */
+let NAVJOB = 0, NAVBUSY = 0;                      // NAVJOB = เลขงานล่าสุด (งานเก่าเห็นว่าไม่ตรงแล้วหยุดเอง) · NAVBUSY = งานที่ยังไม่จบ (0 = ไม่มี)
+function navBegin() { NAVBUSY = ++NAVJOB; return NAVJOB; }
+function navEnd(job) { if (NAVBUSY === job) { NAVBUSY = 0; writeScrollState(); } }   // จบแล้ว: ที่อยู่ + «อ่านต่อ» = หัวข้อที่อยู่บนจอจริง
+function navStop() { NAVJOB++; NAVBUSY = 0; }      // เปลี่ยนหน้า/เลื่อนไปตำแหน่งอื่น — งานที่ค้างอยู่หยุด ไม่เขียนทับ
 function scrollToTarget(el, off) {                // off = ระยะที่ el เลยเส้นใต้แถบบนขึ้นไป (บวก = el อยู่สูงกว่าเส้น)
   off = off || 0;
-  const job = ++NAVJOB;
+  const job = navBegin();
   const sec = el.closest && el.closest("section.topic");
   if (sec) setFold(sec, true);
   for (let d = el.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) d.open = true;
   const want = () => navOffset() - off;
   const target = () => Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY - want()));
-  if (Math.abs(el.getBoundingClientRect().top - want()) < window.innerHeight * 1.2 && !REDUCED) {
-    window.scrollTo({ top: target(), behavior: "smooth" });      // ใกล้ ๆ เนื้อหารอบข้างโหลดแล้ว เลื่อนนุ่มได้
-    return;
-  }
-  window.scrollTo({ top: target(), behavior: "instant" });
   const cancel = () => { if (job === NAVJOB) NAVJOB++; };
   const evs = ["wheel", "touchstart", "keydown", "mousedown"];
   evs.forEach(ev => window.addEventListener(ev, cancel, { once: true, passive: true }));
+  const done = () => { evs.forEach(ev => window.removeEventListener(ev, cancel)); navEnd(job); };
   const t0 = performance.now();
-  let calmSince = t0;
+  // ใกล้ ๆ เนื้อหารอบข้างโหลดแล้ว เลื่อนนุ่มได้ — แต่หัวข้อด้านบนยังขยายได้หลังเลื่อนจบ จึงแก้ตำแหน่งต่อแบบเดียวกับกระโดดไกล
+  let smooth = Math.abs(el.getBoundingClientRect().top - want()) < window.innerHeight * 1.2 && !REDUCED;
+  window.scrollTo({ top: target(), behavior: smooth ? "smooth" : "instant" });
+  let calmSince = t0, lastY = NaN, still = 0;
+  const loading = () => !!view.querySelector(".tbody:not([data-lazy]) > .tload:not(.tfail)");   // หัวข้อใกล้จอกำลังโหลด/ใส่เนื้อหาอยู่ (fillBody · fillChunks) — ความสูงยังเปลี่ยนได้ (กล่องที่ยังไม่ถึงคิว = data-lazy ไม่นับ)
   const tick = () => {
-    const now = performance.now();
-    if (job !== NAVJOB || !el.isConnected || now - t0 > 6000 || now - calmSince > 1200) { evs.forEach(ev => window.removeEventListener(ev, cancel)); return; }
-    if (Math.abs(el.getBoundingClientRect().top - want()) > 2) { window.scrollTo({ top: target(), behavior: "instant" }); calmSince = now; }
+    const now = performance.now(), busy = loading();
+    // นิ่ง 1.2 วินาทีและไม่มีหัวข้อกำลังโหลด · หรือครบ 6 วินาที (ยังโหลดอยู่ = รอได้ถึง 20 วินาที — เครื่องช้า/หัวข้อยาว ไม่งั้นจุดหมายเลื่อนหลังงานจบ)
+    if (job !== NAVJOB || !el.isConnected || now - t0 > (busy ? 20000 : 6000) || (now - calmSince > 1200 && !busy)) { done(); return; }
+    if (smooth) {                                    // รอเลื่อนนุ่มจบ (หยุดนิ่ง ~10 เฟรม) ก่อนเริ่มแก้ตำแหน่ง
+      const y = Math.round(window.scrollY);
+      if (y === lastY) still++; else { still = 0; lastY = y; }
+      if (still > 10 || now - t0 > 3000) smooth = false;
+      calmSince = now;
+    } else if (Math.abs(el.getBoundingClientRect().top - want()) > 2) { window.scrollTo({ top: target(), behavior: "instant" }); calmSince = now; }
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -71265,10 +71277,11 @@ async function scrollToTopic(id, o) {             // o: { off, anchor (id ใน
   o = o || {};
   const sec = document.getElementById(id);
   if (!sec || !view.contains(sec)) return;
+  const job = navBegin();                          // เริ่มงานกระโดดตั้งแต่รอหัวข้อโหลด (go() เพิ่งเลื่อนขึ้นบนสุด — ห้ามเขียนตำแหน่งนั้นเป็นที่อยู่)
   setFold(sec, true);
   const body = sec.querySelector(".tbody");
   if (body) { if (body.dataset.lazy !== undefined) fillBody(body); await bodyReady(body); }
-  if (!sec.isConnected) return;
+  if (job !== NAVJOB || !sec.isConnected) { navEnd(job); return; }   // มีงานใหม่แทนแล้ว (กดหัวข้ออื่นระหว่างรอ) — ไม่กระโดดทับ
   let el = sec, off = o.off || 0;
   if (o.anchor) { const a = document.getElementById(o.anchor); if (a && sec.contains(a)) { el = a; off = 0; } }
   if (o.hl && body && typeof markHits === "function") { const m = markHits(body, o.hl); if (m) { el = m; off = -Math.round(window.innerHeight * 0.2); } }
@@ -71282,6 +71295,8 @@ function navTopic(id, o) {                        // กดสารบัญ/�
   writeScrollState();
   state.topic = id;
   setHistory("push", st, { off: 0 });
+  LAST = { v: "subject", id: state.id, mode: curMode(), topic: id, off: 0 };   // «อ่านต่อ» ชี้เป้าหมายตั้งแต่เริ่มกระโดด (ตำแหน่งจริงเขียนตอนงานจบ)
+  saveLast();
   scrollToTopic(id, o);
 }
 /* บล็อก v4 (ต้นฉบับ _work/layout/layout.js) มีตัวกระโดดของตัวเองที่เลื่อนนุ่มไปตำแหน่งที่คำนวณครั้งเดียว — แทนด้วยตัวใหม่ข้างบน
@@ -71292,7 +71307,8 @@ settleAt = () => {};
 
 function go(st, opt) {
   opt = opt || {};
-  if (!opt.pop && !opt.init) writeScrollState();   // เก็บตำแหน่งของหน้าที่กำลังออก
+  if (!opt.pop && !opt.init) writeScrollState();   // เก็บตำแหน่งของหน้าที่กำลังออก (ถ้ากำลังกระโดดอยู่ รายการนั้นชี้หัวข้อเป้าหมายไว้แล้ว)
+  navStop();
   st = Object.assign({}, st);
   const hl = st.hl, off = st.off;
   delete st.hl; delete st.off;
@@ -71352,7 +71368,7 @@ function onRoute() {
     state.topic = st.topic; state.mode = st.mode; state.anchor = st.anchor;
     document.title = pageTitle(st);
     if (st.topic) scrollToTopic(st.topic, { off: hs.off, anchor: st.anchor });
-    else window.scrollTo({ top: hs.y || 0, behavior: "instant" });
+    else { navStop(); window.scrollTo({ top: hs.y || 0, behavior: "instant" }); }
     return;
   }
   go(Object.assign(st, { off: hs.off }), { pop: true, y: hs.y });
@@ -72354,6 +72370,11 @@ window.addEventListener("scroll", () => {
   clearTimeout(WSS_T);
   WSS_T = setTimeout(writeScrollState, 400);        // หัวข้อที่อ่านอยู่ → ที่อยู่ของหน้า + «อ่านต่อ»
 }, { passive: true });
+if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => {   // เนื้อหาขยาย/หด (หัวข้อ/แบบจำลอง/รูปโหลดทีหลัง) โดยไม่มี scroll ตามมา — หัวข้อบนจออาจเปลี่ยน
+  if (state.v !== "subject") return;
+  clearTimeout(WSS_T);
+  WSS_T = setTimeout(writeScrollState, 400);
+}).observe(view);
 
 /* ---- v6: ช่องโค้ดต่อ session — แต่ละ session เขียนเฉพาะในช่องของตัวเอง (ดู CLAUDE.md หัวข้อ 14) ----
    โค้ดในช่องรันก่อนเริ่มแอป จึงลงทะเบียน HOOKS/registerPage ได้ทันเวลา · ฟังก์ชันส่วนกลางทั้งหมดใช้ได้ (go, navTopic, DEEP, DEMOS, dbGet, topicsOf …) */
