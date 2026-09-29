@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "f4496c6731";
+const DATA_VERSION = "3826d08254";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -71251,15 +71251,17 @@ function scrollToTarget(el, off) {                // off = ระยะที่
   let calmSince = t0, lastY = NaN, still = 0;
   const loading = () => !!view.querySelector(".tbody:not([data-lazy]) > .tload:not(.tfail)");   // หัวข้อใกล้จอกำลังโหลด/ใส่เนื้อหาอยู่ (fillBody · fillChunks) — ความสูงยังเปลี่ยนได้ (กล่องที่ยังไม่ถึงคิว = data-lazy ไม่นับ)
   const tick = () => {
-    const now = performance.now(), busy = loading();
-    // นิ่ง 1.2 วินาทีและไม่มีหัวข้อกำลังโหลด · หรือครบ 6 วินาที (ยังโหลดอยู่ = รอได้ถึง 20 วินาที — เครื่องช้า/หัวข้อยาว ไม่งั้นจุดหมายเลื่อนหลังงานจบ)
-    if (job !== NAVJOB || !el.isConnected || now - t0 > (busy ? 20000 : 6000) || (now - calmSince > 1200 && !busy)) { done(); return; }
+    const now = performance.now();
+    if (job !== NAVJOB || !el.isConnected) { done(); return; }
     if (smooth) {                                    // รอเลื่อนนุ่มจบ (หยุดนิ่ง ~10 เฟรม) ก่อนเริ่มแก้ตำแหน่ง
       const y = Math.round(window.scrollY);
       if (y === lastY) still++; else { still = 0; lastY = y; }
       if (still > 10 || now - t0 > 3000) smooth = false;
       calmSince = now;
-    } else if (Math.abs(el.getBoundingClientRect().top - want()) > 2) { window.scrollTo({ top: target(), behavior: "instant" }); calmSince = now; }
+    } else if (Math.abs(el.getBoundingClientRect().top - want()) > 2) { window.scrollTo({ top: target(), behavior: "instant" }); calmSince = now; }   // แก้ก่อนตัดสินว่าจบ — ไม่งั้นเฟรมสุดท้ายที่เลื่อนจะหลุด
+    // นิ่ง 1.2 วินาทีและไม่มีหัวข้อกำลังโหลด · หรือครบ 6 วินาที (ยังโหลดอยู่ = รอได้ถึง 20 วินาที — เครื่องช้า/หัวข้อยาว ไม่งั้นจุดหมายเลื่อนหลังงานจบ)
+    const busy = loading();
+    if (now - t0 > (busy ? 20000 : 6000) || (now - calmSince > 1200 && !busy)) { done(); return; }
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
