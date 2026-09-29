@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "d938e6e7b7";
+const DATA_VERSION = "f8a1c1ce7b";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -69997,7 +69997,7 @@ function store(key, value) {
    ย้ายข้อมูลรุ่น 1 → 2 ทำครั้งเดียวในช่อง SLOT S8 (learnerStart) หลัง MODULES ครบ */
 const METAKEY = "atlas-meta-v1", SCHEMA = 2, BACKUP_V = 2, PREVKEY = "atlas-backup-prev";
 /* S8: ทะเบียนคีย์ของข้อมูลผู้เรียน — ใช้ตรวจไฟล์สำรองก่อนนำเข้าและสรุปสิ่งที่จะเปลี่ยน
-   kind: "set" = JSON array · "obj" = JSON object · "any" = JSON ใดก็ได้ · "raw" = สตริงตามรูปแบบ re · count(v) = จำนวนรายการ (ค่าที่ parse แล้ว)
+   kind: "set" = JSON array ของสตริง/ตัวเลข · "list" = JSON array อะไรก็ได้ · "obj" = JSON object · "any" = JSON ใดก็ได้ · "raw" = สตริงตามรูปแบบ re · count(v) = จำนวนรายการ (ค่าที่ parse แล้ว)
    temp: true = สร้างใหม่ได้ ปุ่ม «ล้างข้อมูลชั่วคราว» ลบได้ · session อื่นลงทะเบียนคีย์ของตัวเองได้ด้วย learnerKey(key, spec) */
 const LEARNER = {};
 function learnerKey(key, spec) { LEARNER[key] = Object.assign({ kind: "any" }, spec); }
@@ -70015,6 +70015,11 @@ learnerKey(METAKEY, { kind: "obj", label: "รุ่นข้อมูล", coun
 learnerKey("atlas-srs-v1", { kind: "obj", label: "รายการทวนตามกำหนด", count: nKeys });
 learnerKey("atlas-exam-v1", { kind: "obj", label: "วันสอบ", count: nKeys });
 learnerKey("atlas-seen-v1", { kind: "obj", label: "สถิติการอ่านหัวข้อ", count: nKeys });
+learnerKey("atlas-recent-v1", { kind: "list", label: "ประวัติการอ่านล่าสุด" });
+learnerKey("atlas-pins-v1", { kind: "list", label: "หัวข้อที่ปักไว้" });
+learnerKey("atlas-notes-v1", { kind: "obj", label: "บันทึกส่วนตัว", count: nKeys });
+learnerKey("atlas-ui-v1", { kind: "obj", label: "ตัวกรองหน้ารายวิชา", count: v => (v ? 1 : 0), temp: true });
+learnerKey("atlas-search-v1", { kind: "obj", label: "ตัวเลือกหน้าค้นหา", count: v => (v ? 1 : 0), temp: true });
 
 const KEY = "atlas-sula-v1";
 let DONE = new Set();
@@ -70363,6 +70368,7 @@ function learnerParse(key, raw) {
   let v;
   try { v = JSON.parse(raw); } catch (e) { throw bad(); }
   if (spec.kind === "set" && !(Array.isArray(v) && v.every(x => typeof x === "string" || typeof x === "number"))) throw bad();
+  if (spec.kind === "list" && !Array.isArray(v)) throw bad();
   if (spec.kind === "obj" && !(v && typeof v === "object" && !Array.isArray(v))) throw bad();
   if (spec.meta && v.schema !== undefined && !(Number.isInteger(v.schema) && v.schema >= 1)) throw bad();
   if (spec.check && !spec.check(v)) throw bad();
@@ -70745,7 +70751,7 @@ function renderSubject() {
 
   view.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
     MODE = b.dataset.mode;
-    try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
+    store("atlas-mode-v1", MODE);
     go({ v: "subject", id: state.id, mode: MODE });
   }));
   view.querySelectorAll("[data-key]").forEach(b => b.addEventListener("click", () => toggleKey(b.dataset.key, b)));
@@ -71095,7 +71101,7 @@ function margWeak(m) {
   m.innerHTML = h;
   m.querySelectorAll("[data-full]").forEach(b => b.addEventListener("click", () => {
     MODE = "full";
-    try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
+    store("atlas-mode-v1", MODE);
     clearDemos(); renderSubject();
     setTimeout(() => jumpTopic(b.dataset.full), 60);
   }));
@@ -71756,7 +71762,7 @@ function markTerms(root, terms) {
 const SXKEY = "atlas-search-v1", SX_STEP = 60;
 let SX = { q: "", from: "", scope: "all", kind: "all", shown: SX_STEP };
 try { const o = JSON.parse(localStorage.getItem(SXKEY) || "{}"); if (o && typeof o === "object") SX = Object.assign(SX, o); } catch (e) {}
-const sxSave = () => { try { localStorage.setItem(SXKEY, JSON.stringify(SX)); } catch (e) {} };
+const sxSave = () => store(SXKEY, SX);
 let SX_FROM = null, SX_KEEP = false, SX_HITS = [];     // ช่องค้นหาตั้ง: วิชาที่เริ่มค้นจาก · พิมพ์ต่อในหน้าผล (คงตัวกรองไว้)
 const SX_KINDS = [["all", "ทั้งหมด"], ["topic", "หัวข้อ"], ["sum", "สรุป"], ["term", "ศัพท์"], ["subj", "วิชา"]];
 const SX_EX = ["устойч", "เสถียร", "Kalman", "передаточная функция"];
@@ -72368,7 +72374,7 @@ window.addEventListener("scroll", () => {
 const UIKEY = "atlas-ui-v1";
 let UI = {};
 try { UI = JSON.parse(localStorage.getItem(UIKEY) || "{}") || {}; } catch (e) {}
-const saveUI = () => { try { localStorage.setItem(UIKEY, JSON.stringify(UI)); } catch (e) {} };
+const saveUI = () => store(UIKEY, UI);
 
 /* ---- หน้า #/subjects: คำอธิบายหลักสูตร · ภาคของผู้อ่าน · ตัวกรอง · แค็ตตาล็อกตามชั้นปี ---- */
 const S2F0 = { sem: "all", status: "all", deep: false };
@@ -72468,7 +72474,7 @@ function renderSubjects() {
   view.querySelectorAll("[data-mysem]").forEach(b => b.addEventListener("click", () => {
     const n = +b.dataset.mysem;
     MYSEM = n || null;
-    try { if (MYSEM) localStorage.setItem(MYSEMKEY, String(MYSEM)); else localStorage.removeItem(MYSEMKEY); } catch (e) {}
+    store(MYSEMKEY, MYSEM ? String(MYSEM) : undefined);
     RAILOPEN.add(curSem()); saveRail();
     const fold = navEl.querySelector('.sem-body[data-fold="' + curSem() + '"]');   // เปิดภาคนั้นในแถบซ้ายด้วย
     if (fold) { fold.classList.add("open"); if (fold.previousElementSibling) fold.previousElementSibling.classList.add("open"); }
@@ -73558,7 +73564,7 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
   if (typeof document === "undefined") return;
   const SRSKEY = "atlas-srs-v1", EXAMKEY = "atlas-exam-v1", SEENKEY = "atlas-seen-v1";
   const rd = k => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { return {}; } };
-  const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* พื้นที่เต็ม — S8 ดูแล */ } };
+  const wr = (k, v) => store(k, v);                  // store() ของ S8 — แจ้งผู้อ่านเมื่อพื้นที่เต็ม
   let EXAMS = rd(EXAMKEY), SEEN = rd(SEENKEY);
   const saveExams = () => wr(EXAMKEY, EXAMS);
   const saveSeen = () => wr(SEENKEY, SEEN);
@@ -74245,7 +74251,7 @@ HOOKS.on("offline", () => [S7_REL_URL]);
 /* ---- 3) ประวัติการอ่านล่าสุด (atlas-recent-v1 = [{ sid, tid, t }] ใหม่สุดก่อน ≤ 12) ---- */
 const S7_RECENT = "atlas-recent-v1", S7_RECENT_N = 12;
 function s7Load(key, def) { try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; } catch (e) { return def; } }
-function s7Save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch (e) { return false; } }
+function s7Save(key, v) { return store(key, v); }   // store() ของ S8 — แจ้งผู้อ่านเมื่อพื้นที่เต็ม
 function s7Recent() { const a = s7Load(S7_RECENT, []); return Array.isArray(a) ? a.filter(x => x && s7Topic(x.sid, x.tid)) : []; }
 function s7Visit(sid, tid) {
   if (!sid || !tid || !s7Topic(sid, tid)) return;
@@ -74606,28 +74612,6 @@ function s8Bind() {
   if (cl) cl.addEventListener("click", () => { document.getElementById("s8clearMsg").textContent = clearTemp(); });
 }
 HOOKS.on("go", st => { if (st.v === "progress") s8Bind(); });
-
-/* หน้า #/progress สำรอง — ใช้เฉพาะเมื่อยังไม่มีหน้าของ S2 (ไม่ทับของจริง: เช็ก PAGES และ PAGE_DEFS) */
-if (!PAGES.includes("progress") && !PAGE_DEFS.progress) registerPage("progress", {
-  title: () => "ความก้าวหน้า",
-  render() {
-    view.innerHTML = '<div class="wrap"><div class="page-head"><p class="eyebrow">Прогресс</p><h1 class="page-title">ความก้าวหน้าและข้อมูลในเครื่อง</h1></div>' +
-      '<section class="backup s8card" aria-labelledby="s8bkH"><h3 id="s8bkH">สำรองและย้ายเครื่อง</h3>' +
-      '<p>ความคืบหน้าเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
-      '<div class="qbar"><button type="button" id="s8save">สำรองเป็นไฟล์</button><button type="button" id="s8load">นำเข้าจากไฟล์</button>' +
-      '<input type="file" id="s8file" accept="application/json,.json" hidden><span class="m" id="s8bkMsg" role="status"></span></div></section>' +
-      HOOKS.render("progress", {}) + '</div>';
-    const msg = document.getElementById("s8bkMsg"), f = document.getElementById("s8file");
-    document.getElementById("s8save").addEventListener("click", () => { msg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
-    document.getElementById("s8load").addEventListener("click", () => f.click());
-    f.addEventListener("change", async () => {
-      const file = f.files && f.files[0];
-      f.value = "";
-      if (!file) return;
-      try { await progressImport(file); } catch (e) { msg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
-    });
-  }
-});
 /* ===== SLOT S8 END ===== */
 /* ===== SLOTS END ===== */
 

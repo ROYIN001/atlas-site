@@ -160,7 +160,7 @@ function fresh() {
 }
 const GOOD = {
   app: 'atlas-site', v: 2, schema: 2, saved: '2026-09-01T10:00:00Z',
-  data: { 'atlas-sula-v1': JSON.stringify(['k:a', 'k:b', 'k:c']), 'atlas-bm-v1': JSON.stringify(['x', 'y']), 'atlas-ui-v1': '{}', 'atlas-foo': '1' },
+  data: { 'atlas-sula-v1': JSON.stringify(['k:a', 'k:b', 'k:c']), 'atlas-bm-v1': JSON.stringify(['x', 'y']), 'atlas-zzz-v9': '{}', 'atlas-foo': '1' },
 };
 
 test('นำเข้าไฟล์เสีย/ผิดรูปแบบ/รุ่นใหม่กว่า → ปฏิเสธพร้อมเหตุผล ข้อมูลเดิมครบ ไม่ถามยืนยัน', async () => {
@@ -272,4 +272,32 @@ test('ล้างข้อมูลชั่วคราว: ลบเฉพา
   assert.equal(st.getItem('atlas-rail-v1'), null);
   assert.notEqual(st.getItem('atlas-backup-prev'), null, 'ไม่ยืนยันข้อสอง → ชุดก่อนนำเข้ายังอยู่');
   for (const k of ['atlas-sula-v1', 'atlas-bm-v1', 'atlas-quiz-v1']) assert.equal(st.getItem(k), ORIGINAL[k]);
+});
+
+// ---- หลังรวมทั้ง 8 session: ทุกคีย์ข้อมูลผู้เรียนลงทะเบียนและเขียนผ่าน store() ----
+test('ทุกคีย์ atlas-*-vN ใน app.js ลงทะเบียนด้วย learnerKey() (ตรวจไฟล์สำรอง + สรุปก่อนนำเข้าได้ครบ)', () => {
+  const consts = {};
+  for (const m of app.matchAll(/(\w+) = "(atlas-[\w-]+)"/g)) consts[m[1]] = m[2];
+  const registered = new Set();
+  for (const m of app.matchAll(/learnerKey\(\s*(?:"(atlas-[\w-]+)"|(\w+))/g)) registered.add(m[1] || consts[m[2]]);
+  const used = new Set([...app.matchAll(/"(atlas-[a-z]+(?:-[a-z]+)*-v\d+)"/g)].map(m => m[1]));
+  used.delete('atlas-admin-v1');                                 // โหมดผู้ดูแล ไม่ใช่ข้อมูลผู้เรียน ไม่อยู่ในไฟล์สำรอง
+  const missing = [...used].filter(k => !registered.has(k));
+  assert.deepEqual(missing, [], 'คีย์ใหม่ต้องเรียก learnerKey(key, {kind, label, …}) ในช่องของตัวเอง');
+});
+
+test('ไม่มี localStorage.setItem ตรง ๆ นอก store() · โหมดผู้ดูแล · นำเข้าแบบกู้คืน · สำเนาออฟไลน์ (S3 มีทางลดขนาดเองเมื่อพื้นที่เต็ม)', () => {
+  const allowed = ['localStorage.setItem(key, typeof value', 'ADMINKEY', 'PREVKEY', 'next[k]', 'back[k]', 'OFFKEY'];
+  const bad = app.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => l.includes('localStorage.setItem(') && !allowed.some(a => l.includes(a)));
+  assert.deepEqual(bad.map(([n, l]) => n + ': ' + l.trim().slice(0, 90)), []);
+});
+
+test('kind "list" (ประวัติ/หัวข้อที่ปัก ของ S7): array ของอะไรก็ได้ · ไม่ใช่ array = ปฏิเสธ', async () => {
+  const { st, sb, before } = fresh();
+  await assert.rejects(sb.progressImport(fileOf({ app: 'atlas-site', v: 2, data: { 'atlas-recent-v1': '{}' } })), /atlas-recent-v1/);
+  assert.deepEqual(learner(st), before);
+  sb.answer = false;
+  await sb.progressImport(fileOf({ app: 'atlas-site', v: 2, data: { 'atlas-pins-v1': '[{"sid":"tau","tid":"tau-t1","t":1}]', 'atlas-sula-v1': '[]' } }));
+  assert.match(sb.confirms[0], /หัวข้อที่ปักไว้ 0 → 1/);
+  assert.doesNotMatch(sb.confirms[0], /ไม่รู้จัก/);
 });
