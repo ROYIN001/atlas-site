@@ -417,7 +417,12 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - ทดสอบ: `tests/search.test.cjs` (vm) · `node tests/search.browser.cjs` (Playwright ตรวจรับ ไม่อยู่ในชุด `--test`) · ข้อควรระวัง: `verify.py` โฟกัสช่องค้นหาในหน้าแรกแล้วรอ `IX_READY` — ตอนนี้โฟกัสในหน้าแรกไม่โหลดอะไร จึงรอจนหมดเวลา `--timeout` แล้วค่อยพิมพ์ (ยังผ่านเพราะนับ `search_hits`) · เสนอ S1 ให้ `fill` ก่อนแล้วค่อยรอ
 
 #### 14.5 S5 — ฝึกทบทวน
-(ยังไม่ทำ)
+- **`data/qa/<sid>.json`** (จาก `src/build_steps/qa.py` · 2 666 ข้อ 12 วิชา) = `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `_index.json` = `{sid: {n, t:{tid:จำนวน}, z:{tid:จำนวน quiz2}, fix:{tid:{ลำดับ:id}}}}` · id = id เดิม หรือ `"qa-" + stable_id(ข้อความ .qa-q/<summary> ที่ขอบแท็กทุกอันเป็นช่องว่าง แปลง &…; แล้ว)` — ฝั่งหน้าเว็บคือ `qaText()` (เดินโหนด ไม่ใช่ textContent) · คำถามซ้ำข้ามหัวข้อต่อท้าย `-<tid>` (อยู่ใน `fix`) · `a_html` ไม่มี `[data-demo]`/figure/script (แทนด้วย `a.qa-see`)
+- hook `fill`: ใส่ id ให้ `details.qa` (+ `data-qaid`) และ host quiz2 (`id` = `data-id` = `<tid>-q<n>`) · 🔊 ในคำตอบภาษารัสเซีย (`qaRuText()` = กติกาเดียวกับ `ru_text()` ใน qa.py) · แถบสี `details.qa[data-oral]` · session อื่น **อ่าน id จาก DOM/`data/qa`** ไม่ต้องคำนวณเอง
+- **`window.SAY = { ok, speak(text, rate, onEnd) → false ถ้าไม่มีเสียง, stop(), voice(), hint() }`** ใช้เฉพาะเสียง ru ในเครื่อง (`localService`) · `sayButton(getText, label)` = ปุ่ม 🔊 ฟัง/ช้า พร้อมคำแนะนำติดตั้ง · หยุดเองใน hook go/clear
+- หน้า: `#/practice[/sid[/tid]]` · `#/oral/sid[/tid][/n<k>][/weak]` · `#/flash[/<กลุ่ม|วิชา>][/weak]` · `#/quiz[/<กลุ่ม|วิชา>][/n<k>][/weak]` (flash/quiz ถอดจาก `PAGES` เป็น `registerPage` ในช่อง S5 — **S2: `PAGE_DEFS.practice` มีแล้ว**) · ปุ่ม `#quizBtn` = «ฝึกทบทวน» → `#/practice/<วิชาที่อ่านอยู่>`
+- localStorage: `atlas-oral-v1` `{"sid/tid/id": {r:1|3|5, t, n}}` · `atlas-practice-v1` `{tid: {hostId: {done, ok, n, t}}, _terms: {termKey: {r:1|5, t, n}}, _opt: {timer, dir}}` (คีย์ขึ้นต้น `_` ไม่ใช่หัวข้อ) · เขียนผ่าน `store()` และลงทะเบียน `learnerKey()` ของ S8 · SRS: `q:sid/tid/id` (1/3/5) · ศัพท์ `termKey()` (1/5) · `SRS.due("q:<sid>/")` ใช้เลือกข้อถัดไปถ้ามี
+- ตรวจ: `node --test tests/practice.test.cjs` · เบราว์เซอร์ `node tests/practice.browser.cjs` (Playwright ของ Node — ในคลาวด์ใช้ `NODE_PATH=$(npm root -g)`) · `tests/ui-learning` ทดสอบ renderQuiz ใน DOM จำลอง: ของจากช่อง S5 ในส่วน POOL…search box ต้องเรียกผ่าน `typeof` และคง `const POOL = () =>`
 
 #### 14.6 S6 — SRS/วันสอบ/คืนก่อนสอบ
 - โค้ดทั้งหมดอยู่ในช่อง SLOT S6 (app.js/app.css) · ส่วนคำนวณล้วนอยู่ระหว่าง `/* ---- S6 core BEGIN` … `END` (`srsCore` `srsPlanCat` `srsSidOf` `srsQuizGrade`) ซึ่ง `tests/srs.test.cjs` รันใน vm — ห้ามแตะ DOM ในส่วนนั้น

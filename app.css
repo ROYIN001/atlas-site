@@ -3935,6 +3935,102 @@ a.res-item:focus-visible { border-color: var(--accent); }
 .sx .sx-more:empty { display: none; }
 /* ===== SLOT S4 END ===== */
 /* ===== SLOT S5 BEGIN ===== */
+/* S5 · ฝึกทบทวน #/practice · ซ้อมปากเปล่า #/oral · ปุ่มเสียง .say · Flashcard/ควิซศัพท์ (ต่อจากบล็อก v2: flashcards) */
+.say { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 8px; }
+.say-btn { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13px; padding: 5px 11px; border-radius: 999px; min-height: 32px; }
+.say-btn.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.say-hint { flex-basis: 100%; font-size: 13px; line-height: 1.55; color: var(--ink-2); background: var(--wash-2); border-radius: 6px; padding: 7px 10px; }
+.ans-ru > .say { display: flex; margin-top: -2px; }
+details.qa[data-oral] { box-shadow: inset 3px 0 0 var(--s5-r, var(--line-2)); }
+details.qa[data-oral="5"] { --s5-r: var(--ok); }
+details.qa[data-oral="3"] { --s5-r: var(--accent-2); }
+details.qa[data-oral="1"] { --s5-r: var(--crit); }
+.s5-go { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 18px; font-size: 14px; }
+.s5-go a:not(.btn) { color: var(--accent); }
+.s5-go .btn, .s5 .btn { text-decoration: none; display: inline-block; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13.5px; }
+.s5-head { margin: 0 0 6px; }
+.s5 { max-width: 760px; }
+.s5 .sr, .flash .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.s5-muted { color: var(--ink-3); font-size: 14px; }
+.s5-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 6px; background: var(--wash-2); color: var(--ink-2); font-size: 14px; }
+.s5-step { margin: 0 0 20px; }
+.s5-step h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; color: var(--ink); }
+.s5-subjs, .s5-ns { display: flex; flex-wrap: wrap; gap: 8px; }
+.s5-subjs button, .s5-ns button { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13.5px; text-align: left; min-height: 40px; }
+.s5-subjs button i { font-style: normal; font-size: 12px; opacity: .8; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.s5-sel select, .fopts select { max-width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--panel); color: var(--ink); }
+.s5-sel select { width: 100%; }
+.s5-chk { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.s5-chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+.s5-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.s5-mode { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+.s5-mode h3 { margin: 0; font-size: 16.5px; font-weight: 600; }
+.s5-mode p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+.s5-mode .btn { align-self: flex-start; margin-top: auto; }
+.s5-primary, a.btn.s5-primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.s5-primary:hover, a.btn.s5-primary:hover { color: var(--panel); filter: brightness(1.08); }
+.s5-foot { margin: 22px 0 40px; font-size: 14px; }
+.s5-foot a, .s5-see a, .s5-res a, .s5 .crumb a { color: var(--accent); }
+.s5 .crumb a { padding: 2px 5px; border-radius: 3px; text-decoration: none; }
+.s5-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 18px 20px 20px; margin-bottom: 40px; }
+.s5-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.s5-tp { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 13px; flex: 1 1 200px; min-width: 0; }
+.s5-clock { font-size: 15px; font-weight: 600; color: var(--ink); min-width: 3.4em; text-align: right; }
+.s5-clock.over { color: var(--crit); }
+.s5-meta button { padding: 5px 10px; font-size: 12px; }
+.s5-q { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 19px; line-height: 1.5; font-weight: 600; margin: 14px 0 8px; overflow-wrap: anywhere; }
+.s5-q:focus { outline: none; }
+.s5-q .th, .s5-q .extag { font-size: 14px; font-weight: 400; color: var(--ink-3); }
+.s5-n { display: inline-block; font: 600 12.5px/1.2 "IBM Plex Mono", ui-monospace, monospace; padding: 4px 7px; border-radius: 6px; background: var(--wash-2); color: var(--accent-2); vertical-align: 3px; }
+.s5-prev { font-size: 13px; color: var(--ink-3); margin: 0 0 10px; }
+.s5 [data-r="5"] { color: var(--ok); } .s5 [data-r="3"] { color: var(--accent-2); } .s5 [data-r="1"] { color: var(--crit); }
+.s5-pts { display: block; font-size: 14px; font-weight: 500; margin: 12px 0 6px; }
+.s5-pts span { font-weight: 400; color: var(--ink-3); }
+.s5-card textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; line-height: 1.6; padding: 9px 11px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel-2); color: var(--ink); resize: vertical; }
+.s5-card textarea[readonly] { opacity: .85; }
+.s5-card button.s5-primary { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 15px; padding: 10px 22px; }
+.s5-ansbox { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.s5-ansbox:focus { outline: none; }
+.s5-ans .ans { font-size: 15.5px; line-height: 1.75; color: var(--ink); overflow-wrap: anywhere; }
+.s5-ans .ans .m { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; margin: 8px 0; overflow-x: auto; }
+.s5-ans table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.s5-ans td, .s5-ans th { border: 1px solid var(--line); padding: 4px 8px; }
+.s5-ans .ans-th { margin-top: 14px; }
+.s5-see { margin: 12px 0; font-size: 14px; }
+.s5-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.s5-rate > span { flex-basis: 100%; font-size: 14px; font-weight: 500; }
+.s5-rate button { flex: 1 1 140px; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 14.5px; padding: 11px 10px; }
+.s5-rate button[data-r="1"]:hover { border-color: var(--crit); }
+.s5-rate button[data-r="5"]:hover { border-color: var(--ok); }
+.s5 kbd, .flash kbd { font: 11px "IBM Plex Mono", ui-monospace, monospace; padding: 1px 5px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink-3); margin-left: 4px; }
+.s5-sum h2 { font-size: 22px; margin: 0 0 8px; }
+.s5-sum h2:focus { outline: none; }
+.s5-tally { display: flex; flex-wrap: wrap; gap: 14px; font-size: 15px; }
+.s5-res { padding-left: 1.4em; font-size: 14.5px; line-height: 1.6; }
+.s5-res li { margin: 0 0 8px; }
+.s5-res b { font-weight: 600; margin-right: 4px; }
+.s5-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.s5-acts button { font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; font-size: 14px; padding: 10px 16px; }
+.fopts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+.fopts label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 100%; min-width: 0; }
+.fopts select { min-width: 0; flex: 1 1 180px; }
+.fdir { display: inline-flex; gap: 6px; }
+button.fcard { width: 100%; font-family: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif; color: var(--ink); }
+button.fcard:hover { border-color: var(--accent); color: var(--ink); }
+.fcard > span { display: block; }
+.fcard .fabbr { display: inline; }
+.fcard.fdone { cursor: default; }
+.fcard.fdone:focus { outline: none; }
+.fsay { display: flex; justify-content: center; margin-top: 10px; }
+.fkeys { text-align: center; font-size: 12.5px; color: var(--ink-3); margin: 6px 0 30px; }
+.fbtns .btn { flex: 1; max-width: 190px; padding: 12px; font-size: 13px; text-align: center; text-decoration: none; }
+.fbtns { flex-wrap: wrap; }
+@media (hover: none) { .s5 kbd, .flash kbd, .fkeys { display: none; } }
+@media (max-width: 600px) {
+  .s5-card { padding: 14px 14px 16px; border-radius: 10px; }
+  .s5-q { font-size: 17px; }
+  .fkeys { display: none; }
+}
 /* ===== SLOT S5 END ===== */
 /* ===== SLOT S6 BEGIN ===== */
 /* S6 · แถบทวน/วันสอบใต้หัวหน้าวิชา (.s6-head) */
