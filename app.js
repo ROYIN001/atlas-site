@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "9588096df2";
+const DATA_VERSION = "d938e6e7b7";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -70061,8 +70061,8 @@ if (ADMIN_Q !== null) {
      HOOKS.on("clear", () => …)                     ก่อนล้างหน้า (หยุดตัวจับเวลา/observer ของคุณที่นี่)
      HOOKS.on("offline", sid => [url, …])           คืนรายการไฟล์เพิ่มที่ปุ่ม «เก็บไว้อ่านออฟไลน์» ต้องดึงของวิชานั้น
    ใส่ HTML ในหน้าเดิม (คืนสตริง html หรือ "" · ห้ามใส่ script):
-     HOOKS.html("overview-top", ctx => …)           หลังการ์ดหลักสูตร ก่อนแถววิชาที่มีเนื้อหาเต็ม
-     HOOKS.html("overview-end", ctx => …)           ก่อนกล่องสำรองความคืบหน้า
+     HOOKS.html("overview-top", ctx => …)           ใต้การกระทำหลัก (เรียนต่อ/เลือกวิชา) ก่อน «วิชาของฉัน»
+     HOOKS.html("overview-end", ctx => …)           ท้ายหน้าหลัก หลังลิงก์ไปต่อ (กล่องสำรองความคืบหน้าย้ายไป #/progress แล้ว)
      HOOKS.html("subject-head", ctx => …)           ใต้หัวหน้าวิชา ก่อนแถบโหมด (ctx = {s, deep, mode})
      HOOKS.html("subject-end", ctx => …)            ท้ายรายการหัวข้อ ก่อน «เรียนพร้อมกันในภาค»
      HOOKS.html("progress", ctx => …)               การ์ดในหน้าความก้าวหน้า #/progress (หน้านี้ S2 สร้าง · S3/S6/S8 เติมการ์ดผ่านจุดนี้ · ผูกปุ่มใน HOOKS.on("go", st => st.v === "progress" && …))
@@ -70233,13 +70233,20 @@ const semZe = n => runningIn(n).reduce((a, s) => a + s.ze / Math.max(1, semsOf(s
 const unassigned = () => SUBJECTS.filter(s => !semsOf(s).length);
 const byNum = (a, b) => a.n - b.n;
 
+/* S2: เมนูหลัก 5 พื้นที่ (ชื่อเดียวกับแถบล่างมือถือ #bbar) — หน้าหลัก · รายวิชา · ฝึกทบทวน · ค้นหา · ความก้าวหน้า
+   รายการที่พาไปหน้าอื่นเป็น <a href="#/…"> (คัดลอกลิงก์/เปิดแท็บใหม่ได้ · ตัวจับคลิกของ router เรียก go ให้) · ค้นหาเป็น <button> */
+const practiceHref = (sid, tid) => PAGE_DEFS.practice ? "#/practice" + (sid ? "/" + sid + (tid ? "/" + tid : "") : "") : "#/flash";
+function focusSearch() {
+  document.documentElement.classList.remove("reading");
+  searchEl.focus();
+}
 function buildNav() {
-  const mk = (label, tag, on, attrs, parent) => {
-    const b = document.createElement("button");
+  const mk = (label, tag, href, attrs, parent) => {
+    const b = document.createElement(href ? "a" : "button");
     b.className = "nav-item";
+    if (href) b.href = href; else b.type = "button";
     b.innerHTML = '<span>' + label + '</span><span class="tag">' + (tag || "") + '</span>';
     Object.entries(attrs || {}).forEach(([k, v]) => b.setAttribute(k, v));
-    b.addEventListener("click", on);
     (parent || navEl).appendChild(b);
     return b;
   };
@@ -70257,14 +70264,16 @@ function buildNav() {
     const run = semRun(s);
     const cont = run ? ' <span class="nnum span">' + run + '</span>' : '';
     const b = mk('<span class="nnum">' + s.n + '</span> ' + s.ru + cont, "0%",
-      () => go({ v: "subject", id: s.id }), { "data-nav-subj": s.id, title: s.th + (run ? " · ภาค " + run : "") }, parent);
+      "#/" + s.id, { "data-nav-subj": s.id, title: s.th + (run ? " · ภาค " + run : "") }, parent);
     if (DEEP[s.id]) b.classList.add("deep");
     return b;
   };
   const mkFold = (key, headHtml, cls) => {
     const open = RAILOPEN.has(key);
     const gs = document.createElement("button");
+    gs.type = "button";
     gs.className = cls + (open ? " open" : "");
+    gs.setAttribute("aria-expanded", String(open));
     gs.innerHTML = '<i class="rcaret">▸</i>' + headHtml;
     const body = document.createElement("div");
     body.className = "sem-body" + (open ? " open" : "");
@@ -70273,6 +70282,7 @@ function buildNav() {
       const on = !body.classList.contains("open");
       body.classList.toggle("open", on);
       gs.classList.toggle("open", on);
+      gs.setAttribute("aria-expanded", String(on));
       if (on) RAILOPEN.add(key); else RAILOPEN.delete(key);
       saveRail();
     });
@@ -70280,12 +70290,20 @@ function buildNav() {
     navEl.appendChild(body);
     return body;
   };
-  mk("ภาพรวมหลักสูตร", "", () => go({ v: "overview" }), { "data-nav": "overview" });
-  YEARS.forEach(y => {
+  const grp = txt => {
     const g = document.createElement("div");
-    g.className = "rail-group";
-    g.textContent = y.year + " курс · ชั้นปีที่ " + y.year;
+    g.className = "rail-group"; g.textContent = txt;
     navEl.appendChild(g);
+  };
+  navEl.innerHTML = "";
+  grp("Меню · เมนูหลัก");
+  mk("หน้าหลัก", "", "#/", { "data-nav": "overview" });
+  mk("รายวิชา", SUBJECTS.length, "#/subjects", { "data-nav": "subjects" });
+  mk("ฝึกทบทวน", "", practiceHref(), { "data-nav": "practice" });
+  mk("ค้นหา", "/", null, { "data-nav": "find" }).addEventListener("click", focusSearch);
+  mk("ความก้าวหน้า", "", "#/progress", { "data-nav": "progress" });
+  YEARS.forEach(y => {
+    grp(y.year + " курс · ชั้นปีที่ " + y.year);
     y.sems.forEach(n => {
       const list = runningIn(n).sort(byNum);
       const cont = list.filter(s => semFirst(s) < n).length;
@@ -70296,20 +70314,17 @@ function buildNav() {
   });
   const un0 = unassigned().sort(byNum);
   if (un0.length) {
-    const gu = document.createElement("div");
-    gu.className = "rail-group"; gu.textContent = "ยังไม่ระบุภาคเรียน";
-    navEl.appendChild(gu);
+    grp("ยังไม่ระบุภาคเรียน");
     const body = mkFold("un", 'Без семестра<span>' + un0.length + ' วิชา</span>', "rail-sem");
     un0.forEach(s => navSubj(s, body));
   }
-  const g2 = document.createElement("div");
-  g2.className = "rail-group"; g2.textContent = "Инструменты · เครื่องมือ";
-  navEl.appendChild(g2);
+  grp("Инструменты · เครื่องมือ");
   const un = unassigned().length;
-  if (ADMIN) mk("ปรับภาคเรียน", un ? un + " ค้าง" : "", () => go({ v: "sem" }), { "data-nav": "sem" });
-  mk("Словарь · คลังศัพท์", "0%", () => go({ v: "glossary" }), { "data-nav": "glossary" });
-  mk("Карточки · Flashcard", "", () => go({ v: "flash" }), { "data-nav": "flash" });
-  mk("Тренажёр · ควิซ", "", () => go({ v: "quiz" }), { "data-nav": "quiz" });
+  mk("Словарь · คลังศัพท์", "0%", "#/glossary", { "data-nav": "glossary" });
+  mk("Карточки · Flashcard", "", "#/flash", { "data-nav": "flash" });
+  mk("Тренажёр · ควิซคำศัพท์", "", "#/quiz", { "data-nav": "quiz" });
+  if (ADMIN) mk("ปรับภาคเรียน", un ? un + " ค้าง" : "", "#/sem", { "data-nav": "sem" });
+  document.querySelectorAll('#bbar [data-bb="practice"]').forEach(a => { a.href = practiceHref(); });
 }
 
 /* ---- สำรอง/นำเข้าความคืบหน้า (v5 · S8 ทำให้กู้คืนได้) — ทุกคีย์ atlas-* ใน localStorage เป็นไฟล์ JSON ----
@@ -70435,115 +70450,108 @@ function restorePrev() {
 }
 
 /* ---- overview ---- */
-function subjCard(s) {
+function subjCard(s) {                               // การ์ดวิชาในหน้ารายวิชา — ลิงก์จริง (data-go ไว้ให้ verify.py/เทสต์หา)
   const p = pct(subjKeys(s)), st = statusOf(s);
-  return '<button class="subj ' + st + ' ' + (BLKCLS[s.block] || '') + '" data-go="' + s.id + '">' +
+  return '<a class="subj ' + st + ' ' + (BLKCLS[s.block] || '') + '" href="#/' + s.id + '" data-go="' + s.id + '">' +
     '<span class="cardtop"><span class="num">' + s.n + '</span>' +
     '<span class="pill blk">' + s.block + '</span>' +
     (DEEP[s.id] ? '<span class="pill deep">เนื้อหาเต็ม</span>' : '') +
     (st === "now" ? '<span class="pill now">กำลังเรียน</span>' : '') +
     (st === "next" && semsOf(s).includes(curSem()) ? '<span class="pill next">ภาคหน้า</span>' : '') +
-    (ICONS[s.id] ? '<span class="icon">' + ICONS[s.id] + '</span>' : '') + '</span>' +
-    '<span class="ru">' + s.ru + '</span>' +
+    (ICONS[s.id] ? '<span class="icon" aria-hidden="true">' + ICONS[s.id] + '</span>' : '') + '</span>' +
+    '<span class="ru" lang="ru">' + s.ru + '</span>' +
     '<span class="th">' + s.th + '</span>' +
     '<span class="desc">' + s.desc + '</span>' +
     '<span class="meta"><span class="ze">' + fmtZe(s.ze) + ' з.е.</span>' +
     '<span>' + semTxt(s) + '</span>' +
     '<span class="ringwrap"><span class="ring" style="--p:' + p + '%"></span>' + p + '%</span></span>' +
-    '<span class="bar"><span style="width:' + p + '%"></span></span></button>';
+    '<span class="bar"><span style="width:' + p + '%"></span></span></a>';
+}
+
+/* S2: ความคืบหน้าสามอย่างของวิชา — อ่าน/ทบทวนแล้ว (k:) · ผลควิซ (QUIZ + atlas-practice-v1) · ศัพท์ที่จำได้ (g:) · ไม่รวมเป็นตัวเลขเดียว */
+function practiceStore() {                           // ผลควิซรายบล็อกที่ S5 เก็บตาม id ของ host: { <tid>: { <host id>: {done, ok, n, t} } }
+  try { return JSON.parse(localStorage.getItem("atlas-practice-v1") || "{}") || {}; } catch (e) { return {}; }
+}
+function topicQuiz(tid, P) {                         // ต่อหัวข้อ: ใช้ของ atlas-practice-v1 ถ้ามี (คีย์ตาม id) ไม่งั้น QUIZ (คีย์ตามลำดับ) — สองที่บันทึกเหตุการณ์เดียวกัน ห้ามบวกกัน
+  const pr = P && P[tid];
+  const rec = pr && typeof pr === "object" && Object.keys(pr).length ? pr : QUIZ[tid];
+  if (!rec) return null;
+  let ok = 0, done = 0, n = 0;
+  Object.values(rec).forEach(x => { if (x && typeof x === "object") { ok += +x.ok || 0; done += +x.done || 0; n += +x.n || 0; } });
+  return done ? { ok, done, n, pct: Math.round(100 * ok / done) } : null;
+}
+function subjTrip(s, P) {
+  P = P || practiceStore();
+  const deep = DEEP[s.id];
+  const keys = deep ? deep.topics.map(t => "k:" + t.id) : subjKeys(s);
+  let ok = 0, done = 0, nq = 0;
+  topicsOf(s.id).forEach(t => { const r = topicQuiz(t.id, P); if (r) { ok += r.ok; done += r.done; nq++; } });
+  const mod = MODULES.find(m => m.id === modOf(s.id));
+  const tk = mod ? mod.terms.map((t, i) => termKey(mod, t, i)) : [];
+  return {
+    read: keys.filter(k => DONE.has(k)).length, total: keys.length,
+    quiz: done ? { ok, done, topics: nq, pct: Math.round(100 * ok / done) } : null,
+    terms: mod ? { n: tk.filter(k => DONE.has(k)).length, total: tk.length, mod } : null
+  };
+}
+const nfmt = n => Number(n).toLocaleString("th-TH");
+function tripHtml(tr) {
+  return '<span class="s2-trip">' +
+    '<span><i>อ่านแล้ว</i><b>' + tr.read + '/' + tr.total + '</b></span>' +
+    '<span><i>ควิซ</i><b>' + (tr.quiz ? tr.quiz.pct + ' %' : '—') + '</b></span>' +
+    '<span><i>ศัพท์</i><b>' + (tr.terms ? tr.terms.n + '/' + tr.terms.total : '—') + '</b></span></span>';
+}
+function deepCard(s, full, P) {                       // การ์ดวิชาที่มีเนื้อหาเต็มบนหน้าหลัก
+  const deep = DEEP[s.id], p = pct(deep.topics.map(t => "k:" + t.id));
+  return '<a class="subj s2-dc ' + (BLKCLS[s.block] || '') + '" href="#/' + s.id + '" data-go="' + s.id + '">' +
+    '<span class="s2-dc-top"><span class="ic" aria-hidden="true">' + (ICONS[s.id] || '📘') + '</span>' +
+    '<span class="nm"><b>' + s.th + '</b><i lang="ru">' + s.ru + '</i></span>' +
+    '<span class="ringwrap"><span class="ring" style="--p:' + p + '%"></span>' + p + '%</span></span>' +
+    '<span class="s2-dc-meta">' + semTxt(s) + ' · ' + deep.topics.length + ' หัวข้อ' + (deep.summary && deep.summary.length ? ' + สรุปก่อนสอบ' : '') + '</span>' +
+    (full ? tripHtml(subjTrip(s, P)) : '') + '</a>';
 }
 
 function renderOverview() {
-  const cs = curSem(), brk = onBreak();
-  const now = runningIn(cs);
+  const cs = curSem(), P = practiceStore();
   const lastS = LAST && LAST.v === "subject" ? ALL_SUBJ.find(x => x.id === LAST.id) : null;
-  const lastT = lastS && LAST.topic && DEEP[lastS.id] ? [...DEEP[lastS.id].topics, ...(DEEP[lastS.id].summary || [])].find(t => t.id === LAST.topic) : null;
-  let h = '<div class="wrap wide"><div class="page-head hero">' +
-    '<p class="eyebrow">ВКА имени А.Ф. Можайского · г. Санкт-Петербург</p>' +
+  const lastT = lastS && LAST.topic && DEEP[lastS.id] ? topicsOf(lastS.id).find(t => t.id === LAST.topic) : null;
+  const deepAll = SUBJECTS.filter(s => DEEP[s.id]).sort(byNum);
+  const mine = deepAll.filter(s => semsOf(s).includes(cs)), rest = deepAll.filter(s => !semsOf(s).includes(cs));
+  // (1) การกระทำหลักหนึ่งอย่าง: ผู้อ่านเดิม = เรียนต่อจากที่ค้างไว้ · ผู้อ่านใหม่ = ไปเลือกวิชา
+  const cta = lastS
+    ? '<a class="s2-cta" id="resumeBtn" href="#/' + lastS.id + (lastT ? '/' + lastT.id : '') + '">' +
+      '<span class="k">เรียนต่อ</span><span class="v"><b>' + (ICONS[lastS.id] ? ICONS[lastS.id] + ' ' : '') + lastS.th + '</b>' +
+      (lastT ? '<span>' + lastT.th + '</span>' : '') + '</span><span class="go" aria-hidden="true">→</span></a>'
+    : '<a class="s2-cta" href="#/subjects"><span class="k">เริ่มต้น</span><span class="v"><b>เลือกวิชาเพื่อเริ่มเรียน</b>' +
+      '<span>' + deepAll.length + ' วิชามีเนื้อหาเต็มพร้อมแบบจำลองโต้ตอบ</span></span><span class="go" aria-hidden="true">→</span></a>';
+  let h = '<div class="wrap wide s2-home"><div class="page-head hero s2-hero">' +
+    '<p class="eyebrow">ВКА имени А.Ф. Можайского · СУЛА</p>' +
     '<h1 class="page-title">Атлас курса</h1>' +
-    '<div class="page-title-th">Специализация: «' + PROGRAM.spec + '»</div>' +
-    '<p class="lede">ชื่อวิชาและหน่วยกิตมาจากเอกสารหลักสูตรของกระทรวงกลาโหมรัสเซีย ส่วนภาคเรียนของแต่ละวิชาจัดตามแผนการเรียนของรุ่นผู้เรียบเรียง ' +
-    'รุ่นของคุณอาจเรียนบางวิชาต่างภาคกันไปบ้าง · การ์ดที่มีป้าย <b>เนื้อหาเต็ม</b> คือวิชาที่เรียบเรียงเนื้อหาไว้แล้วพร้อมแบบจำลองโต้ตอบ ส่วนวิชาอื่นยังมีแค่โครงร่างหัวข้อ</p>' +
-    '<div class="statbar">' +
-    '<div class="stat"><b>' + SUBJECTS.length + '</b><span>รายวิชา</span></div>' +
-    '<div class="stat"><b>' + fmtZe(PROGRAM.listed) + '</b><span>з.е. รวม</span></div>' +
-    '<div class="stat"><b>' + Object.keys(DEEP).length + '</b><span>วิชาที่มีเนื้อหาเต็ม</span></div>' +
-    '<div class="stat"><b>' + PROGRAM.zeHour + '</b><span>ชั่วโมงต่อ 1 з.е.</span></div>' +
-    '</div>' +
-    (lastS ? '<button class="resume-chip" id="resumeBtn">▸ อ่านต่อจากครั้งก่อน — <b>' +
-      (ICONS[lastS.id] ? ICONS[lastS.id] + ' ' : '') + lastS.ru + '</b>' + (lastT ? ' · ' + lastT.th : '') + '</button>' : '') +
-    '</div>';
-
+    '<div class="page-title-th">คลังความรู้ทุกวิชาในหลักสูตร — เนื้อหา แบบจำลองโต้ตอบ และแบบฝึก</div>' +
+    cta +
+    '<p class="s2-semline">ภาค ' + cs + (MYSEM ? '' : ' <span>(ตามแผนของผู้เรียบเรียง)</span>') +
+    ' · <a href="#/subjects">เปลี่ยน</a></p></div>';
   h += HOOKS.render("overview-top", {});
-  const deepList = SUBJECTS.filter(s => DEEP[s.id]).sort(byNum);   // v5: ทางลัดไปวิชาที่อ่านได้จริง — ขึ้นก่อนทุกอย่าง
-  h += '<section class="deepstrip" aria-labelledby="deepH"><div class="nowhead"><h2 id="deepH">วิชาที่มีเนื้อหาเต็ม</h2>' +
-    '<span class="year-note">' + deepList.length + ' วิชา · เรียบเรียงแล้วพร้อมแบบจำลองโต้ตอบ</span></div><div class="dgrid">' +
-    deepList.map(s => '<button class="dchip" data-go="' + s.id + '"><span class="ic" aria-hidden="true">' + (ICONS[s.id] || '📘') + '</span>' +
-      '<span class="nm"><b>' + s.th + '</b><i>' + s.ru + '</i></span><span class="pc">' + pct(subjKeys(s)) + '%</span></button>').join("") + '</div></section>';
-
-  h += '<div class="nowstrip' + (brk ? ' next' : '') + '"><div class="nowhead">' +
-    '<span class="year-num">ภาคเรียนที่ ' + cs + '</span>' +
-    '<h2>' + (MYSEM ? 'ภาคเรียนของคุณ' : brk ? 'ภาคเรียนหน้า' : 'กำลังเรียนอยู่ตอนนี้') + '</h2>' +
-    '<span class="year-note">' + (brk ? 'ตอนนี้ปิดเทอมอยู่ · ' : '') + now.length + ' วิชา · ' + semZe(cs).toFixed(1) + ' з.е.</span></div>' +
-    '<div class="mysem" role="group" aria-label="เลือกภาคเรียนของคุณ"><span>' + (MYSEM ? 'ภาคที่คุณเรียนอยู่:' : 'ตอนนี้แสดงภาคของผู้เรียบเรียง · เลือกภาคที่คุณเรียนอยู่:') + '</span>' +
-    [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => '<button data-mysem="' + n + '" class="' + (n === MYSEM ? 'on' : '') + '" aria-pressed="' + (n === MYSEM) + '">' + n + '</button>').join("") +
-    (MYSEM ? '<button data-mysem="0" class="clr">ล้าง</button>' : '') + '</div>' +
-    '<div class="subj-grid">' + now.map(subjCard).join("") + '</div></div>';
-
-  YEARS.forEach(y => {
-    const ys = SUBJECTS.filter(s => y.sems.includes(semFirst(s)));
-    const ze = ys.reduce((a, s) => a + s.ze, 0);
-    h += '<div class="year"><div class="year-head"><span class="year-num">' + y.year + ' курс</span>' +
-      '<h2>ชั้นปีที่ ' + y.year + '</h2>' +
-      '<span class="year-note">' + ys.length + ' วิชาเริ่มในปีนี้ · ' + fmtZe(ze) + ' з.е.</span></div>';
-    y.sems.forEach(n => {
-      const list = SUBJECTS.filter(s => semFirst(s) === n).sort(byNum);
-      const cont = runningIn(n).filter(s => semFirst(s) < n);
-      h += '<div class="sem-head"><b>Семестр ' + n + '</b><span>ภาคเรียนที่ ' + n + '</span>' +
-        '<span class="sem-note">' + runningIn(n).length + ' วิชาที่เรียนพร้อมกัน · ' + semZe(n).toFixed(1) + ' з.е.' +
-        (cont.length ? ' · ต่อเนื่องจากภาคก่อน ' + cont.length + ' วิชา' : '') + '</span></div>';
-      h += list.length ? '<div class="subj-grid">' + list.map(subjCard).join("") + '</div>'
-        : '<p class="empty" style="padding:8px 0">ไม่มีวิชาที่เริ่มในภาคนี้</p>';
-    });
-    h += '</div>';
-  });
-  const un = unassigned().sort(byNum);
-  if (un.length) {
-    h += '<div class="year"><div class="year-head"><span class="year-num">?</span>' +
-      '<h2>ยังไม่ระบุภาคเรียน</h2><span class="year-note">' + un.length + ' วิชา' + (ADMIN ? ' — ไปติ๊กได้ที่เมนู ปรับภาคเรียน' : '') + '</span></div>' +
-      '<div class="subj-grid">' + un.map(subjCard).join("") + '</div></div>';
-  }
-  h += '<footer class="foot">รายการนี้ไม่รวมยุทธวิธีเฉพาะ (Тактика специальная) การฝึกงาน และการสอบรับรองของรัฐ (ГИА) แต่รวมพลศึกษา (เรียนภาค 1–9) · รวม ' +
-    SUBJECTS.length + ' วิชา ' + fmtZe(PROGRAM.listed) + ' з.е. · ' +
-    'ตัวเลขมุมซ้ายของการ์ดคือเลขประจำวิชาในเว็บนี้ ไม่เปลี่ยน จึงใช้อ้างอิงได้ · ความคืบหน้าเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</footer></div>';
+  // (3) วิชาของฉัน = วิชาที่มีเนื้อหาเต็มในภาคของผู้อ่าน แล้ววิชาที่มีเนื้อหาเต็มที่เหลือ
+  h += '<section class="s2-sec" id="s2-mine" aria-labelledby="s2MineH"><div class="nowhead"><h2 id="s2MineH">วิชาของฉัน · ภาค ' + cs + '</h2>' +
+    '<span class="year-note">' + (mine.length ? mine.length + ' วิชามีเนื้อหาเต็ม' : '') + '</span></div>' +
+    (mine.length ? '<div class="subj-grid s2-grid">' + mine.map(s => deepCard(s, true, P)).join("") + '</div>'
+      : '<p class="s2-empty">ภาค ' + cs + ' ยังไม่มีวิชาที่เรียบเรียงเนื้อหาเต็ม — เลือกจากวิชาด้านล่าง หรือ <a href="#/subjects">ดูทุกวิชาในหลักสูตร</a></p>') +
+    '</section>';
+  if (rest.length) h += '<section class="s2-sec" aria-labelledby="s2RestH"><div class="nowhead"><h2 id="s2RestH">' +
+    (mine.length ? 'วิชาที่มีเนื้อหาเต็มอื่น ๆ' : 'วิชาที่มีเนื้อหาเต็ม') + '</h2><span class="year-note">' + rest.length + ' วิชา</span></div>' +
+    '<div class="subj-grid s2-grid">' + rest.map(s => deepCard(s, false, P)).join("") + '</div></section>';
+  h += '<nav class="s2-more" aria-label="ไปต่อ"><a href="#/subjects">ทุกวิชาในหลักสูตร <b>' + SUBJECTS.length + '</b></a>' +
+    '<a href="#/progress">ความก้าวหน้าของฉัน</a><a href="#/glossary">คลังศัพท์ <b>' + nfmt(glossKeys().length) + '</b></a></nav>';
   h += HOOKS.render("overview-end", {});
-  h += '<section class="backup" aria-labelledby="bkH"><h3 id="bkH">ความคืบหน้าของคุณ</h3>' +
-    '<p>เครื่องหมาย «ทบทวนแล้ว» คำศัพท์ที่จำได้ บุ๊กมาร์ก ผลควิซ และตำแหน่งที่อ่านค้างไว้ เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ' +
-    'สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
-    '<div class="qbar"><button id="bkSave">สำรองเป็นไฟล์</button><button id="bkLoad">นำเข้าจากไฟล์</button>' +
-    '<input type="file" id="bkFile" accept="application/json,.json" hidden><span class="m" id="bkMsg" role="status"></span></div></section>';
+  h += '</div>';
   view.innerHTML = h;
-  view.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go({ v: "subject", id: b.dataset.go })));
-  view.querySelectorAll("[data-mysem]").forEach(b => b.addEventListener("click", () => {
-    const n = +b.dataset.mysem;
-    MYSEM = n || null;
-    try { if (MYSEM) localStorage.setItem(MYSEMKEY, String(MYSEM)); else localStorage.removeItem(MYSEMKEY); } catch (e) {}
-    RAILOPEN.add(curSem()); saveRail();
-    const fold = navEl.querySelector('.sem-body[data-fold="' + curSem() + '"]');   // เปิดภาคนั้นในแถบซ้ายด้วย
-    if (fold) { fold.classList.add("open"); if (fold.previousElementSibling) fold.previousElementSibling.classList.add("open"); }
-    go({ v: "overview" }, { replace: true });
-  }));
-  const bkMsg = document.getElementById("bkMsg"), bkFile = document.getElementById("bkFile");
-  document.getElementById("bkSave").addEventListener("click", () => { bkMsg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
-  document.getElementById("bkLoad").addEventListener("click", () => bkFile.click());
-  bkFile.addEventListener("change", async () => {
-    const f = bkFile.files && bkFile.files[0];
-    bkFile.value = "";
-    if (!f) return;
-    try { await progressImport(f); } catch (e) { bkMsg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
-  });
   const rb = document.getElementById("resumeBtn");
-  if (rb) rb.addEventListener("click", () => go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off }));
+  if (rb) rb.addEventListener("click", e => {          // ลิงก์ชี้หัวข้อ (เปิดแท็บใหม่ได้) · คลิกปกติกลับไปตรงระยะที่อ่านค้างด้วย
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off });
+  });
   HOOKS.run("overview");
 }
 
@@ -72157,14 +72165,11 @@ new MutationObserver(() => LIVE.forEach(d => d.draw && d.draw()))
   .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 /* ---- v2: แถบล่างมือถือ + ปุ่มขึ้นบน + จำตำแหน่งอ่าน ---- */
-document.querySelectorAll("#bbar [data-bb]").forEach(b => b.addEventListener("click", () => {
-  const v = b.dataset.bb;
-  if (v === "find") {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    searchEl.focus();
-    return;
-  }
-  go({ v });
+/* S2: ปุ่มที่พาไปหน้าอื่นเป็น <a href> (ตัวจับคลิกของ router จัดการ) · เหลือแค่ปุ่มกระทำ: ค้นหา (โฟกัสช่องค้นหาโดยไม่เลื่อนหน้า
+   — แถบบนติดจออยู่แล้ว ผู้อ่านไม่เสียตำแหน่งที่อ่าน) · สารบัญ (แทน «หน้าหลัก» เมื่ออยู่ในหน้าวิชาที่มีเนื้อหาเต็ม) */
+document.querySelectorAll("#bbar button[data-bb]").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.bb === "find") focusSearch();
+  else if (b.dataset.bb === "toc") openSheet();
 }));
 /* ---- v5: อ่านแบบออฟไลน์ (sw.js) ----
    ลงทะเบียนเฉพาะบนเว็บจริง ไม่ลงทะเบียนบน localhost/127.* (preview.bat, verify.py) กันไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย ?sw=1
@@ -72355,6 +72360,411 @@ window.addEventListener("scroll", () => {
 /* ===== SLOT S1 (ด่านอัตโนมัติของ build) BEGIN ===== */
 /* ===== SLOT S1 END ===== */
 /* ===== SLOT S2 (มือถือ: สารบัญ ชิปหัวข้อ แถบหลบ ชุดอ่านง่าย) BEGIN ===== */
+/* S2 · เปลือกนำทาง — ของที่อยู่ในช่องนี้ (ส่วนที่แก้ในฟังก์ชันของ S2 เอง: buildNav · renderOverview · subjCard · ตัวจัดการ #bbar)
+   หน้า #/subjects (แค็ตตาล็อก 54 วิชา + ตัวกรอง + ภาคของผู้อ่าน) · หน้า #/progress (สามตัวเลขแยกกัน + ต่อวิชา + HOOKS.html("progress") + สำรอง)
+   · สารบัญแบบแผ่น dialog.tsheet (มือถือ/จอ < 1400 · ห้ามใช้คลาส .toc ซึ่งบล็อก v4 ใช้ค้น) · ชิปหัวข้อรู้ตำแหน่ง (IO ของตัวเอง ไม่แตะ SPY_IO)
+   · แถบหลบตอนอ่าน (html.reading ≤ 900 px) · ท้ายหัวข้อ (✓ ผลควิซ ฝึกเรื่องนี้ ก่อนหน้า/ถัดไป) · ชุดอ่านง่าย (ตาราง .tw เลื่อนได้ · ข้อความวิชารูปแบบเดิม)
+   คีย์ในเครื่อง: atlas-ui-v1 = { subjF: {sem, status, deep} } (ตัวกรองหน้ารายวิชา) */
+const UIKEY = "atlas-ui-v1";
+let UI = {};
+try { UI = JSON.parse(localStorage.getItem(UIKEY) || "{}") || {}; } catch (e) {}
+const saveUI = () => { try { localStorage.setItem(UIKEY, JSON.stringify(UI)); } catch (e) {} };
+
+/* ---- หน้า #/subjects: คำอธิบายหลักสูตร · ภาคของผู้อ่าน · ตัวกรอง · แค็ตตาล็อกตามชั้นปี ---- */
+const S2F0 = { sem: "all", status: "all", deep: false };
+function subjFilter() { return Object.assign({}, S2F0, UI.subjF || {}); }
+function subjCatalog(F) {
+  const semN = F.sem === "mine" ? curSem() : +F.sem;
+  const pass = s => (F.status === "all" || statusOf(s) === F.status) && (!F.deep || DEEP[s.id]);
+  const grid = list => '<div class="subj-grid">' + list.map(subjCard).join("") + '</div>';
+  let h = "", shown = 0;
+  if (semN >= 1 && semN <= 9) {                       // ภาคเดียว: ทุกวิชาที่เรียนในภาคนั้น (รวมวิชาต่อเนื่องจากภาคก่อน)
+    const list = runningIn(semN).filter(pass).sort(byNum);
+    shown = list.length;
+    h += '<div class="sem-head"><b>Семестр ' + semN + '</b><span>ภาคเรียนที่ ' + semN + '</span>' +
+      '<span class="sem-note">' + runningIn(semN).length + ' วิชาที่เรียนพร้อมกัน · ' + semZe(semN).toFixed(1) + ' з.е.</span></div>' +
+      (list.length ? grid(list) : '');
+  } else if (F.sem === "un") {
+    const list = unassigned().filter(pass).sort(byNum);
+    shown = list.length;
+    if (list.length) h += grid(list);
+  } else {
+    YEARS.forEach(y => {
+      let yh = "";
+      y.sems.forEach(n => {
+        const list = SUBJECTS.filter(s => semFirst(s) === n && pass(s)).sort(byNum);
+        if (!list.length) return;
+        shown += list.length;
+        const cont = runningIn(n).filter(s => semFirst(s) < n);
+        yh += '<div class="sem-head"><b>Семестр ' + n + '</b><span>ภาคเรียนที่ ' + n + '</span>' +
+          '<span class="sem-note">' + runningIn(n).length + ' วิชาที่เรียนพร้อมกัน · ' + semZe(n).toFixed(1) + ' з.е.' +
+          (cont.length ? ' · ต่อเนื่องจากภาคก่อน ' + cont.length + ' วิชา' : '') + '</span></div>' + grid(list);
+      });
+      if (!yh) return;
+      const ys = SUBJECTS.filter(s => y.sems.includes(semFirst(s)));
+      h += '<div class="year"><div class="year-head"><span class="year-num">' + y.year + ' курс</span>' +
+        '<h2>ชั้นปีที่ ' + y.year + '</h2><span class="year-note">' + ys.length + ' วิชาเริ่มในปีนี้ · ' +
+        fmtZe(ys.reduce((a, s) => a + s.ze, 0)) + ' з.е.</span></div>' + yh + '</div>';
+    });
+    const un = unassigned().filter(pass).sort(byNum);
+    if (un.length) {
+      shown += un.length;
+      h += '<div class="year"><div class="year-head"><span class="year-num">?</span><h2>ยังไม่ระบุภาคเรียน</h2>' +
+        '<span class="year-note">' + un.length + ' วิชา' + (ADMIN ? ' — ไปติ๊กได้ที่เมนู ปรับภาคเรียน' : '') + '</span></div>' + grid(un) + '</div>';
+    }
+  }
+  if (!shown) h += '<p class="s2-empty">ไม่มีวิชาที่ตรงกับตัวกรองนี้ — <button type="button" data-f-clear>ล้างตัวกรอง</button></p>';
+  return { h, shown };
+}
+function renderSubjects() {
+  const F = subjFilter(), cs = curSem(), nTerms = glossKeys().length;
+  const opt = (v, t, cur) => '<option value="' + v + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + t + '</option>';
+  let h = '<div class="wrap wide s2-subjects"><div class="page-head">' +
+    '<p class="eyebrow">Учебный план · ВКА имени А.Ф. Можайского</p>' +
+    '<h1 class="page-title">รายวิชาในหลักสูตร</h1>' +
+    '<div class="page-title-th">Специализация: «' + PROGRAM.spec + '»</div>' +
+    '<p class="lede">ชื่อวิชาและหน่วยกิตมาจากเอกสารหลักสูตรของกระทรวงกลาโหมรัสเซีย ส่วนภาคเรียนของแต่ละวิชาจัดตามแผนการเรียนของรุ่นผู้เรียบเรียง ' +
+    'รุ่นของคุณอาจเรียนบางวิชาต่างภาคกันไปบ้าง · การ์ดที่มีป้าย <b>เนื้อหาเต็ม</b> คือวิชาที่เรียบเรียงเนื้อหาไว้แล้วพร้อมแบบจำลองโต้ตอบ ส่วนวิชาอื่นยังมีแค่โครงร่างหัวข้อ</p>' +
+    '<div class="statbar">' +
+    '<div class="stat"><b>' + SUBJECTS.length + '</b><span>รายวิชา</span></div>' +
+    '<div class="stat"><b>' + fmtZe(PROGRAM.listed) + '</b><span>з.е. รวม</span></div>' +
+    '<div class="stat"><b>' + Object.keys(DEEP).length + '</b><span>วิชาที่มีเนื้อหาเต็ม</span></div>' +
+    '<div class="stat"><b>' + PROGRAM.zeHour + '</b><span>ชั่วโมงต่อ 1 з.е.</span></div></div></div>';
+  h += '<section class="s2-box" aria-labelledby="s2SemH"><h2 id="s2SemH">ภาคที่คุณเรียนอยู่</h2>' +
+    '<p>' + (MYSEM ? 'หน้าหลักแสดงวิชาที่มีเนื้อหาเต็มของภาค ' + MYSEM + ' เป็น «วิชาของฉัน»'
+      : 'ตอนนี้ใช้ภาคของผู้เรียบเรียง (ภาค ' + cs + ') — เลือกภาคของคุณ หน้าหลักจะแสดงวิชาของภาคนั้นก่อน') + ' · เก็บไว้ในเครื่องนี้</p>' +
+    '<div class="mysem" role="group" aria-label="เลือกภาคเรียนของคุณ">' +
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => '<button type="button" data-mysem="' + n + '" class="' + (n === MYSEM ? 'on' : '') + '" aria-pressed="' + (n === MYSEM) + '">' + n + '</button>').join("") +
+    (MYSEM ? '<button type="button" data-mysem="0" class="clr">ล้าง</button>' : '') + '</div></section>';
+  h += '<nav class="s2-more" aria-label="เครื่องมือคำศัพท์"><a href="#/glossary">คลังศัพท์ <b>' + nfmt(nTerms) + '</b></a>' +
+    '<a href="#/flash">Flashcard คำศัพท์</a><a href="#/quiz">ควิซคำศัพท์</a></nav>';
+  h += '<div class="s2-filt" role="group" aria-label="ตัวกรองรายวิชา">' +
+    '<label>ภาค <select data-f="sem">' + opt("all", "ทุกภาค", F.sem) + opt("mine", "ภาคของฉัน (" + cs + ")", F.sem) +
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => opt(n, "ภาค " + n, F.sem)).join("") + (unassigned().length ? opt("un", "ยังไม่ระบุภาค", F.sem) : '') + '</select></label>' +
+    '<label>สถานะ <select data-f="status">' + opt("all", "ทุกสถานะ", F.status) + opt("now", "ภาคปัจจุบัน (ตามแผน)", F.status) +
+    opt("done", "ผ่านมาแล้ว (ตามแผน)", F.status) + opt("next", "ยังไม่ถึง (ตามแผน)", F.status) + '</select></label>' +
+    '<label class="chk"><input type="checkbox" data-f="deep"' + (F.deep ? ' checked' : '') + '> เฉพาะที่มีเนื้อหาเต็ม</label>' +
+    '<span class="s2-count" id="s2Count" role="status"></span></div><div id="s2Cat"></div>';
+  h += '<footer class="foot">รายการนี้ไม่รวมยุทธวิธีเฉพาะ (Тактика специальная) การฝึกงาน และการสอบรับรองของรัฐ (ГИА) แต่รวมพลศึกษา (เรียนภาค 1–9) · รวม ' +
+    SUBJECTS.length + ' วิชา ' + fmtZe(PROGRAM.listed) + ' з.е. · ตัวเลขมุมซ้ายของการ์ดคือเลขประจำวิชาในเว็บนี้ ไม่เปลี่ยน จึงใช้อ้างอิงได้</footer></div>';
+  view.innerHTML = h;
+  const cat = document.getElementById("s2Cat"), cnt = document.getElementById("s2Count");
+  const paint = () => {
+    const f = subjFilter(), r = subjCatalog(f);
+    cat.innerHTML = r.h;
+    const on = f.sem !== "all" || f.status !== "all" || f.deep;
+    cnt.innerHTML = 'แสดง ' + r.shown + ' จาก ' + SUBJECTS.length + ' วิชา' + (on && r.shown ? ' · <button type="button" data-f-clear>ล้างตัวกรอง</button>' : '');
+    view.querySelectorAll("[data-f-clear]").forEach(b => b.addEventListener("click", () => {
+      UI.subjF = Object.assign({}, S2F0); saveUI();
+      view.querySelectorAll("[data-f]").forEach(el => { if (el.type === "checkbox") el.checked = false; else el.value = "all"; });
+      paint();
+    }));
+  };
+  view.querySelectorAll("[data-f]").forEach(el => el.addEventListener("change", () => {
+    const f = subjFilter();
+    f[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value;
+    UI.subjF = f; saveUI(); paint();
+  }));
+  view.querySelectorAll("[data-mysem]").forEach(b => b.addEventListener("click", () => {
+    const n = +b.dataset.mysem;
+    MYSEM = n || null;
+    try { if (MYSEM) localStorage.setItem(MYSEMKEY, String(MYSEM)); else localStorage.removeItem(MYSEMKEY); } catch (e) {}
+    RAILOPEN.add(curSem()); saveRail();
+    const fold = navEl.querySelector('.sem-body[data-fold="' + curSem() + '"]');   // เปิดภาคนั้นในแถบซ้ายด้วย
+    if (fold) { fold.classList.add("open"); if (fold.previousElementSibling) fold.previousElementSibling.classList.add("open"); }
+    go({ v: "subjects" }, { replace: true, y: window.scrollY });
+  }));
+  paint();
+}
+registerPage("subjects", { render: renderSubjects, title: () => "รายวิชา" });
+
+/* ---- หน้า #/progress: อ่าน/ทบทวนแล้ว · ผลควิซ · ศัพท์ที่จำได้ — สามส่วนแยกกัน ต่อวิชา + การ์ดของ session อื่น + สำรอง/นำเข้า ---- */
+function renderProgress() {
+  const P = practiceStore();
+  const deepAll = SUBJECTS.filter(s => DEEP[s.id]).sort(byNum);
+  const rows = deepAll.map(s => ({ s, tr: subjTrip(s, P) }));
+  const rd = rows.reduce((a, r) => [a[0] + r.tr.read, a[1] + r.tr.total], [0, 0]);
+  const outl = SUBJECTS.filter(s => !DEEP[s.id]).reduce((a, s) => a + subjKeys(s).filter(k => DONE.has(k)).length, 0);
+  let qok = 0, qdone = 0, qt = 0;
+  rows.forEach(r => { if (r.tr.quiz) { qok += r.tr.quiz.ok; qdone += r.tr.quiz.done; qt += r.tr.quiz.topics; } });
+  const gk = glossKeys(), gdone = gk.filter(k => DONE.has(k)).length;
+  const bar = (n, t) => '<span class="s2-pbar" aria-hidden="true"><span style="width:' + (t ? Math.round(100 * n / t) : 0) + '%"></span></span>';
+  let h = '<div class="wrap wide s2-progress"><div class="page-head">' +
+    '<p class="eyebrow">Прогресс</p><h1 class="page-title">ความก้าวหน้าของฉัน</h1>' +
+    '<div class="page-title-th">สามตัวเลขนี้วัดคนละอย่าง จึงแยกกันไว้ ไม่รวมเป็นคะแนนเดียว · เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น</div></div>' +
+    '<div class="s2-kpis">' +
+    '<div class="s2-kpi" data-kpi="read"><span class="l">อ่าน/ทบทวนแล้ว</span><b>' + rd[0] + ' / ' + rd[1] + '</b>' + bar(rd[0], rd[1]) +
+    '<span class="s">หัวข้อที่ทำเครื่องหมาย ✓ ในวิชาที่มีเนื้อหาเต็ม' + (outl ? ' · และหัวข้อในวิชาโครงร่างอีก ' + outl : '') + '</span></div>' +
+    '<div class="s2-kpi" data-kpi="quiz"><span class="l">ผลควิซ</span><b>' + (qdone ? Math.round(100 * qok / qdone) + ' %' : '—') + '</b>' + bar(qok, qdone) +
+    '<span class="s">' + (qdone ? 'ตอบถูก ' + qok + ' จาก ' + qdone + ' ข้อที่ทำ · ' + qt + ' หัวข้อ' : 'ยังไม่ได้ทำควิซในหัวข้อ — ควิซอยู่ในส่วน «ฝึกสอบ» ของฉบับเต็ม') + '</span></div>' +
+    '<div class="s2-kpi" data-kpi="terms"><span class="l">ศัพท์ที่จำได้</span><b>' + nfmt(gdone) + ' / ' + nfmt(gk.length) + '</b>' + bar(gdone, gk.length) +
+    '<span class="s">คำที่ติ๊ก «จำได้» ในคลังศัพท์หรือ Flashcard</span></div></div>';
+  h += '<section class="s2-sec" aria-labelledby="s2PsH"><div class="nowhead"><h2 id="s2PsH">ต่อวิชา</h2><span class="year-note">' + deepAll.length + ' วิชาที่มีเนื้อหาเต็ม</span></div>' +
+    '<div class="s2-ptab" role="table" aria-label="ความคืบหน้าต่อวิชา"><div class="s2-prow s2-phead" role="row"><span role="columnheader">วิชา</span>' +
+    '<span role="columnheader">อ่านแล้ว</span><span role="columnheader">ควิซ</span><span role="columnheader">ศัพท์</span></div>' +
+    rows.map(({ s, tr }) => '<div class="s2-prow" role="row"><span role="cell" class="nm"><a href="#/' + s.id + '">' + (ICONS[s.id] ? '<i aria-hidden="true">' + ICONS[s.id] + '</i> ' : '') + s.th + '</a></span>' +
+      '<span role="cell"><i>อ่านแล้ว</i> ' + tr.read + '/' + tr.total + bar(tr.read, tr.total) + '</span>' +
+      '<span role="cell"><i>ควิซ</i> ' + (tr.quiz ? tr.quiz.pct + ' % <small>(' + tr.quiz.ok + '/' + tr.quiz.done + ')</small>' : '—') + '</span>' +
+      '<span role="cell"><i>ศัพท์</i> ' + (tr.terms ? tr.terms.n + '/' + tr.terms.total : '—') + '</span></div>').join("") + '</div></section>';
+  const used = new Set(deepAll.map(s => modOf(s.id)));
+  const extra = MODULES.filter(m => !used.has(m.id));
+  if (extra.length) h += '<section class="s2-sec" aria-labelledby="s2PgH"><div class="nowhead"><h2 id="s2PgH">ศัพท์กลุ่มอื่นในคลังศัพท์</h2></div><div class="s2-glist">' +
+    extra.map(m => { const k = m.terms.map((t, i) => termKey(m, t, i)), n = k.filter(x => DONE.has(x)).length;
+      return '<a href="#/glossary"><span>' + m.th + '</span><b>' + n + '/' + k.length + '</b></a>'; }).join("") + '</div></section>';
+  h += HOOKS.render("progress", {});
+  h += '<section class="backup" aria-labelledby="bkH"><h3 id="bkH">สำรองความคืบหน้า</h3>' +
+    '<p>เครื่องหมาย «ทบทวนแล้ว» คำศัพท์ที่จำได้ บุ๊กมาร์ก ผลควิซ และตำแหน่งที่อ่านค้างไว้ เก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ' +
+    'สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
+    '<div class="qbar"><button type="button" id="bkSave">สำรองเป็นไฟล์</button><button type="button" id="bkLoad">นำเข้าจากไฟล์</button>' +
+    '<input type="file" id="bkFile" accept="application/json,.json" hidden><span class="m" id="bkMsg" role="status"></span></div></section></div>';
+  view.innerHTML = h;
+  const bkMsg = document.getElementById("bkMsg"), bkFile = document.getElementById("bkFile");
+  document.getElementById("bkSave").addEventListener("click", () => { bkMsg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
+  document.getElementById("bkLoad").addEventListener("click", () => bkFile.click());
+  bkFile.addEventListener("change", async () => {
+    const f = bkFile.files && bkFile.files[0];
+    bkFile.value = "";
+    if (!f) return;
+    try { await progressImport(f); } catch (e) { bkMsg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
+  });
+}
+registerPage("progress", { render: renderProgress, title: () => "ความก้าวหน้า" });
+
+/* ---- สารบัญแบบแผ่น (dialog.tsheet) — เปิดจากปุ่ม ☰ ซ้ายสุดของแถบชิป และปุ่ม «สารบัญ» ใน #bbar ---- */
+let TSHEET = null;
+const S2NAV = { cur: null, io: null, vis: new Set(), tn: null, settle: 0 };
+function sheetEl() {
+  if (TSHEET) return TSHEET;
+  TSHEET = document.createElement("dialog");
+  TSHEET.className = "tsheet";
+  TSHEET.setAttribute("aria-labelledby", "tsTitle");
+  document.body.appendChild(TSHEET);
+  TSHEET.addEventListener("click", e => {
+    if (e.target === TSHEET) { TSHEET.close(); return; }          // แตะพื้นหลังนอกแผ่น
+    if (e.target.closest(".ts-x")) { TSHEET.close(); return; }
+    const it = e.target.closest("[data-ts]");
+    if (it) { TSHEET.close(); navTopic(it.dataset.ts); return; }
+    if (e.target.closest(".ts-weak button")) TSHEET.close();        // margWeak ผูกปุ่มของมันเอง (เปิดฉบับเต็มที่หัวข้อนั้น)
+  });
+  TSHEET.addEventListener("close", () => document.documentElement.classList.remove("s2-modal"));
+  return TSHEET;
+}
+function sheetList(items, full, groups) {
+  const P = practiceStore();
+  const gAt = i => { const g = groups.find(x => x[0] === i); return g ? '<li class="ts-g" aria-hidden="true">' + escT(g[1]) + '</li>' : ""; };
+  return '<ol class="ts-list">' + items.map((t, i) => {
+    const q = topicQuiz(t.id, P), done = full && DONE.has("k:" + t.id), cur = t.id === S2NAV.cur;
+    return gAt(i) + '<li><button type="button" data-ts="' + t.id + '" class="' + (cur ? 'cur' : '') + (done ? ' done' : '') + '"' + (cur ? ' aria-current="location"' : '') + '>' +
+      '<span class="st" aria-hidden="true">' + (full ? '✓' : '') + '</span>' +
+      '<span class="t">' + (full ? (i + 1) + '. ' : '') + escT(t.th) + (done ? '<span class="sr"> · ทบทวนแล้ว</span>' : '') + '</span>' +
+      '<span class="q' + (q ? (q.pct >= 80 ? ' ok' : ' low') : '') + '">' + (q ? q.pct + ' %' : '') + '</span></button></li>';
+  }).join("") + '</ol>';
+}
+function openSheet() {
+  if (state.v !== "subject" || !DEEP[state.id]) return;
+  const s = ALL_SUBJ.find(x => x.id === state.id), deep = DEEP[s.id], mode = curMode();
+  const tr = subjTrip(s);
+  const full = '<div class="ts-h">ฉบับเต็ม · ' + deep.topics.length + ' หัวข้อ</div>' +
+    sheetList(deep.topics, true, deep.topics.length >= 12 ? (TOCGROUPS[s.id] || autoGroups(deep.topics)) : []);
+  const sum = deep.summary && deep.summary.length ? '<div class="ts-h">สรุปทบทวน · ' + deep.summary.length + ' บล็อก</div>' + sheetList(deep.summary, false, []) : '';
+  const d = sheetEl();
+  d.innerHTML = '<div class="ts-head"><h2 id="tsTitle">' + (ICONS[s.id] ? '<span aria-hidden="true">' + ICONS[s.id] + '</span> ' : '') + escT(s.th) + '</h2>' +
+    '<button type="button" class="ts-x" aria-label="ปิดสารบัญ">✕</button></div>' +
+    '<div class="ts-stat"><span>อ่านแล้ว <b>' + tr.read + '/' + tr.total + '</b></span><span>ควิซ <b>' + (tr.quiz ? tr.quiz.pct + ' %' : '—') + '</b></span>' +
+    '<a href="#/progress">ความก้าวหน้า →</a></div>' +
+    '<div class="ts-body">' + (mode === "sum" ? sum + full : full + sum) +
+    '<div class="ts-h">จุดที่ยังอ่อน</div><div class="ts-weak"></div></div>';
+  if (TOCX.sid === s.id) { try { margWeak(d.querySelector(".ts-weak")); } catch (e) { d.querySelector(".ts-weak").remove(); } }
+  d.querySelector('.ts-stat a').addEventListener("click", () => d.close());
+  document.documentElement.classList.add("s2-modal");
+  document.documentElement.classList.remove("reading");
+  d.showModal();
+  const cur = d.querySelector(".ts-list .cur");
+  if (cur) { cur.scrollIntoView({ block: "center" }); cur.focus({ preventScroll: true }); }
+}
+
+/* ---- ชิปหัวข้อรู้ตำแหน่ง: IO ของตัวเอง (เส้นบาง ๆ ที่ 25 % ของจอ) → .on + เลื่อนชิปมากลางแถบ + ตัวเลข «10/32» ---- */
+function chipSet(id) {
+  const tn = S2NAV.tn;
+  if (!tn || !tn.isConnected) return;
+  S2NAV.cur = id;
+  const chips = [...tn.querySelectorAll("[data-jump]")];
+  let at = -1;
+  chips.forEach((b, i) => {
+    const on = b.dataset.jump === id;
+    b.classList.toggle("on", on);
+    if (on) { at = i; b.setAttribute("aria-current", "location"); } else b.removeAttribute("aria-current");
+  });
+  const pos = tn.querySelector(".tn-pos");
+  if (pos) pos.textContent = (at >= 0 ? at + 1 : "–") + "/" + chips.length;
+  clearTimeout(S2NAV.settle);
+  if (at >= 0) {
+    const b = chips[at], lead = tn.querySelector(".tn-toc"), tail = pos;
+    const l0 = lead ? lead.offsetWidth : 0, r0 = tail ? tail.offsetWidth : 0;
+    const want = () => Math.max(0, b.offsetLeft - l0 - (tn.clientWidth - l0 - r0 - b.offsetWidth) / 2);
+    tn.scrollTo({ left: want(), behavior: REDUCED ? "auto" : "smooth" });
+    S2NAV.settle = setTimeout(() => {                // เลื่อนนุ่มหลายครั้งติดกัน (หัวข้อเติมเป็นช่วง ๆ เส้น IO ขยับบ่อย) อาจหยุดกลางทาง — ถ้าชิปยังไม่อยู่ในแถบ ให้วางตรงที่ทันที
+      if (!b.isConnected || !tn.isConnected) return;
+      const r = b.getBoundingClientRect(), t = tn.getBoundingClientRect();
+      if (r.left < t.left + l0 - 1 || r.right > t.right - r0 + 1) tn.scrollTo({ left: want(), behavior: "auto" });
+    }, 600);
+  }
+}
+function chipPick() {
+  let first = null;
+  S2NAV.vis.forEach(sec => { if (sec.isConnected && (!first || (first.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_PRECEDING))) first = sec; });
+  if (first && first.id !== S2NAV.cur) chipSet(first.id);
+}
+HOOKS.on("subject", (s, deep) => {
+  if (S2NAV.io) { S2NAV.io.disconnect(); S2NAV.io = null; }
+  S2NAV.vis.clear(); S2NAV.cur = null; S2NAV.tn = null;
+  const tn = view.querySelector(".topic-nav");
+  if (!deep || !tn) return;
+  S2NAV.tn = tn;
+  tn.setAttribute("aria-label", "หัวข้อในหน้านี้");
+  tn.insertAdjacentHTML("afterbegin", '<button type="button" class="tn-toc" aria-haspopup="dialog">☰ สารบัญ</button>');
+  tn.insertAdjacentHTML("beforeend", '<span class="tn-pos" aria-hidden="true"></span>');
+  tn.querySelector(".tn-toc").addEventListener("click", openSheet);
+  chipSet(null);
+  if (!window.IntersectionObserver) return;
+  S2NAV.io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) S2NAV.vis.add(e.target); else S2NAV.vis.delete(e.target); });
+    chipPick();
+  }, { rootMargin: "-25% 0px -74% 0px" });
+  view.querySelectorAll("section.topic[id]").forEach(sec => S2NAV.io.observe(sec));
+});
+HOOKS.on("clear", () => { if (S2NAV.io) { S2NAV.io.disconnect(); S2NAV.io = null; } S2NAV.vis.clear(); S2NAV.tn = null; if (TSHEET && TSHEET.open) TSHEET.close(); });
+
+HOOKS.on("go", st => {                                // «หน้าหลัก» ใน #bbar กลายเป็นปุ่ม «สารบัญ» ในหน้าวิชาที่มีเนื้อหาเต็ม
+  const toc = st.v === "subject" && !!DEEP[st.id];
+  document.querySelectorAll('#bbar [data-bb="overview"]').forEach(b => { b.hidden = toc; });
+  document.querySelectorAll('#bbar [data-bb="toc"]').forEach(b => { b.hidden = !toc; });
+});
+
+/* ---- #bbar: ไฮไลต์พื้นที่ที่อยู่ · ชี้ «ฝึกทบทวน» ไป #/practice เมื่อ S5 ลงทะเบียนหน้านั้นแล้ว ---- */
+const BB_AREA = { overview: "overview", subjects: "subjects", subject: "subjects", glossary: "subjects", sem: "subjects",
+  practice: "practice", flash: "practice", quiz: "practice", oral: "practice", cram: "practice", search: "find", progress: "progress" };
+HOOKS.on("go", st => {
+  const area = BB_AREA[st.v] || "";
+  document.querySelectorAll("#bbar [data-bb]").forEach(b => {
+    const on = b.dataset.bb === area;
+    b.classList.toggle("on", on);
+    if (b.tagName === "A") { if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
+  });
+  const ph = practiceHref();                          // S5 ลงทะเบียน #/practice ทีหลังช่องนี้ — ชี้ปุ่มใหม่ทุกครั้งที่เปลี่ยนหน้า
+  document.querySelectorAll('#bbar [data-bb="practice"], #nav [data-nav="practice"]').forEach(a => { if (a.getAttribute("href") !== ph) a.href = ph; });
+});
+
+/* ---- แถบหลบตอนอ่าน (≤ 900 px): เลื่อนลงต่อเนื่อง > 80 px → html.reading ซ่อนแถบบน/แถบล่าง ชิปขึ้นไปชิดขอบบน
+   เลื่อนขึ้น หรือหยุด 1.5 วินาที → แถบกลับ · ปลดทุกครั้งก่อน navTopic/scrollToTarget (navOffset วัดจากแถบที่มองเห็น) ---- */
+const S2RD = { y: window.scrollY, from: window.scrollY, dir: 0, idle: 0, hold: 0 };
+const narrowMQ = window.matchMedia("(max-width: 900px)");
+function unread(hold) {
+  document.documentElement.classList.remove("reading");
+  if (hold) S2RD.hold = performance.now() + 1200;
+  S2RD.from = window.scrollY;
+}
+window.addEventListener("scroll", () => {
+  const y = window.scrollY, dy = y - S2RD.y;
+  S2RD.y = y;
+  const html = document.documentElement;
+  clearTimeout(S2RD.idle);
+  if (!narrowMQ.matches || y < 80 || html.classList.contains("s2-modal") || document.activeElement === searchEl) { if (html.classList.contains("reading")) unread(); S2RD.from = y; return; }
+  if (performance.now() < S2RD.hold) { S2RD.from = y; return; }
+  const dir = dy > 0 ? 1 : dy < 0 ? -1 : S2RD.dir;
+  if (dir !== S2RD.dir) { S2RD.dir = dir; S2RD.from = y - dy; }
+  if (dir > 0 && y - S2RD.from > 80) html.classList.add("reading");
+  else if (dir < 0 && S2RD.from - y > 8) unread();
+  if (html.classList.contains("reading")) S2RD.idle = setTimeout(() => unread(), 1500);
+}, { passive: true });
+narrowMQ.addEventListener("change", () => unread());
+searchEl.addEventListener("focus", () => unread());
+{                                                     // ห่อตัวกระโดดของ router: ปลดแถบหลบก่อน แล้วกันไม่ให้การเลื่อนอัตโนมัติสั่งหลบซ้ำทันที
+  const nt = navTopic, st2 = scrollToTarget;
+  navTopic = function () { unread(true); return nt.apply(this, arguments); };
+  scrollToTarget = function () { unread(true); return st2.apply(this, arguments); };
+}
+
+/* ---- ท้ายหัวข้อ: ✓ ทบทวนแล้ว (ซิงก์กับปุ่มบนหัว) · ผลควิซ · ฝึกเรื่องนี้ · ก่อนหน้า/ถัดไป ---- */
+function s2SyncKey(k) {
+  const on = DONE.has(k);
+  view.querySelectorAll('.topic-check[data-key="' + k + '"]').forEach(b => b.classList.toggle("done", on));
+  view.querySelectorAll('[data-s2key="' + k + '"]').forEach(b => {
+    b.classList.toggle("done", on);
+    b.setAttribute("aria-pressed", String(on));
+    b.querySelector(".l").textContent = on ? "ทบทวนแล้ว" : "ทำเครื่องหมายว่าทบทวนแล้ว";
+  });
+}
+function tendQuiz(sec) {
+  const box = sec && sec.querySelector(".tend-q");
+  if (!box) return;
+  const hosts = sec.querySelectorAll('[data-demo="quiz2"]').length;
+  const q = topicQuiz(sec.id, practiceStore());
+  box.hidden = !hosts && !q;
+  box.innerHTML = q ? 'ควิซหัวข้อนี้ <b>' + q.pct + ' %</b> <small>(ถูก ' + q.ok + '/' + q.done + (q.n > q.done ? ' · ทำแล้ว ' + q.done + ' จาก ' + q.n + ' ข้อ' : '') + ')</small>'
+    : 'ควิซหัวข้อนี้ยังไม่ได้ทำ';
+}
+function topicEnd(el, t, sid) {
+  const deep = DEEP[sid], sec = el.closest("section.topic[id]");
+  if (!deep || !sec || el.querySelector(":scope > .tend")) return;
+  const full = deep.topics.some(x => x.id === t.id);
+  const items = full ? deep.topics : (deep.summary || []);
+  const i = items.findIndex(x => x.id === t.id), prev = items[i - 1], next = items[i + 1], k = "k:" + t.id;
+  const lnk = (x, dir) => x ? '<a class="' + dir + '" href="#/' + sid + '/' + x.id + '"><span>' + (dir === "prev" ? '← ก่อนหน้า' : 'ถัดไป →') + '</span><b>' +
+    (full ? (items.indexOf(x) + 1) + '. ' : '') + escT(x.th) + '</b></a>' : '<span></span>';
+  el.insertAdjacentHTML("beforeend", '<nav class="tend" aria-label="ท้ายหัวข้อ"><div class="tend-row">' +
+    (full ? '<button type="button" class="tend-chk' + (DONE.has(k) ? ' done' : '') + '" data-s2key="' + k + '" aria-pressed="' + DONE.has(k) + '">' +
+      '<span class="b" aria-hidden="true">✓</span><span class="l">' + (DONE.has(k) ? 'ทบทวนแล้ว' : 'ทำเครื่องหมายว่าทบทวนแล้ว') + '</span></button>' : '') +
+    '<span class="tend-q" hidden></span>' +
+    (PAGE_DEFS.practice ? '<a class="tend-pr" href="' + practiceHref(sid, t.id) + '">ฝึกเรื่องนี้ →</a>' : '') + '</div>' +
+    (prev || next ? '<div class="tend-np">' + lnk(prev, "prev") + lnk(next, "next") + '</div>' : '') + '</nav>');
+  const nav = el.querySelector(":scope > .tend"), chk = nav.querySelector(".tend-chk");
+  if (chk) chk.addEventListener("click", () => { toggleKey(k); s2SyncKey(k); });
+  tendQuiz(sec);
+  queueMicrotask(() => { if (nav.isConnected && nav.nextElementSibling) el.appendChild(nav); });   // hook fill ของ session อื่นที่ต่อท้ายทีหลัง (เช่นบันทึกของ S7) — ท้ายหัวข้อต้องอยู่ล่างสุด
+}
+HOOKS.on("fill", topicEnd);
+view.addEventListener("click", e => {                 // ✓ บนหัวหัวข้อ / ในสารบัญ v4 → ปุ่มท้ายหัวข้อตามไปด้วย
+  const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark]");
+  if (b) s2SyncKey(b.dataset.key || b.dataset.mark);
+});
+document.addEventListener("std2:quiz", e => {         // ตัวเก็บผลของ v4/S5 ลงทะเบียนก่อน → อ่านค่าใหม่ได้เลย
+  const sec = e.target && e.target.closest && e.target.closest("section.topic[id]");
+  if (sec) tendQuiz(sec);
+});
+
+/* ---- ชุดอ่านง่าย: ตาราง .tw ที่กว้างกว่ากล่อง → .scrolls (เงาขอบ) + ป้าย «เลื่อนดู →» จนเลื่อนครั้งแรก · ข้อความวิชารูปแบบเดิม 16/1.7 ---- */
+function s2Tables(root) {
+  const todo = [];
+  root.querySelectorAll(".tw").forEach(tw => {
+    if (!tw.clientWidth) return;                       // ยังไม่แสดง (อยู่ใน details ที่ปิด)
+    todo.push([tw, tw.scrollWidth > tw.clientWidth + 1]);
+  });
+  todo.forEach(([tw, over]) => {                       // วัดครบก่อนแล้วค่อยแก้ DOM — คำนวณเลย์เอาต์รอบเดียว
+    tw.classList.toggle("scrolls", over);
+    const hint = tw.previousElementSibling && tw.previousElementSibling.classList.contains("tw-hint") ? tw.previousElementSibling : null;
+    if (over && !hint && !tw.dataset.s2seen) {
+      tw.insertAdjacentHTML("beforebegin", '<p class="tw-hint" aria-hidden="true">เลื่อนดู →</p>');
+      tw.addEventListener("scroll", () => {
+        tw.dataset.s2seen = "1";
+        const h = tw.previousElementSibling;
+        if (h && h.classList.contains("tw-hint")) h.remove();
+      }, { once: true, passive: true });
+    } else if (!over && hint) hint.remove();
+  });
+}
+HOOKS.on("fill", el => {
+  if (!el.querySelector(".std2")) el.classList.add("s2-legacy");
+  s2Tables(el);
+});
+document.addEventListener("toggle", e => { if (e.target.open && e.target.closest && e.target.closest("#view")) s2Tables(e.target); }, true);
+let s2W = window.innerWidth, s2RT = 0;
+window.addEventListener("resize", () => {
+  if (window.innerWidth === s2W) return;
+  s2W = window.innerWidth;
+  clearTimeout(s2RT);
+  s2RT = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(s2Tables), 300);
+}, { passive: true });
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ---- S3: ติดตั้งแบบจำลองเมื่อเข้าใกล้จอ ----
