@@ -1,7 +1,7 @@
 // ตรวจรับเมนูซ้ายแบบย่อ (แถบไอคอน) + โหมดอ่าน ในเบราว์เซอร์จริง — รันมือ ไม่อยู่ใน node --test
 //   node tests/rail.browser.cjs             (ต้องมีแพ็กเกจ playwright ของ Node · ในคลาวด์ใช้ NODE_PATH=$(npm root -g))
 // ข้อที่ต้องผ่าน: เปิดวิชาเนื้อหาเต็มแล้วย่อเอง · ค่าเดียวใช้ทุกหน้า · สารบัญขวาโผล่ที่ 1366 px · สลับแล้วข้อความบนสุดของจออยู่ที่เดิม
-// · ] / Esc / ปุ่ม / ไปหน้าอื่น เข้า-ออกโหมดอ่าน · / ค้นหาได้จากโหมดอ่าน · รีเฟรชแล้วจำค่า · จอ 390 px ไม่เปลี่ยน
+// · ] / Esc / ปุ่ม / ไปหน้าอื่น เข้า-ออกโหมดอ่าน · / ค้นหาได้จากโหมดอ่าน · รีเฟรชแล้วจำค่า · จอ 390 px ไม่มีแถบไอคอน แต่มีปุ่มโหมดอ่านในแถบล่าง
 'use strict';
 const http = require('node:http');
 const fs = require('node:fs');
@@ -107,6 +107,25 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok }); console.lo
   r = await pg.evaluate(() => ({ mini: getComputedStyle(document.querySelector('.rmini')).display, acts: getComputedStyle(document.querySelector('.rail-acts')).display,
     sw: document.documentElement.scrollWidth, topbar: getComputedStyle(document.querySelector('.topbar')).display }));
   check('จอ 390 px: ไม่มีแถบไอคอน/ปุ่มเมนู · ไม่ล้นจอ (ใช้แถบล่างเหมือนเดิม)', r.mini === 'none' && r.acts === 'none' && r.sw <= 390 && r.topbar !== 'none', r);
+  // มือถือ: ปุ่ม «โหมดอ่าน» ช่องที่ 6 ของแถบล่าง (เฉพาะหน้าวิชา) → ซ่อนแถบชื่อเว็บ แถบค้นหา แถบล่าง แถบชิป · ตำแหน่งที่อ่านอยู่ที่เดิม
+  const MB = () => pg.evaluate(() => { const v = s => { const e = document.querySelector(s); return !!e && getComputedStyle(e).display !== 'none'; };
+    return { read: document.documentElement.classList.contains('read-mode'), bars: ['aside.rail', '.topbar', '#bbar', '#view .topic-nav'].filter(v),
+      exit: v('#readExit'), btns: [...document.querySelectorAll('#bbar > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.textContent.trim()),
+      sw: document.documentElement.scrollWidth }; });
+  await pg.goto(base + '#/nav/nav-2'); await subj('nav'); await pg.waitForTimeout(1500);
+  r = await MB();
+  check('จอ 390 px หน้าวิชา: แถบล่าง 6 ช่อง ช่องสุดท้าย «โหมดอ่าน» · ไม่ล้นจอ', r.btns.length === 6 && r.btns[5] === 'โหมดอ่าน' && r.sw <= 390, r);
+  const m0 = await pin();
+  await pg.click('#bbar [data-bb="read"]'); await pg.waitForTimeout(400);
+  r = await MB();
+  const m1 = await pinNow();
+  check('จอ 390 px: กด «โหมดอ่าน» → ซ่อนทุกแถบ เหลือปุ่มออก · ข้อความที่อ่านอยู่ที่เดิม (±2 px)', r.read && r.bars.length === 0 && r.exit && Math.abs(m1 - m0) <= 2, { r, m0, m1 });
+  await pg.click('#readExit'); await pg.waitForTimeout(400);
+  r = await MB();
+  check('จอ 390 px: ปุ่มออก → แถบกลับครบ', !r.read && r.bars.length === 4, r);
+  await pg.goto(base + '#/'); await pg.waitForTimeout(500);
+  r = await MB();
+  check('จอ 390 px นอกหน้าวิชา: แถบล่าง 5 ช่องเหมือนเดิม', r.btns.length === 5 && !r.btns.includes('โหมดอ่าน'), r.btns);
 
   check('ไม่มี page error / console error', errors.length === 0, errors.slice(0, 5));
   check('ไม่เรียกเซิร์ฟเวอร์ภายนอก', external.size === 0, [...external].slice(0, 5));
