@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "f8a1c1ce7b";
+const DATA_VERSION = "330341a4c9";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -70018,7 +70018,7 @@ learnerKey("atlas-seen-v1", { kind: "obj", label: "สถิติการอ�
 learnerKey("atlas-recent-v1", { kind: "list", label: "ประวัติการอ่านล่าสุด" });
 learnerKey("atlas-pins-v1", { kind: "list", label: "หัวข้อที่ปักไว้" });
 learnerKey("atlas-notes-v1", { kind: "obj", label: "บันทึกส่วนตัว", count: nKeys });
-learnerKey("atlas-ui-v1", { kind: "obj", label: "ตัวกรองหน้ารายวิชา", count: v => (v ? 1 : 0), temp: true });
+learnerKey("atlas-ui-v1", { kind: "obj", label: "ตัวกรองหน้ารายวิชา · เมนูซ้ายแบบย่อ · โหมดอ่าน", count: v => (v ? 1 : 0), temp: true });
 learnerKey("atlas-search-v1", { kind: "obj", label: "ตัวเลือกหน้าค้นหา", count: v => (v ? 1 : 0), temp: true });
 
 const KEY = "atlas-sula-v1";
@@ -72771,6 +72771,121 @@ window.addEventListener("resize", () => {
   clearTimeout(s2RT);
   s2RT = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(s2Tables), 300);
 }, { passive: true });
+/* ---- เมนูซ้ายแบบย่อ (แถบไอคอน 60 px) + โหมดอ่าน — เฉพาะจอ > 900 px (จอแคบซ่อนรายการเมนูอยู่แล้ว ใช้ #bbar) ----
+   html.rail-mini = เมนูซ้ายเหลือไอคอน (.rmini: ☰ ขยาย · 5 เมนูหลักชุดเดียวกับ #bbar · วิชานี้ · โหมดอ่าน) — ค่าเดียวใช้ทุกหน้า จำใน UI.railMini
+     และย่อเองทุกครั้งที่เปิดวิชาที่มีเนื้อหาเต็ม (เปลี่ยนวิชา/เข้าจากหน้าอื่น — สลับโหมดหรือหัวข้อในวิชาเดิมไม่ย่อซ้ำ)
+   html.read-mode = โหมดอ่าน: ซ่อนทั้งเมนูซ้ายและแถบค้นหาบน (เฉพาะหน้าวิชา · ออกเองเมื่อไปหน้าอื่น · กด / ค้นหาแล้วออก) จำใน UI.focus
+   สารบัญ/แถบข้างของบล็อก v4 โผล่เร็วขึ้นตามที่ที่ได้คืน — ค่าจุดเปลี่ยนใหม่อยู่ใน app.css ช่อง S2 (ไม่แก้บล็อก v4)
+   สลับแล้วคงตำแหน่งที่อ่าน (railKeep) · ปุ่มลัด [ = ย่อ/ขยายเมนู · ] = โหมดอ่าน (ใช้ e.code จึงทำงานบนแป้นไทยด้วย) */
+const RAIL = { mini: !!UI.railMini, focus: !!UI.focus, sid: null };
+const railEl = document.querySelector("aside.rail");
+function railKeep(fn) {                               // ข้อความที่อยู่บนสุดของจอต้องอยู่ที่เดิมหลังคอลัมน์เปลี่ยนกว้าง
+  let a = null, top = 0, off0 = 0;
+  if (state.v === "subject" && window.scrollY > 20) {
+    off0 = navOffset();
+    const wr = view.querySelector(".wrap") || view, r = wr.getBoundingClientRect();
+    let el = document.elementFromPoint(Math.round(r.left + Math.min(r.width, 600) / 2), off0 + 6);
+    if (!el || !view.contains(el)) el = currentTopicEl();
+    if (el) { a = el; top = el.getBoundingClientRect().top; }
+  }
+  fn();
+  if (a && a.isConnected) {
+    const d = (a.getBoundingClientRect().top - navOffset()) - (top - off0);
+    if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: "instant" });
+  }
+  requestAnimationFrame(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(el => { fitWideMath(el); s2Tables(el); }));
+}
+function railApply() {
+  const html = document.documentElement;
+  const focus = RAIL.focus && state.v === "subject";
+  html.classList.toggle("rail-mini", RAIL.mini);
+  html.classList.toggle("read-mode", focus);
+  railEl.querySelectorAll("[data-rail=fold]").forEach(b => b.setAttribute("aria-expanded", String(!RAIL.mini)));
+  railEl.querySelectorAll("[data-rail=read]").forEach(b => { b.setAttribute("aria-pressed", String(focus)); b.hidden = state.v !== "subject"; });
+}
+function railSet(mini, focus, keep) {
+  if (mini === RAIL.mini && focus === RAIL.focus) return;
+  RAIL.mini = mini; RAIL.focus = focus;
+  UI.railMini = mini || undefined; UI.focus = focus || undefined;
+  saveUI();
+  if (keep) railKeep(railApply); else railApply();
+}
+const railToggle = () => railSet(!RAIL.mini, RAIL.focus, true);
+function readToggle() {
+  if (state.v !== "subject") return;
+  const on = !RAIL.focus;
+  railSet(RAIL.mini, on, true);
+  const ex = document.getElementById("readExit");
+  if (on && ex && document.activeElement && railEl.contains(document.activeElement)) ex.focus({ preventScroll: true });
+}
+{
+  const icon = k => { const s = document.querySelector('#bbar [data-bb="' + k + '"] svg'); return s ? s.outerHTML : ""; };
+  const SVG = d => '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+  const READ = SVG('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>');
+  const acts = document.createElement("div");       // ปุ่มบนเมนูเต็ม: โหมดอ่าน · ย่อเมนู
+  acts.className = "rail-acts";
+  acts.innerHTML =
+    '<button type="button" data-rail="read" aria-pressed="false" title="โหมดอ่าน — ซ่อนเมนูและแถบค้นหา ( ] )" aria-label="โหมดอ่าน">' + READ + '</button>' +
+    '<button type="button" data-rail="fold" aria-expanded="true" aria-controls="nav" title="ย่อเมนูเหลือไอคอน ( [ )" aria-label="ย่อเมนู">' + SVG('<path d="M14.5 6 8.5 12l6 6"/>') + '</button>';
+  const mini = document.createElement("div");       // แถบไอคอน
+  mini.className = "rmini";
+  mini.innerHTML =
+    '<button type="button" data-rail="fold" aria-expanded="false" aria-controls="nav" title="ขยายเมนู ( [ )">' + SVG('<path d="M4 6.5h16M4 12h16M4 17.5h16"/>') + '<span>เมนู</span></button><hr>' +
+    '<a data-rm="overview" href="#/" title="หน้าหลัก">' + icon("overview") + '<span>หน้าหลัก</span></a>' +
+    '<a data-rm="subjects" href="#/subjects" title="รายวิชา">' + icon("subjects") + '<span>รายวิชา</span></a>' +
+    '<a data-rm="subject" class="rm-subj" href="#/" hidden><b></b><span>วิชานี้</span></a>' +
+    '<a data-rm="practice" href="' + practiceHref() + '" title="ฝึกทบทวน">' + icon("practice") + '<span>ฝึกทบทวน</span></a>' +
+    '<button type="button" data-rm="find" title="ค้นหา ( / )">' + icon("find") + '<span>ค้นหา</span></button>' +
+    '<a data-rm="progress" href="#/progress" title="ความก้าวหน้า">' + icon("progress") + '<span>ความ­ก้าวหน้า</span></a>' +
+    '<hr data-rail="read"><button type="button" data-rail="read" aria-pressed="false" title="โหมดอ่าน — ซ่อนเมนูและแถบค้นหา ( ] )">' + READ + '<span>โหมดอ่าน</span></button>';
+  railEl.prepend(acts);
+  railEl.appendChild(mini);
+  const exit = document.createElement("button");    // ทางออกจากโหมดอ่าน (มุมซ้ายล่าง จางจนกว่าจะชี้/โฟกัส)
+  exit.type = "button"; exit.id = "readExit";
+  exit.title = "ออกจากโหมดอ่าน ( ] หรือ Esc )";
+  exit.setAttribute("aria-label", "ออกจากโหมดอ่าน");
+  exit.innerHTML = READ + '<span>ออกจากโหมดอ่าน</span>';
+  document.body.appendChild(exit);
+  railEl.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.rail === "fold") railToggle();
+    else if (b.dataset.rail === "read") readToggle();
+    else if (b.dataset.rm === "find") focusSearch();
+  });
+  exit.addEventListener("click", () => { railSet(RAIL.mini, false, true); });
+}
+{                                                     // ค้นหาจากที่ไหนก็ตาม (ปุ่ม / เมนู / แถบล่าง) ต้องออกจากโหมดอ่านก่อน — ช่องค้นหาอยู่บนแถบที่ซ่อน
+  const fs = focusSearch;
+  focusSearch = function () { if (RAIL.focus) railSet(RAIL.mini, false, true); return fs.apply(this, arguments); };
+  const g0 = go;
+  go = function (st) {                                // ย่อเมนูก่อนวาดหน้าวิชา — จะได้จัดหน้าครั้งเดียว และการกระโดดไปหัวข้อวัดจากโครงจริง
+    const sid = st && st.v === "subject" && DEEP[st.id] ? st.id : null;
+    if (sid && !(state.v === "subject" && state.id === sid)) { RAIL.mini = true; UI.railMini = true; saveUI(); }
+    if (!st || st.v !== "subject") { if (RAIL.focus) { RAIL.focus = false; delete UI.focus; saveUI(); } }
+    railApply();
+    return g0.apply(this, arguments);
+  };
+}
+document.addEventListener("keydown", e => {           // ช่วงจับ (capture) — ทำก่อนตัวจัดการ «/» ของช่องค้นหา
+  const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  if (e.ctrlKey || e.metaKey || e.altKey || typing || narrowMQ.matches || document.querySelector("dialog[open]")) return;
+  if (e.code === "BracketLeft") { e.preventDefault(); railToggle(); }
+  else if (e.code === "BracketRight" && state.v === "subject") { e.preventDefault(); readToggle(); }
+  else if (e.key === "Escape" && RAIL.focus && state.v === "subject" && !document.querySelector("#figlb.on")) railSet(RAIL.mini, false, true);
+  else if (e.key === "/" && RAIL.focus) railSet(RAIL.mini, false, false);
+}, true);
+HOOKS.on("go", st => {
+  const a = railEl.querySelector(".rm-subj"), s = st.v === "subject" ? ALL_SUBJ.find(x => x.id === st.id) : null;
+  a.hidden = !s;
+  if (s) { a.href = "#/" + s.id; a.title = s.ru + " · " + s.th + " — กลับขึ้นต้นวิชา"; a.querySelector("b").textContent = s.n; }
+  railEl.querySelectorAll(".rmini [data-rm]").forEach(b => b.classList.toggle("on", b.dataset.rm === st.v));
+  const ph = practiceHref();                          // ชุดเดียวกับเมนูเต็ม/แถบล่าง (S5 ลงทะเบียน #/practice ทีหลังช่องนี้)
+  const p = railEl.querySelector('.rmini [data-rm="practice"]');
+  if (p && p.getAttribute("href") !== ph) p.href = ph;
+  railApply();
+});
+railApply();
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ---- S3: ติดตั้งแบบจำลองเมื่อเข้าใกล้จอ ----
