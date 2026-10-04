@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "330341a4c9";
+const DATA_VERSION = "5e98443a3b";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -72771,10 +72771,12 @@ window.addEventListener("resize", () => {
   clearTimeout(s2RT);
   s2RT = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(s2Tables), 300);
 }, { passive: true });
-/* ---- เมนูซ้ายแบบย่อ (แถบไอคอน 60 px) + โหมดอ่าน — เฉพาะจอ > 900 px (จอแคบซ่อนรายการเมนูอยู่แล้ว ใช้ #bbar) ----
+/* ---- เมนูซ้ายแบบย่อ (แถบไอคอน 60 px · จอ > 900 px — จอแคบซ่อนรายการเมนูอยู่แล้ว ใช้ #bbar) + โหมดอ่าน (ทุกขนาดจอ) ----
    html.rail-mini = เมนูซ้ายเหลือไอคอน (.rmini: ☰ ขยาย · 5 เมนูหลักชุดเดียวกับ #bbar · วิชานี้ · โหมดอ่าน) — ค่าเดียวใช้ทุกหน้า จำใน UI.railMini
      และย่อเองทุกครั้งที่เปิดวิชาที่มีเนื้อหาเต็ม (เปลี่ยนวิชา/เข้าจากหน้าอื่น — สลับโหมดหรือหัวข้อในวิชาเดิมไม่ย่อซ้ำ)
    html.read-mode = โหมดอ่าน: ซ่อนทั้งเมนูซ้ายและแถบค้นหาบน (เฉพาะหน้าวิชา · ออกเองเมื่อไปหน้าอื่น · กด / ค้นหาแล้วออก) จำใน UI.focus
+     จอ ≤ 900 px ซ่อนแถบชื่อเว็บ แถบค้นหา แถบล่าง #bbar และแถบชิปหัวข้อด้วย · เปิดจากปุ่ม «โหมดอ่าน» ใน #bbar (โผล่เฉพาะหน้าวิชา = ช่องที่ 6)
+     ทางออก #readExit มุมซ้ายล่าง (วงกลมไอคอน · บอกป้าย «ออกจากโหมดอ่าน» 2.5 วินาทีตอนเข้าโหมด เพราะจอสัมผัสไม่มีการชี้)
    สารบัญ/แถบข้างของบล็อก v4 โผล่เร็วขึ้นตามที่ที่ได้คืน — ค่าจุดเปลี่ยนใหม่อยู่ใน app.css ช่อง S2 (ไม่แก้บล็อก v4)
    สลับแล้วคงตำแหน่งที่อ่าน (railKeep) · ปุ่มลัด [ = ย่อ/ขยายเมนู · ] = โหมดอ่าน (ใช้ e.code จึงทำงานบนแป้นไทยด้วย) */
 const RAIL = { mini: !!UI.railMini, focus: !!UI.focus, sid: null };
@@ -72801,7 +72803,9 @@ function railApply() {
   html.classList.toggle("rail-mini", RAIL.mini);
   html.classList.toggle("read-mode", focus);
   railEl.querySelectorAll("[data-rail=fold]").forEach(b => b.setAttribute("aria-expanded", String(!RAIL.mini)));
-  railEl.querySelectorAll("[data-rail=read]").forEach(b => { b.setAttribute("aria-pressed", String(focus)); b.hidden = state.v !== "subject"; });
+  document.querySelectorAll('[data-rail=read], #bbar [data-bb="read"]').forEach(b => { b.setAttribute("aria-pressed", String(focus)); b.hidden = state.v !== "subject"; });
+  const bb = document.getElementById("bbar");
+  if (bb) bb.classList.toggle("bb6", state.v === "subject");
 }
 function railSet(mini, focus, keep) {
   if (mini === RAIL.mini && focus === RAIL.focus) return;
@@ -72815,8 +72819,12 @@ function readToggle() {
   if (state.v !== "subject") return;
   const on = !RAIL.focus;
   railSet(RAIL.mini, on, true);
-  const ex = document.getElementById("readExit");
-  if (on && ex && document.activeElement && railEl.contains(document.activeElement)) ex.focus({ preventScroll: true });
+  const ex = document.getElementById("readExit"), ae = document.activeElement;
+  if (!on || !ex) return;
+  if (ae && (railEl.contains(ae) || ae.closest("#bbar"))) ex.focus({ preventScroll: true });   // ปุ่มที่กดถูกซ่อน — โฟกัสไม่หลุดไป body
+  ex.classList.add("say");
+  clearTimeout(RAIL.sayT);
+  RAIL.sayT = setTimeout(() => ex.classList.remove("say"), 2500);
 }
 {
   const icon = k => { const s = document.querySelector('#bbar [data-bb="' + k + '"] svg'); return s ? s.outerHTML : ""; };
@@ -72846,6 +72854,11 @@ function readToggle() {
   exit.setAttribute("aria-label", "ออกจากโหมดอ่าน");
   exit.innerHTML = READ + '<span>ออกจากโหมดอ่าน</span>';
   document.body.appendChild(exit);
+  const bbar = document.getElementById("bbar");     // มือถือ: ช่องที่ 6 ของแถบล่าง (ซ่อนนอกหน้าวิชา)
+  if (bbar) {
+    bbar.insertAdjacentHTML("beforeend", '<button type="button" data-bb="read" aria-pressed="false" hidden>' + READ + 'โหมดอ่าน</button>');
+    bbar.querySelector('[data-bb="read"]').addEventListener("click", readToggle);
+  }
   railEl.addEventListener("click", e => {
     const b = e.target.closest("button");
     if (!b) return;
@@ -72853,7 +72866,7 @@ function readToggle() {
     else if (b.dataset.rail === "read") readToggle();
     else if (b.dataset.rm === "find") focusSearch();
   });
-  exit.addEventListener("click", () => { railSet(RAIL.mini, false, true); });
+  exit.addEventListener("click", () => { exit.classList.remove("say"); railSet(RAIL.mini, false, true); });
 }
 {                                                     // ค้นหาจากที่ไหนก็ตาม (ปุ่ม / เมนู / แถบล่าง) ต้องออกจากโหมดอ่านก่อน — ช่องค้นหาอยู่บนแถบที่ซ่อน
   const fs = focusSearch;
@@ -72869,7 +72882,7 @@ function readToggle() {
 }
 document.addEventListener("keydown", e => {           // ช่วงจับ (capture) — ทำก่อนตัวจัดการ «/» ของช่องค้นหา
   const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-  if (e.ctrlKey || e.metaKey || e.altKey || typing || narrowMQ.matches || document.querySelector("dialog[open]")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || typing || document.querySelector("dialog[open]")) return;
   if (e.code === "BracketLeft") { e.preventDefault(); railToggle(); }
   else if (e.code === "BracketRight" && state.v === "subject") { e.preventDefault(); readToggle(); }
   else if (e.key === "Escape" && RAIL.focus && state.v === "subject" && !document.querySelector("#figlb.on")) railSet(RAIL.mini, false, true);
