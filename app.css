@@ -4320,3 +4320,34 @@ details.cr-miss { border-left: 3px solid var(--crit); }
 .s8card ul.s8list { margin: 0 0 12px; padding-left: 20px; font-size: 13.5px; color: var(--ink-2); }
 /* ===== SLOT S8 END ===== */
 /* ===== SLOTS END ===== */
+/* ===== v6 (S9 ปิดรุ่น): ประสานของจากหลายช่องบนจอเดียวกัน — แก้ตรงได้ ===== */
+/* หัวหน้าวิชาบนจอ ≤ 600 px: ช่องวันสอบ + แผนวันนี้ของ S6 พับอยู่ใน ▾ «ครบกำหนดทวน» (ป้าย «อีก N วัน» อยู่ในแถวแรกแทน)
+   ข้อความอธิบายปุ่มเก็บออฟไลน์ (S3) ซ่อนจนกดปุ่ม — เดิมแถวของ S3/S5/S6 ดันแถบสลับโหมดและหัวข้อแรกลงใต้แถบล่าง */
+.s6-left-m, .s6-set { display: none; }
+.s6-set { font-size: 12.5px; }
+@media (max-width: 600px), (max-width: 900px) and (max-height: 500px) {          /* มือถือแนวตั้ง + แนวนอน */
+  .s6-head:not(.open) .s6-ex, .s6-head:not(.open) .s6-plan { display: none; }
+  .s6-head:not(.open) .s6-left-m, .s6-head:not(.open) .s6-set { display: inline-block; }   /* «อีก N วัน» หรือ «ตั้งวันสอบ» (เปิด ▾ แล้วโฟกัสช่องวันที่) */
+  .s6-head { margin-top: 8px; }
+  .offl .m.hint { display: none; }
+}
+/* แถบ «ออฟไลน์» (S3): เม็ดเล็กมุมซ้ายล่าง — เดิมเต็มความกว้างบนสุด z 80 ทับช่องค้นหา ชิปหัวข้อ และปุ่มของเมนูซ้าย */
+#netbar {
+  left: 16px; right: auto; top: auto; bottom: calc(16px + env(safe-area-inset-bottom));
+  max-width: calc(100vw - 92px); padding: 6px 12px; border-radius: 12px; text-align: left; font-size: 12.5px; box-shadow: var(--shadow);
+  color: var(--panel);                                 /* ตัดกับ --accent-2 ทั้งสองธีม (ขาวบนส้มสว่างของธีมมืดได้แค่ 2.2:1) */
+}
+html.read-mode #netbar { bottom: calc(76px + env(safe-area-inset-bottom)); }          /* เหนือปุ่มออกจากโหมดอ่าน (จอคอม) */
+@media (max-width: 900px) {
+  #netbar { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  html.read-mode #netbar { bottom: calc(16px + env(safe-area-inset-bottom)); }
+  /* ปุ่มออกจากโหมดอ่านไปอยู่กองขวาเหนือปุ่ม ↑ — ขอบซ้ายคือคอลัมน์ข้อความ แตะ «← ก่อนหน้า» / ตัวเลือกควิซแล้วหลุดจากโหมดอ่าน */
+  html.read-mode #readExit { left: auto; right: 18px; bottom: calc(76px + env(safe-area-inset-bottom)); }
+  /* ช่องกรอก < 16 px → iPhone ซูมหน้าเองตอนแตะแล้วไม่ซูมกลับ (วันสอบ S6 · ตัวกรอง S2 · หน้าฝึก S5 · บันทึก S7) — ไม่รวมในแบบจำลอง */
+  #view input:is([type="date"], [type="text"], [type="search"], [type="number"], :not([type])):not([data-demo] *),
+  #view select:not([data-demo] *), #view textarea:not([data-demo] *), #view .ih-dsel { font-size: 16px; }
+  /* แถบ «บันทึกไม่สำเร็จ» (S8) อยู่เหนือแถบล่าง — ยกปุ่ม ↑ และข้อความคัดลอกลิงก์ (S7) ขึ้นพ้น */
+  body:has(#s8bar) #topBtn, body:has(#s8bar) #s7toast, body:has(#s8bar) #netbar { bottom: calc(160px + env(safe-area-inset-bottom)); }
+  html.read-mode body:has(#s8bar) #readExit { bottom: calc(212px + env(safe-area-inset-bottom)); }
+}
+/* ===== v6 (S9) END ===== */

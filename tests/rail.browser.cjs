@@ -112,7 +112,9 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok }); console.lo
     return { read: document.documentElement.classList.contains('read-mode'), bars: ['aside.rail', '.topbar', '#bbar', '#view .topic-nav'].filter(v),
       exit: v('#readExit'), btns: [...document.querySelectorAll('#bbar > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.textContent.trim()),
       sw: document.documentElement.scrollWidth }; });
-  await pg.goto(base + '#/nav/nav-2'); await subj('nav'); await pg.waitForTimeout(1500);
+  await pg.goto(base + '#/nav/nav-2'); await subj('nav');
+  await pg.waitForFunction(() => NAVBUSY === 0 && state.topic === 'nav-2', null, { timeout: 30000 });   // รองานกระโดดของ router จบจริง (เวลาเปิดหน้าแกว่ง 0.8–2 วินาที — รอตายตัวไม่พอ)
+  await pg.waitForTimeout(400);
   r = await MB();
   check('จอ 390 px หน้าวิชา: แถบล่าง 6 ช่อง ช่องสุดท้าย «โหมดอ่าน» · ไม่ล้นจอ', r.btns.length === 6 && r.btns[5] === 'โหมดอ่าน' && r.sw <= 390, r);
   const m0 = await pin();

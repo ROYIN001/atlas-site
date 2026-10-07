@@ -138,6 +138,9 @@ test('srsSidOf maps every shared key form to its subject', () => {
   assert.equal(f('q:hist/hist-l2/i2-oral3'), 'hist');
   assert.equal(f('g:te-12'), 'teh_el');
   assert.equal(f('g:tau-0'), 'tau');
+  assert.equal(f('g:te-1x9zq3'), 'teh_el', 'schema 2 (S8 termKey): stableId tail is base36');
+  assert.equal(f('g:tau-k2m0a-2'), 'tau', 'schema 2 duplicate Russian word: -2 suffix');
+  assert.equal(f('g:nope-1x9zq3'), null);
   assert.equal(f('k:unknown'), null);
   assert.equal(f('x:whatever'), null);
 });
@@ -258,9 +261,12 @@ with sync_playwright() as p:
     m = ctx.new_page(); watch(m)
     m.set_viewport_size({"width": 360, "height": 780})
     m.goto(BASE + "#/tau")
+    m.click("[data-s6open]")                # จอ ≤ 600 px: ช่องวันสอบ + แผนพับอยู่ใน ▾ (S9)
     m.wait_for_selector("[data-s6date]")
     m.fill("[data-s6date]", (datetime.date.today() + datetime.timedelta(days=5)).isoformat())
-    m.wait_for_selector(".s6-plan")
+    m.wait_for_selector(".s6-plan")          # ▾ ค้างเปิดหลังเลือกวันที่ — เห็นแผนทันที (S9)
+    m.click("[data-s6open]")                # พับ → ป้าย «อีก N วัน» ในแถวแรก
+    m.wait_for_selector(".s6-left-m")
     m.click("[data-s6open]")
     m.wait_for_timeout(300)
     wide = 'Math.max(document.documentElement.scrollWidth, ...[...document.querySelectorAll(".s6-head, .s6-head *, .s6-today, .s6-today *")].map(e => Math.ceil(e.getBoundingClientRect().right)))'

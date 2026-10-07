@@ -10,9 +10,12 @@
    · หน้าเว็บลบไฟล์ของวิชาที่ผู้อ่านไม่เก็บแล้วเอง (offlineRemove ใน app.js ลบจากทุก cache ที่ขึ้นต้น "atlas-")
    แก้ไฟล์นี้แล้วเบราว์เซอร์จะติดตั้งตัวใหม่เองในการเปิดครั้งถัดไป · เปลี่ยน CACHE เมื่อโครงของสำเนาเปลี่ยน (ล้างสำเนาทั้งหมดของทุกคน —
    ต้องล้าง atlas-offline-v1 ในหน้าเว็บให้ตรงกันด้วย ไม่งั้นหน้าวิชาจะบอกว่าเก็บไว้แล้วทั้งที่สำเนาหายไป)
-   S3 (28 ก.ย. 2026): เพิ่มทาง cache: "reload" — คีย์และรูปแบบของสำเนาเหมือนเดิม จึงคง "atlas-v1" ไว้ สำเนาที่ผู้อ่านเก็บไว้แล้วใช้ต่อได้ */
+   S3 (28 ก.ย. 2026): เพิ่มทาง cache: "reload" — คีย์และรูปแบบของสำเนาเหมือนเดิม จึงคง "atlas-v1" ไว้ สำเนาที่ผู้อ่านเก็บไว้แล้วใช้ต่อได้
+   S9 (ปิดรุ่น v6): เก็บเป็นหน้าเว็บ (SHELL) เฉพาะการเปิดหน้าเว็บจริง (./ หรือ index.html) — เดิมทุกการเปิดในขอบเขต
+   (เช่นเปิดรูปในแท็บใหม่) ถูกเก็บทับเป็นหน้าเว็บ แล้วตอนออฟไลน์เปิดเว็บได้รูปนั้นแทน · คง "atlas-v1" ไว้ด้วยเหตุผลเดิม */
 const CACHE = "atlas-v1";
 const SHELL = new URL("./", self.registration.scope).href;
+const isShell = url => { const p = url.href.split(/[?#]/)[0]; return p === SHELL || p === SHELL + "index.html"; };
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil((async () => {
@@ -26,7 +29,8 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin || !req.url.startsWith(SHELL)) return;
   if (req.headers.has("range")) return;
-  if (req.mode === "navigate") e.respondWith(page(req));
+  if (req.mode === "navigate" && isShell(url)) e.respondWith(page(req));
+  else if (req.mode === "navigate") e.respondWith(asset(req, e));    // เปิดไฟล์อื่นตรง ๆ (รูป JSON) — สำเนาของไฟล์นั้นเอง ไม่ใช่หน้าเว็บ
   else if (req.cache === "reload" || req.cache === "no-store") e.respondWith(fresh(req));
   else e.respondWith(asset(req, e));
 });
