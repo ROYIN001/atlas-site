@@ -1,5 +1,5 @@
 // ตรวจว่าที่อยู่ของหน้า (state.topic · location.hash · atlas-last-v1) ตรงกับหัวข้อที่อยู่บนจอหลังกระโดด — ไม่ได้อยู่ในชุด node --test
-// รัน: node tests/navstate.browser.cjs [--rounds 6] [--mobile] [--cpu 4] [--slow 700] [--jumps 60] [--trace]
+// รัน: node tests/navstate.browser.cjs [--rounds 6] [--mobile] [--cpu 4] [--slow 700] [--read] [--jumps 60] [--trace]
 // อาการเดิม (S9): แท็บที่เปิดหัวข้อมาหลายสิบหัวข้อแล้ว (DBCACHE เต็ม · ทุกหัวข้อต้องโหลดใหม่) กระโดดไปหัวข้ออื่นแล้วหน้าไปถูกที่
 // แต่ writeScrollState (หน่วง 400 ms หลัง scroll) เขียนตำแหน่งกลางทาง — ด้านบนสุดของหน้า (#/nav/full) หรือหัวข้อระหว่างทาง (#/nav/nav-1) — แล้วไม่มี scroll มาแก้
 // ลำดับต่อรอบ (หน้าใหม่ทุกรอบ): เปิดบล็อกสรุป + *-map ของทุกวิชาต่อกัน → nav-s1 → กดลิงก์ #/nav/nav-5 (รอบคู่) หรือ go(parseRoute(…)) (รอบคี่)
@@ -39,6 +39,7 @@ function serve() {
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const ROUNDS = +arg('--rounds', 6), JUMPS = +arg('--jumps', 60), CPU = +arg('--cpu', 1), MOBILE = process.argv.includes('--mobile');
 const TRACE = process.argv.includes('--trace');     // พิมพ์ทุกครั้งที่ writeScrollState ถูกเรียก (เวลา · scrollY · ที่อยู่) เมื่อรอบนั้นตก
+const READ = process.argv.includes('--read');      // เปิดโหมดอ่าน (ซ่อนแถบบน/เมนูซ้าย · navOffset เปลี่ยน) ก่อนกระโดด
 const SLOW = +arg('--slow', 0);                     // หน่วงไฟล์ data/t ทุกไฟล์ (ms) — หัวข้อโหลดนานกว่าตัวหน่วง 400 ms ของ writeScrollState
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -101,6 +102,7 @@ async function settle(page, quietMs) {       // รอจนงานกระ�
       // 2) nav-s1 แล้วกระโดดไป nav-5
       await page.evaluate(() => go({ v: 'subject', id: 'nav', topic: 'nav-s1' }));
       await page.waitForFunction(() => { const b = document.querySelector('#nav-s1 .tbody'); return b && b.dataset.lazy === undefined && !b.querySelector(':scope > .tload'); }, null, { timeout: 20000 });
+      if (READ) await page.evaluate(() => { if (typeof readToggle === 'function' && !RAIL.focus) readToggle(); });
       await sleep(300 + 200 * (r % 4));
       const how = r % 2 === 0 ? 'link' : 'go';
       const clicked = how === 'link' && await page.evaluate(() => {
