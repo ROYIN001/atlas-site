@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "949e58b91a";
+const DATA_VERSION = "b92e439102";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -71292,7 +71292,13 @@ async function scrollToTopic(id, o) {             // o: { off, anchor (id ใน
   if (job !== NAVJOB || !sec.isConnected) { navEnd(job); return; }   // มีงานใหม่แทนแล้ว (กดหัวข้ออื่นระหว่างรอ) — ไม่กระโดดทับ
   let el = sec, off = o.off || 0;
   if (o.anchor) { const a = document.getElementById(o.anchor); if (a && sec.contains(a)) { el = a; off = 0; } }
-  if (o.hl && body && typeof markHits === "function") { const m = markHits(body, o.hl); if (m) { el = m; off = -Math.round(window.innerHeight * 0.2); } }
+  if (o.hl && body && typeof markHits === "function") {
+    const m = markHits(body, o.hl);
+    if (m) { el = m; off = -Math.round(window.innerHeight * 0.2); }
+    // ผลที่ตรงแค่ชื่อหัวข้อ (ค้นหาให้คะแนนชื่อสูงสุด จึงขึ้นอันดับแรก) — ไฮไลต์ที่ชื่อ แล้วกระโดดไปหัวข้อตามปกติ
+    // (เลื่อนให้ชื่ออยู่ลงมา 20 % จะทำให้ท้ายหัวข้อก่อนหน้ากินบนจอ แล้วที่อยู่ชี้หัวข้อก่อนหน้า)
+    else for (const h of sec.querySelectorAll(".topic-head h2, .topic-head .th")) if (markHits(h, o.hl)) break;
+  }
   scrollToTarget(el, off);
 }
 function navTopic(id, o) {                        // กดสารบัญ/ชิปหัวข้อ/ก่อนหน้า-ถัดไป — เพิ่มประวัติ Back จึงกลับมาที่เดิมได้
