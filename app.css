@@ -3878,6 +3878,92 @@ a.nav-item:focus-visible, .ts-list button:focus-visible { outline-offset: -2px; 
   .crumb + .page-head .offl { margin-top: 8px; }
   .modebar { margin-top: 4px; }
 }
+/* ---- เมนูซ้ายแบบย่อ (html.rail-mini · จอ > 900 px) + โหมดอ่าน (html.read-mode · ทุกขนาดจอ) — โค้ดอยู่ในช่อง S2 ของ app.js ----
+   จุดเปลี่ยนของสารบัญ/แถบข้าง (บล็อก v4 คิดโดยหักเมนูเต็ม 246 px) เลื่อนลงตามที่ได้คืน: แถบไอคอน 60 px = −186 · โหมดอ่าน = −246
+   ห้ามย้ายค่าพวกนี้เข้าบล็อก v4 (บล็อกนั้นประกอบจาก _work/layout/) — ถ้าแก้จุดเปลี่ยน/ความกว้างคอลัมน์ใน v4 ต้องแก้ที่นี่ตาม */
+.rail-acts, .rmini, #readExit { display: none; }
+.rail-acts button, .rmini a, .rmini button, #readExit {
+  font: inherit; color: var(--ink-2); background: none; border: 0; cursor: pointer; text-decoration: none;
+}
+.rail-acts svg, .rmini svg, #readExit svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none;
+}
+@media (min-width: 901px) {
+  .rail-acts { display: flex; gap: 2px; position: absolute; top: 8px; right: 8px; }
+  .rail-acts button { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 6px; padding: 0; }
+  .rail-acts button:hover { background: var(--panel-2); color: var(--ink); }
+  .rail-acts [hidden] { display: none; }
+
+  /* แถบไอคอน */
+  html.rail-mini .app { grid-template-columns: 60px minmax(0, 1fr); }
+  html.rail-mini aside.rail { padding: 10px 0 16px; overflow-x: hidden; }
+  html.rail-mini aside.rail > .brand, html.rail-mini aside.rail > #nav, html.rail-mini .rail-acts { display: none; }
+  html.rail-mini .rmini { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .rmini a, .rmini button {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; width: 54px; padding: 8px 2px 7px;
+    border-radius: 8px; font-size: 10.5px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; hyphens: manual;
+  }
+  .rmini a:hover, .rmini button:hover { background: var(--panel-2); color: var(--ink); }
+  .rmini .on, .rmini [aria-pressed="true"] { background: var(--wash); color: var(--accent); font-weight: 600; }
+  .rmini .rm-subj b { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 15px; line-height: 20px; }
+  .rmini [hidden] { display: none; }
+  .rmini hr { width: 30px; border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+  .rmini a:focus-visible, .rmini button:focus-visible, .rail-acts button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* โหมดอ่าน: ไม่มีเมนูซ้าย ไม่มีแถบค้นหา */
+  html.read-mode .app { grid-template-columns: minmax(0, 1fr); }
+  html.read-mode aside.rail, html.read-mode .topbar { display: none; }
+  html.read-mode .topic-nav { top: 0; }
+  html.read-mode .toc, html.read-mode .marg { top: 18px; max-height: calc(100vh - 96px); }
+}
+/* ทางออกจากโหมดอ่าน (ทุกขนาดจอ) — วงกลมไอคอนในขอบซ้าย ไม่ทับคอลัมน์เนื้อหา · ป้ายกางเมื่อชี้/โฟกัส และ 2.5 วินาทีแรก (.say) */
+html.read-mode #readExit {
+  display: inline-flex; align-items: center; gap: 7px; position: fixed; left: 10px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 40;
+  height: 42px; min-width: 42px; padding: 0 10px; font-size: 13px; font-weight: 600; border-radius: 99px;
+  background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); white-space: nowrap;
+}
+html.read-mode #readExit span { display: none; }
+html.read-mode #readExit:hover span, html.read-mode #readExit:focus-visible span, html.read-mode #readExit.say span { display: inline; }
+html.read-mode #readExit:hover, html.read-mode #readExit:focus-visible, html.read-mode #readExit.say { color: var(--accent); }
+/* มือถือ: ปุ่ม «โหมดอ่าน» = ช่องที่ 6 ของแถบล่างในหน้าวิชา · โหมดอ่านซ่อนแถบชื่อเว็บ แถบค้นหา แถบล่าง และแถบชิปหัวข้อ */
+#bbar.bb6 { grid-template-columns: repeat(6, 1fr); gap: 2px; padding-left: 4px; padding-right: 4px; }
+#bbar > [aria-pressed="true"] { color: var(--accent); background: var(--wash); }
+@media (max-width: 900px) {
+  html.read-mode aside.rail, html.read-mode .topbar, html.read-mode #bbar, html.read-mode .topic-nav { display: none; }
+  html.read-mode main.stage { padding-bottom: 96px; }
+  html.read-mode #topBtn { bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 1214px) {
+  html.rail-mini .sgrid { grid-template-columns: minmax(0, 928px) 180px; column-gap: 16px; }
+  html.rail-mini .sgrid > .wrap { padding: 0 24px; }
+  html.rail-mini .sgrid .toc { display: flex; }
+  html.rail-mini .hastoc .topic-nav { display: none; }
+}
+@media (min-width: 1374px) {
+  html.rail-mini .sgrid { grid-template-columns: minmax(0, 928px) 176px 190px; column-gap: 18px; }
+  html.rail-mini .sgrid .marg { display: block; }
+}
+@media (min-width: 1574px) {
+  html.rail-mini .sgrid { grid-template-columns: minmax(0, 948px) 220px 220px; column-gap: 24px; }
+  html.rail-mini .sgrid > .wrap { padding: 0 34px; }
+  html.rail-mini .marg { font-size: 12.5px; }
+}
+/* โหมดอ่านชนะแถบไอคอน (ใส่ทั้งสองคลาสได้) — ตัวเลือกยาวกว่าจึงทับกฎข้างบน */
+@media (min-width: 1154px) {
+  html.read-mode body .sgrid { grid-template-columns: minmax(0, 928px) 180px; column-gap: 16px; }
+  html.read-mode body .sgrid > .wrap { padding: 0 24px; }
+  html.read-mode body .sgrid .toc { display: flex; }
+  html.read-mode body .hastoc .topic-nav { display: none; }
+}
+@media (min-width: 1314px) {
+  html.read-mode body .sgrid { grid-template-columns: minmax(0, 928px) 176px 190px; column-gap: 18px; }
+  html.read-mode body .sgrid .marg { display: block; }
+}
+@media (min-width: 1514px) {
+  html.read-mode body .sgrid { grid-template-columns: minmax(0, 948px) 220px 220px; column-gap: 24px; }
+  html.read-mode body .sgrid > .wrap { padding: 0 34px; }
+  html.read-mode body .marg { font-size: 12.5px; }
+}
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 BEGIN ===== */
 /* S3: แบบจำลองที่โหลด/ติดตั้งไม่สำเร็จ (demoFail ใน app.js) */

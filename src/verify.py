@@ -254,25 +254,45 @@ def check_mobile(browser, base, sid, timeout_ms, errors):
 
 
 # ---------- ค้นหา ----------
+def expected_ix_rows():
+    """แถวดัชนีที่ต้องโหลดได้ครบ = ทุก <วิชา>__<หัวข้อ> ใน data/ix/*.json (ตรงกับคีย์ของ IXHAY ในหน้าเว็บ)"""
+    keys = set()
+    for f in (ROOT / "data" / "ix").glob("*.json"):
+        try:
+            rows = json.loads(f.read_text(encoding="utf-8")).get("rows", [])
+        except Exception:
+            continue
+        keys.update(f"{f.stem}__{r.get('id')}" for r in rows if isinstance(r, dict))
+    return len(keys)
+
+
 def check_search(page, base, timeout_ms):
+    """ค้นหาแบบผู้อ่าน: พิมพ์คำค้นในหน้าแรก → หน้าผลค้นหาโหลดดัชนี data/ix ทีละวิชา (S4) → รอจนครบทุกวิชา
+    (หรือมีวิชาที่โหลดไม่สำเร็จ) แล้วรอหน้าผลวาดใหม่ก่อนนับ · เดิมโฟกัสช่องค้นหาแล้วรอ IX_READY — ตั้งแต่ S4
+    โฟกัสในหน้าแรกไม่โหลดอะไร จึงรอจนหมดเวลาแล้วนับผลจากดัชนีบางส่วน (IXHAY 138/288 แถว)"""
     page.goto("about:blank")
     page.goto(base, wait_until="domcontentloaded")
     page.wait_for_selector("#view .subj-grid .subj", timeout=timeout_ms)
-    # ดัชนีข้อความเต็ม (data/ix) โหลดเมื่อผู้อ่านเริ่มค้นหา — โฟกัสช่องค้นหาแล้วรอจนครบทุกวิชา
     page.focus("#search")
-    ix_ready = True
+    page.fill("#search", QUERY)        # handler หน่วง 160 ms แล้ว go({v:"search"}) → loadIndex ทุกวิชา
+    page.wait_for_function("() => typeof state !== 'undefined' && state.v === 'search'", timeout=timeout_ms)
     try:
-        page.wait_for_function("() => typeof IX_READY !== 'undefined' && IX_READY", timeout=timeout_ms)
+        # จบเมื่อครบ · หรือโหลดไม่ได้แล้ว (ixMissing / manifest ล้ม) ไม่ต้องรอจนหมดเวลา — แอปรุ่นก่อน S4 มีแค่ IX_READY
+        page.wait_for_function(
+            "() => IX_READY || (typeof ixMissing === 'function' && !ixBusy() && ixMissing().length > 0)"
+            " || (typeof IX_MANST !== 'undefined' && IX_MANST === 'fail')", timeout=timeout_ms)
     except Exception:
-        ix_ready = False
-    page.fill("#search", QUERY)        # handler หน่วง 160 ms แล้ว go({v:"search"})
+        pass
+    ix_ready = page.evaluate("IX_READY")
+    missing = page.evaluate("typeof ixMissing === 'function' ? ixMissing() : []")
+    page.wait_for_timeout(800)         # ixChanged() หน่วง 250 ms แล้ว searchRefresh() วาดผลจากดัชนีที่ครบ
     try:
         page.wait_for_selector("#view .res-item", timeout=timeout_ms)
     except Exception:
         pass
     hits = page.evaluate("document.querySelectorAll('#view .res-item').length")
     ix_keys = page.evaluate("Object.keys(IXHAY).length")
-    return hits, ix_ready, ix_keys
+    return hits, ix_ready, ix_keys, missing
 
 
 # ---------- main ----------
@@ -308,7 +328,8 @@ def main():
     t_all = time.perf_counter()
     home_ready = float("nan")
     results = []
-    hits, ix_ready, ix_keys = 0, False, 0
+    hits, ix_ready, ix_keys, ix_missing = 0, False, 0, []
+    ix_expected = expected_ix_rows()
     mobile_bad = 0
     try:
         with sync_playwright() as pw:
@@ -395,8 +416,9 @@ def main():
                             print(f"           {k}: {line}")
 
             # 3) ค้นหา
-            hits, ix_ready, ix_keys = check_search(page, base, timeout_ms)
-            print(f"search «{QUERY}» → {hits} hits · IXHAY {ix_keys} rows{'' if ix_ready else ' (ดัชนีโหลดไม่ครบ)'}")
+            hits, ix_ready, ix_keys, ix_missing = check_search(page, base, timeout_ms)
+            print(f"search «{QUERY}» → {hits} hits · IXHAY {ix_keys}/{ix_expected} rows"
+                  f"{'' if ix_ready else ' (ดัชนีโหลดไม่ครบ' + (': ' + ', '.join(ix_missing) if ix_missing else '') + ')'}")
             browser.close()
     finally:
         srv.shutdown()
@@ -460,11 +482,11 @@ def main():
     tot = lambda k: sum(r[k] for r in results)
     ok = (
         len(results) == len(subjects) and all(r["ok"] for r in results)
-        and hits > 0 and len(errors) == 0 and not xfail and not bfail and mobile_bad == 0 and not external
+        and hits > 0 and ix_ready and ix_keys == ix_expected and len(errors) == 0 and not xfail and not bfail and mobile_bad == 0 and not external
     )
     print(f"SUMMARY subjects={len(results)} boxes={tot('boxes')} tfail={tot('tfail')} "
           f"demos={tot('demos')} canvas={tot('canvas')} figs={tot('figs')} imgs_ok={tot('imgs_ok')} "
-          f"errors={len(errors)} search_hits={hits} home_ready_s={home_ready:.2f}"
+          f"errors={len(errors)} search_hits={hits} search_ix={ix_keys}/{ix_expected} home_ready_s={home_ready:.2f}"
           f"{f' mobile_fail={mobile_bad}' if args.mobile else ''} {'PASS' if ok else 'FAIL'}")
     print(f"total {time.perf_counter() - t_all:.1f}s")
     return 0 if ok else 1

@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "3826d08254";
+const DATA_VERSION = "949e58b91a";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -69997,7 +69997,7 @@ function store(key, value) {
    ย้ายข้อมูลรุ่น 1 → 2 ทำครั้งเดียวในช่อง SLOT S8 (learnerStart) หลัง MODULES ครบ */
 const METAKEY = "atlas-meta-v1", SCHEMA = 2, BACKUP_V = 2, PREVKEY = "atlas-backup-prev";
 /* S8: ทะเบียนคีย์ของข้อมูลผู้เรียน — ใช้ตรวจไฟล์สำรองก่อนนำเข้าและสรุปสิ่งที่จะเปลี่ยน
-   kind: "set" = JSON array · "obj" = JSON object · "any" = JSON ใดก็ได้ · "raw" = สตริงตามรูปแบบ re · count(v) = จำนวนรายการ (ค่าที่ parse แล้ว)
+   kind: "set" = JSON array ของสตริง/ตัวเลข · "list" = JSON array อะไรก็ได้ · "obj" = JSON object · "any" = JSON ใดก็ได้ · "raw" = สตริงตามรูปแบบ re · count(v) = จำนวนรายการ (ค่าที่ parse แล้ว)
    temp: true = สร้างใหม่ได้ ปุ่ม «ล้างข้อมูลชั่วคราว» ลบได้ · session อื่นลงทะเบียนคีย์ของตัวเองได้ด้วย learnerKey(key, spec) */
 const LEARNER = {};
 function learnerKey(key, spec) { LEARNER[key] = Object.assign({ kind: "any" }, spec); }
@@ -70015,6 +70015,11 @@ learnerKey(METAKEY, { kind: "obj", label: "รุ่นข้อมูล", coun
 learnerKey("atlas-srs-v1", { kind: "obj", label: "รายการทวนตามกำหนด", count: nKeys });
 learnerKey("atlas-exam-v1", { kind: "obj", label: "วันสอบ", count: nKeys });
 learnerKey("atlas-seen-v1", { kind: "obj", label: "สถิติการอ่านหัวข้อ", count: nKeys });
+learnerKey("atlas-recent-v1", { kind: "list", label: "ประวัติการอ่านล่าสุด" });
+learnerKey("atlas-pins-v1", { kind: "list", label: "หัวข้อที่ปักไว้" });
+learnerKey("atlas-notes-v1", { kind: "obj", label: "บันทึกส่วนตัว", count: nKeys });
+learnerKey("atlas-ui-v1", { kind: "obj", label: "ตัวกรองหน้ารายวิชา · เมนูซ้ายแบบย่อ · โหมดอ่าน", count: v => (v ? 1 : 0), temp: true });
+learnerKey("atlas-search-v1", { kind: "obj", label: "ตัวเลือกหน้าค้นหา", count: v => (v ? 1 : 0), temp: true });
 
 const KEY = "atlas-sula-v1";
 let DONE = new Set();
@@ -70363,6 +70368,7 @@ function learnerParse(key, raw) {
   let v;
   try { v = JSON.parse(raw); } catch (e) { throw bad(); }
   if (spec.kind === "set" && !(Array.isArray(v) && v.every(x => typeof x === "string" || typeof x === "number"))) throw bad();
+  if (spec.kind === "list" && !Array.isArray(v)) throw bad();
   if (spec.kind === "obj" && !(v && typeof v === "object" && !Array.isArray(v))) throw bad();
   if (spec.meta && v.schema !== undefined && !(Number.isInteger(v.schema) && v.schema >= 1)) throw bad();
   if (spec.check && !spec.check(v)) throw bad();
@@ -70745,7 +70751,7 @@ function renderSubject() {
 
   view.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
     MODE = b.dataset.mode;
-    try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
+    store("atlas-mode-v1", MODE);
     go({ v: "subject", id: state.id, mode: MODE });
   }));
   view.querySelectorAll("[data-key]").forEach(b => b.addEventListener("click", () => toggleKey(b.dataset.key, b)));
@@ -71095,7 +71101,7 @@ function margWeak(m) {
   m.innerHTML = h;
   m.querySelectorAll("[data-full]").forEach(b => b.addEventListener("click", () => {
     MODE = "full";
-    try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}
+    store("atlas-mode-v1", MODE);
     clearDemos(); renderSubject();
     setTimeout(() => jumpTopic(b.dataset.full), 60);
   }));
@@ -71774,7 +71780,7 @@ function markTerms(root, terms) {
 const SXKEY = "atlas-search-v1", SX_STEP = 60;
 let SX = { q: "", from: "", scope: "all", kind: "all", shown: SX_STEP };
 try { const o = JSON.parse(localStorage.getItem(SXKEY) || "{}"); if (o && typeof o === "object") SX = Object.assign(SX, o); } catch (e) {}
-const sxSave = () => { try { localStorage.setItem(SXKEY, JSON.stringify(SX)); } catch (e) {} };
+const sxSave = () => store(SXKEY, SX);
 let SX_FROM = null, SX_KEEP = false, SX_HITS = [];     // ช่องค้นหาตั้ง: วิชาที่เริ่มค้นจาก · พิมพ์ต่อในหน้าผล (คงตัวกรองไว้)
 const SX_KINDS = [["all", "ทั้งหมด"], ["topic", "หัวข้อ"], ["sum", "สรุป"], ["term", "ศัพท์"], ["subj", "วิชา"]];
 const SX_EX = ["устойч", "เสถียร", "Kalman", "передаточная функция"];
@@ -72391,7 +72397,7 @@ if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => {   // เ�
 const UIKEY = "atlas-ui-v1";
 let UI = {};
 try { UI = JSON.parse(localStorage.getItem(UIKEY) || "{}") || {}; } catch (e) {}
-const saveUI = () => { try { localStorage.setItem(UIKEY, JSON.stringify(UI)); } catch (e) {} };
+const saveUI = () => store(UIKEY, UI);
 
 /* ---- หน้า #/subjects: คำอธิบายหลักสูตร · ภาคของผู้อ่าน · ตัวกรอง · แค็ตตาล็อกตามชั้นปี ---- */
 const S2F0 = { sem: "all", status: "all", deep: false };
@@ -72491,7 +72497,7 @@ function renderSubjects() {
   view.querySelectorAll("[data-mysem]").forEach(b => b.addEventListener("click", () => {
     const n = +b.dataset.mysem;
     MYSEM = n || null;
-    try { if (MYSEM) localStorage.setItem(MYSEMKEY, String(MYSEM)); else localStorage.removeItem(MYSEMKEY); } catch (e) {}
+    store(MYSEMKEY, MYSEM ? String(MYSEM) : undefined);
     RAILOPEN.add(curSem()); saveRail();
     const fold = navEl.querySelector('.sem-body[data-fold="' + curSem() + '"]');   // เปิดภาคนั้นในแถบซ้ายด้วย
     if (fold) { fold.classList.add("open"); if (fold.previousElementSibling) fold.previousElementSibling.classList.add("open"); }
@@ -72788,6 +72794,134 @@ window.addEventListener("resize", () => {
   clearTimeout(s2RT);
   s2RT = setTimeout(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(s2Tables), 300);
 }, { passive: true });
+/* ---- เมนูซ้ายแบบย่อ (แถบไอคอน 60 px · จอ > 900 px — จอแคบซ่อนรายการเมนูอยู่แล้ว ใช้ #bbar) + โหมดอ่าน (ทุกขนาดจอ) ----
+   html.rail-mini = เมนูซ้ายเหลือไอคอน (.rmini: ☰ ขยาย · 5 เมนูหลักชุดเดียวกับ #bbar · วิชานี้ · โหมดอ่าน) — ค่าเดียวใช้ทุกหน้า จำใน UI.railMini
+     และย่อเองทุกครั้งที่เปิดวิชาที่มีเนื้อหาเต็ม (เปลี่ยนวิชา/เข้าจากหน้าอื่น — สลับโหมดหรือหัวข้อในวิชาเดิมไม่ย่อซ้ำ)
+   html.read-mode = โหมดอ่าน: ซ่อนทั้งเมนูซ้ายและแถบค้นหาบน (เฉพาะหน้าวิชา · ออกเองเมื่อไปหน้าอื่น · กด / ค้นหาแล้วออก) จำใน UI.focus
+     จอ ≤ 900 px ซ่อนแถบชื่อเว็บ แถบค้นหา แถบล่าง #bbar และแถบชิปหัวข้อด้วย · เปิดจากปุ่ม «โหมดอ่าน» ใน #bbar (โผล่เฉพาะหน้าวิชา = ช่องที่ 6)
+     ทางออก #readExit มุมซ้ายล่าง (วงกลมไอคอน · บอกป้าย «ออกจากโหมดอ่าน» 2.5 วินาทีตอนเข้าโหมด เพราะจอสัมผัสไม่มีการชี้)
+   สารบัญ/แถบข้างของบล็อก v4 โผล่เร็วขึ้นตามที่ที่ได้คืน — ค่าจุดเปลี่ยนใหม่อยู่ใน app.css ช่อง S2 (ไม่แก้บล็อก v4)
+   สลับแล้วคงตำแหน่งที่อ่าน (railKeep) · ปุ่มลัด [ = ย่อ/ขยายเมนู · ] = โหมดอ่าน (ใช้ e.code จึงทำงานบนแป้นไทยด้วย) */
+const RAIL = { mini: !!UI.railMini, focus: !!UI.focus, sid: null };
+const railEl = document.querySelector("aside.rail");
+function railKeep(fn) {                               // ข้อความที่อยู่บนสุดของจอต้องอยู่ที่เดิมหลังคอลัมน์เปลี่ยนกว้าง
+  let a = null, top = 0, off0 = 0;
+  if (state.v === "subject" && window.scrollY > 20) {
+    off0 = navOffset();
+    const wr = view.querySelector(".wrap") || view, r = wr.getBoundingClientRect();
+    let el = document.elementFromPoint(Math.round(r.left + Math.min(r.width, 600) / 2), off0 + 6);
+    if (!el || !view.contains(el)) el = currentTopicEl();
+    if (el) { a = el; top = el.getBoundingClientRect().top; }
+  }
+  fn();
+  if (a && a.isConnected) {
+    const d = (a.getBoundingClientRect().top - navOffset()) - (top - off0);
+    if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: "instant" });
+  }
+  requestAnimationFrame(() => document.querySelectorAll("#view .tbody:not([data-lazy])").forEach(el => { fitWideMath(el); s2Tables(el); }));
+}
+function railApply() {
+  const html = document.documentElement;
+  const focus = RAIL.focus && state.v === "subject";
+  html.classList.toggle("rail-mini", RAIL.mini);
+  html.classList.toggle("read-mode", focus);
+  railEl.querySelectorAll("[data-rail=fold]").forEach(b => b.setAttribute("aria-expanded", String(!RAIL.mini)));
+  document.querySelectorAll('[data-rail=read], #bbar [data-bb="read"]').forEach(b => { b.setAttribute("aria-pressed", String(focus)); b.hidden = state.v !== "subject"; });
+  const bb = document.getElementById("bbar");
+  if (bb) bb.classList.toggle("bb6", state.v === "subject");
+}
+function railSet(mini, focus, keep) {
+  if (mini === RAIL.mini && focus === RAIL.focus) return;
+  RAIL.mini = mini; RAIL.focus = focus;
+  UI.railMini = mini || undefined; UI.focus = focus || undefined;
+  saveUI();
+  if (keep) railKeep(railApply); else railApply();
+}
+const railToggle = () => railSet(!RAIL.mini, RAIL.focus, true);
+function readToggle() {
+  if (state.v !== "subject") return;
+  const on = !RAIL.focus;
+  railSet(RAIL.mini, on, true);
+  const ex = document.getElementById("readExit"), ae = document.activeElement;
+  if (!on || !ex) return;
+  if (ae && (railEl.contains(ae) || ae.closest("#bbar"))) ex.focus({ preventScroll: true });   // ปุ่มที่กดถูกซ่อน — โฟกัสไม่หลุดไป body
+  ex.classList.add("say");
+  clearTimeout(RAIL.sayT);
+  RAIL.sayT = setTimeout(() => ex.classList.remove("say"), 2500);
+}
+{
+  const icon = k => { const s = document.querySelector('#bbar [data-bb="' + k + '"] svg'); return s ? s.outerHTML : ""; };
+  const SVG = d => '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+  const READ = SVG('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>');
+  const acts = document.createElement("div");       // ปุ่มบนเมนูเต็ม: โหมดอ่าน · ย่อเมนู
+  acts.className = "rail-acts";
+  acts.innerHTML =
+    '<button type="button" data-rail="read" aria-pressed="false" title="โหมดอ่าน — ซ่อนเมนูและแถบค้นหา ( ] )" aria-label="โหมดอ่าน">' + READ + '</button>' +
+    '<button type="button" data-rail="fold" aria-expanded="true" aria-controls="nav" title="ย่อเมนูเหลือไอคอน ( [ )" aria-label="ย่อเมนู">' + SVG('<path d="M14.5 6 8.5 12l6 6"/>') + '</button>';
+  const mini = document.createElement("div");       // แถบไอคอน
+  mini.className = "rmini";
+  mini.innerHTML =
+    '<button type="button" data-rail="fold" aria-expanded="false" aria-controls="nav" title="ขยายเมนู ( [ )">' + SVG('<path d="M4 6.5h16M4 12h16M4 17.5h16"/>') + '<span>เมนู</span></button><hr>' +
+    '<a data-rm="overview" href="#/" title="หน้าหลัก">' + icon("overview") + '<span>หน้าหลัก</span></a>' +
+    '<a data-rm="subjects" href="#/subjects" title="รายวิชา">' + icon("subjects") + '<span>รายวิชา</span></a>' +
+    '<a data-rm="subject" class="rm-subj" href="#/" hidden><b></b><span>วิชานี้</span></a>' +
+    '<a data-rm="practice" href="' + practiceHref() + '" title="ฝึกทบทวน">' + icon("practice") + '<span>ฝึกทบทวน</span></a>' +
+    '<button type="button" data-rm="find" title="ค้นหา ( / )">' + icon("find") + '<span>ค้นหา</span></button>' +
+    '<a data-rm="progress" href="#/progress" title="ความก้าวหน้า">' + icon("progress") + '<span>ความ­ก้าวหน้า</span></a>' +
+    '<hr data-rail="read"><button type="button" data-rail="read" aria-pressed="false" title="โหมดอ่าน — ซ่อนเมนูและแถบค้นหา ( ] )">' + READ + '<span>โหมดอ่าน</span></button>';
+  railEl.prepend(acts);
+  railEl.appendChild(mini);
+  const exit = document.createElement("button");    // ทางออกจากโหมดอ่าน (มุมซ้ายล่าง จางจนกว่าจะชี้/โฟกัส)
+  exit.type = "button"; exit.id = "readExit";
+  exit.title = "ออกจากโหมดอ่าน ( ] หรือ Esc )";
+  exit.setAttribute("aria-label", "ออกจากโหมดอ่าน");
+  exit.innerHTML = READ + '<span>ออกจากโหมดอ่าน</span>';
+  document.body.appendChild(exit);
+  const bbar = document.getElementById("bbar");     // มือถือ: ช่องที่ 6 ของแถบล่าง (ซ่อนนอกหน้าวิชา)
+  if (bbar) {
+    bbar.insertAdjacentHTML("beforeend", '<button type="button" data-bb="read" aria-pressed="false" hidden>' + READ + 'โหมดอ่าน</button>');
+    bbar.querySelector('[data-bb="read"]').addEventListener("click", readToggle);
+  }
+  railEl.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.rail === "fold") railToggle();
+    else if (b.dataset.rail === "read") readToggle();
+    else if (b.dataset.rm === "find") focusSearch();
+  });
+  exit.addEventListener("click", () => { exit.classList.remove("say"); railSet(RAIL.mini, false, true); });
+}
+{                                                     // ค้นหาจากที่ไหนก็ตาม (ปุ่ม / เมนู / แถบล่าง) ต้องออกจากโหมดอ่านก่อน — ช่องค้นหาอยู่บนแถบที่ซ่อน
+  const fs = focusSearch;
+  focusSearch = function () { if (RAIL.focus) railSet(RAIL.mini, false, true); return fs.apply(this, arguments); };
+  const g0 = go;
+  go = function (st) {                                // ย่อเมนูก่อนวาดหน้าวิชา — จะได้จัดหน้าครั้งเดียว และการกระโดดไปหัวข้อวัดจากโครงจริง
+    const sid = st && st.v === "subject" && DEEP[st.id] ? st.id : null;
+    if (sid && !(state.v === "subject" && state.id === sid)) { RAIL.mini = true; UI.railMini = true; saveUI(); }
+    if (!st || st.v !== "subject") { if (RAIL.focus) { RAIL.focus = false; delete UI.focus; saveUI(); } }
+    railApply();
+    return g0.apply(this, arguments);
+  };
+}
+document.addEventListener("keydown", e => {           // ช่วงจับ (capture) — ทำก่อนตัวจัดการ «/» ของช่องค้นหา
+  const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  if (e.ctrlKey || e.metaKey || e.altKey || typing || document.querySelector("dialog[open]")) return;
+  if (e.code === "BracketLeft") { e.preventDefault(); railToggle(); }
+  else if (e.code === "BracketRight" && state.v === "subject") { e.preventDefault(); readToggle(); }
+  else if (e.key === "Escape" && RAIL.focus && state.v === "subject" && !document.querySelector("#figlb.on")) railSet(RAIL.mini, false, true);
+  else if (e.key === "/" && RAIL.focus) railSet(RAIL.mini, false, false);
+}, true);
+HOOKS.on("go", st => {
+  const a = railEl.querySelector(".rm-subj"), s = st.v === "subject" ? ALL_SUBJ.find(x => x.id === st.id) : null;
+  a.hidden = !s;
+  if (s) { a.href = "#/" + s.id; a.title = s.ru + " · " + s.th + " — กลับขึ้นต้นวิชา"; a.querySelector("b").textContent = s.n; }
+  railEl.querySelectorAll(".rmini [data-rm]").forEach(b => b.classList.toggle("on", b.dataset.rm === st.v));
+  const ph = practiceHref();                          // ชุดเดียวกับเมนูเต็ม/แถบล่าง (S5 ลงทะเบียน #/practice ทีหลังช่องนี้)
+  const p = railEl.querySelector('.rmini [data-rm="practice"]');
+  if (p && p.getAttribute("href") !== ph) p.href = ph;
+  railApply();
+});
+railApply();
 /* ===== SLOT S2 END ===== */
 /* ===== SLOT S3 (ประสิทธิภาพขณะอ่าน: แบบจำลองนอกจอ รูป แคช) BEGIN ===== */
 /* ---- S3: ติดตั้งแบบจำลองเมื่อเข้าใกล้จอ ----
@@ -73581,7 +73715,7 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
   if (typeof document === "undefined") return;
   const SRSKEY = "atlas-srs-v1", EXAMKEY = "atlas-exam-v1", SEENKEY = "atlas-seen-v1";
   const rd = k => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { return {}; } };
-  const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* พื้นที่เต็ม — S8 ดูแล */ } };
+  const wr = (k, v) => store(k, v);                  // store() ของ S8 — แจ้งผู้อ่านเมื่อพื้นที่เต็ม
   let EXAMS = rd(EXAMKEY), SEEN = rd(SEENKEY);
   const saveExams = () => wr(EXAMKEY, EXAMS);
   const saveSeen = () => wr(SEENKEY, SEEN);
@@ -74268,7 +74402,7 @@ HOOKS.on("offline", () => [S7_REL_URL]);
 /* ---- 3) ประวัติการอ่านล่าสุด (atlas-recent-v1 = [{ sid, tid, t }] ใหม่สุดก่อน ≤ 12) ---- */
 const S7_RECENT = "atlas-recent-v1", S7_RECENT_N = 12;
 function s7Load(key, def) { try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; } catch (e) { return def; } }
-function s7Save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch (e) { return false; } }
+function s7Save(key, v) { return store(key, v); }   // store() ของ S8 — แจ้งผู้อ่านเมื่อพื้นที่เต็ม
 function s7Recent() { const a = s7Load(S7_RECENT, []); return Array.isArray(a) ? a.filter(x => x && s7Topic(x.sid, x.tid)) : []; }
 function s7Visit(sid, tid) {
   if (!sid || !tid || !s7Topic(sid, tid)) return;
@@ -74629,28 +74763,6 @@ function s8Bind() {
   if (cl) cl.addEventListener("click", () => { document.getElementById("s8clearMsg").textContent = clearTemp(); });
 }
 HOOKS.on("go", st => { if (st.v === "progress") s8Bind(); });
-
-/* หน้า #/progress สำรอง — ใช้เฉพาะเมื่อยังไม่มีหน้าของ S2 (ไม่ทับของจริง: เช็ก PAGES และ PAGE_DEFS) */
-if (!PAGES.includes("progress") && !PAGE_DEFS.progress) registerPage("progress", {
-  title: () => "ความก้าวหน้า",
-  render() {
-    view.innerHTML = '<div class="wrap"><div class="page-head"><p class="eyebrow">Прогресс</p><h1 class="page-title">ความก้าวหน้าและข้อมูลในเครื่อง</h1></div>' +
-      '<section class="backup s8card" aria-labelledby="s8bkH"><h3 id="s8bkH">สำรองและย้ายเครื่อง</h3>' +
-      '<p>ความคืบหน้าเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น สำรองเป็นไฟล์ไว้ย้ายไปเครื่องอื่น หรือกันหายตอนล้างเบราว์เซอร์</p>' +
-      '<div class="qbar"><button type="button" id="s8save">สำรองเป็นไฟล์</button><button type="button" id="s8load">นำเข้าจากไฟล์</button>' +
-      '<input type="file" id="s8file" accept="application/json,.json" hidden><span class="m" id="s8bkMsg" role="status"></span></div></section>' +
-      HOOKS.render("progress", {}) + '</div>';
-    const msg = document.getElementById("s8bkMsg"), f = document.getElementById("s8file");
-    document.getElementById("s8save").addEventListener("click", () => { msg.textContent = progressExport() ? "บันทึกไฟล์แล้ว" : "บันทึกไม่สำเร็จ"; });
-    document.getElementById("s8load").addEventListener("click", () => f.click());
-    f.addEventListener("change", async () => {
-      const file = f.files && f.files[0];
-      f.value = "";
-      if (!file) return;
-      try { await progressImport(file); } catch (e) { msg.textContent = "นำเข้าไม่สำเร็จ — " + e.message; }
-    });
-  }
-});
 /* ===== SLOT S8 END ===== */
 /* ===== SLOTS END ===== */
 
