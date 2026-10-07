@@ -1,7 +1,7 @@
 # คู่มือสำหรับ Claude — โครงสร้างและวิธีทำงานกับ repo นี้
 
 อ่านไฟล์นี้ก่อนเริ่มงานทุกครั้ง จะได้ไม่ต้องรื้อดูโครงสร้างใหม่
-(เขียนไว้ 9 ก.ย. 2026 หลังย้ายจาก artifact มาเป็นเว็บสแตติก · ปรับ 10 ก.ย. 2026 ตอนเพิ่มวิชา ЭОЛА)
+(เขียนไว้ 9 ก.ย. 2026 หลังย้ายจาก artifact มาเป็นเว็บสแตติก · ปรับ 10 ก.ย. 2026 ตอนเพิ่มวิชา ЭОЛА · ปรับใหญ่ 7 ต.ค. 2026 ตอนปิดรุ่นโครงเว็บ v6 — หัวข้อ 1–4, 11, 13, 14)
 
 เจ้าของงานคือ Royin นักเรียนนายเรืออากาศไทยที่เรียนหลักสูตร «Системы
 управления ракет-носителей и космических аппаратов» ที่ ВКА им. А. Ф.
@@ -15,24 +15,42 @@
 ## 1. โครงไฟล์
 
 ```
-index.html    2.5 KB  โครงหน้าเปล่า + <meta robots noindex> + อ้าง fonts/fonts.css / app.css / app.js (ดูหัวข้อ 12)
-app.css       126 KB  รูปแบบทั้งหมด — ส่วนกลาง แล้วตามด้วยบล็อกของแต่ละวิชา
-app.js        3.6 MB  ตัวโปรแกรมทั้งหมด (49 500 บรรทัด) — ดูหัวข้อ 2
-data/t/<วิชา>__<หัวข้อ>.json   238 ไฟล์ · { "html": … } · ต้นฉบับเนื้อหาอยู่ที่นี่
-data/ix/<วิชา>.json             ข้อความสำหรับค้นหา สร้างอัตโนมัติ ห้ามแก้มือ
-data/manifest.json              รายชื่อวิชาที่มีเนื้อหาเต็ม สร้างอัตโนมัติ
-figs/<รหัสรูป>.webp             643 ไฟล์ · รูปตัดจากสไลด์ภาควิชา
-src/build_data.py               สร้าง data/ix กับ manifest ใหม่จาก data/t
+index.html    3.5 KB  โครงหน้าเปล่า + <meta robots noindex> + เมนูล่างมือถือ #bbar + อ้าง fonts/fonts.css / app.css?v= / app.js?v= (หัวข้อ 12 · ?v= เขียนโดย build_data)
+app.css       308 KB  4 353 บรรทัด · ส่วนกลาง + บล็อกของแต่ละวิชา + v4/v5 → ВИ → STD2 → История → ช่อง SLOT S1–S8 + บล็อก v6 (S9) ท้ายไฟล์ (หัวข้อ 14)
+app.js        6.3 MB  74 993 บรรทัด (gzip 1.6 MB) · ตัวโปรแกรมทั้งหมด — ดูหัวข้อ 2 และ 14
+data/t/<วิชา>__<หัวข้อ>.json   288 ไฟล์ 12 วิชา (หัวข้อ 240 + บล็อกสรุป 48) · { "html": … } · ต้นฉบับเนื้อหาอยู่ที่นี่ · 32 MB
+data/ix/<วิชา>.json             12 ไฟล์ · ข้อความสำหรับค้นหา (ใหญ่สุด hist 5.6 MB · รวม 24 MB) — สร้างโดย build_data ห้ามแก้มือ
+data/manifest.json              {subjects: {<วิชา>: {n, v, js?, css?}}} — สร้างโดย build_data (หัวข้อ 14)
+data/qa/<วิชา>.json + _index.json   13 ไฟล์ · คำถามปากเปล่า 2 666 ข้อ — สร้างโดย src/build_steps/qa.py
+data/rel.json · data/figdim.json    หัวข้อเกี่ยวข้อง 231 หัวข้อ (rel.py) · ขนาดรูป 1 158 ใบ (figdim.py) — สร้างโดย build_data
+data/vh/*.json                  78 ไฟล์ · แผนที่ ВИ 39 + ควิซ/ข้อสอบ 38 + river (หัวข้อ 8 · สร้างจาก _work/ ไม่ใช่ build_data)
+data/ih/atlas.json · world.json แผนที่ของ История (หัวข้อ 10)
+figs/<รหัสรูป>.webp             1 158 ไฟล์ · 30 MB · รูปตัดจากสไลด์ภาควิชา
+fonts/                          33 ไฟล์: IBM Plex + Noto Sans Math (.woff2 30 ไฟล์ + fonts.css + LICENSE 2 ไฟล์) เก็บในเว็บเอง
+sw.js · manifest.webmanifest    อ่านแบบออฟไลน์ + ติดตั้งเป็นแอปบนมือถือ (หัวข้อ 13) · icons/ ไอคอนของเว็บ 6 ไฟล์
+js/subj/<วิชา>.js|.css          (ยังไม่มีโฟลเดอร์นี้) แบบจำลอง/รูปแบบของวิชาที่ยกระดับ — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13)
+src/build_data.py               สร้าง data/ix + manifest จาก data/t · เขียน ?v= ใน index.html + DATA_VERSION · รัน src/build_steps/*.py
+src/build_steps/                figdim.py · qa.py · rel.py + README.md — ขั้นเพิ่มเติม run(ctx) (หัวข้อ 14)
+src/buildlib.py                 stable_id() (= stableId ใน app.js · qa.py ใช้ · tests/hooks ตรวจ) · plain() ยังไม่มีขั้นไหนใช้ (ไม่เท่ากับ plain ของ build_data)
 src/verify.py                   ตรวจทั้งเว็บด้วย Playwright ตามหัวข้อ 4
-fonts/                          ฟอนต์ IBM Plex + Noto Sans Math (.woff2 + fonts.css + LICENSE) เก็บในเว็บเอง
+src/counts.py + counts-baseline.json   ด่าน «จำนวนต้องไม่ลดลง» (หัวข้อ 4)
+src/blocks.py + blocks.json     sha1 ของบล็อกที่ประกอบอัตโนมัติ — ห้ามแก้บล็อกมือ (หัวข้อ 4)
+src/registry.cjs                อ่าน DEEP / คีย์ DEMOS จาก app.js ใน vm (counts + tests ใช้ร่วม)
+src/ci_subjects.py              เลือกวิชาที่ CI ต้อง verify ตาม diff
 src/fetch_fonts.py              ดึงฟอนต์ชุดนั้นจาก Google Fonts ใหม่ เขียน fonts/ ทั้งโฟลเดอร์ — ห้ามแก้ fonts.css มือ
+tests/                          *.test.cjs 11 ไฟล์ (node --test · 100 เทสต์) · *.browser.cjs 8 ไฟล์ (Playwright รันมือ) · content-allow.json (หัวข้อ 4, 14)
+.github/workflows/check.yml     CI: tests + verify รายวิชาทุก PR/push เข้า main · กลางคืน --mobile ทั้งเว็บ (หัวข้อ 4)
 preview.bat + preview.ps1       เซิร์ฟเวอร์เล็ก ๆ ไว้ดูในเครื่อง (ไม่มี dependency)
-sw.js · manifest.webmanifest    อ่านแบบออฟไลน์ + ติดตั้งเป็นแอปบนมือถือ (หัวข้อ 13) · icons/ ไอคอนของเว็บ
-js/subj/<วิชา>.js|.css          (ยังไม่มี) แบบจำลอง/รูปแบบของวิชาที่ยกระดับ — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13)
+requirements.txt                playwright · python-pptx (pip install -r requirements.txt)
 robots.txt · .nojekyll          ห้ามเสิร์ชเอนจินทำดัชนี · ห้าม Jekyll แปลงไฟล์ — ห้ามลบ
+claude/                         เอกสารกำกับ: มาตรฐาน · รายงานตรวจ 3 ฉบับ · คำสั่ง session S1–S8 (+ S9 ท้ายไฟล์) · README
+.claude/                        agents/ 6 ตัว (หัวข้อ 7) · skills/russian-thai-translate
 _work/                          (อยู่ใน .gitignore — บนเครื่องเท่านั้น) บันทึกจากสไลด์ `notes/`,
-                                โครงหัวข้อ `plan/`, รายงานตรวจ+ภาพเดโม `review/`, ต้นฉบับเดโม `demos/`
+                                โครงหัวข้อ `plan/`, รายงานตรวจ+ภาพเดโม `review/`, ต้นฉบับเดโม `demos/` ·
+                                ต้นฉบับบล็อกประกอบ `std2/` `navpilot/` `vhpilot/` `vhist/` `hist/` `layout/` (หัวข้อ 2, 8–11)
 ```
+
+ทั้ง repo ใน git 1 656 ไฟล์ ราว 102 MB (data 396 ไฟล์ · figs 1 158 · fonts 33) — GitHub Pages เผยแพร่ทั้งโฟลเดอร์ root
 
 ## 2. app.js ทำงานอย่างไร
 
@@ -41,31 +59,34 @@ _work/                          (อยู่ใน .gitignore — บนเค�
 
 | ค้นด้วย | คืออะไร |
 |---|---|
-| `const MODULES = ` | คลังศัพท์ 403 คำ แยกเป็นกลุ่มตามวิชา — ใช้กับหน้าคลังศัพท์ แบบทดสอบ และบัตรคำ |
+| `const MODULES = ` | คลังศัพท์ 1 490 คำ 14 กลุ่ม (กลุ่มตามวิชา + กลุ่มพื้นฐาน dyn act sys phr · ВИ/История/ЭОЛА ต่อด้วย `MODULES.push`) — ใช้กับหน้าคลังศัพท์ ควิซศัพท์ และ Flashcard · คีย์ความคืบหน้าของคำ = `termKey()` (หัวข้อ 14) |
 | `const PROGRAM = ` | ข้อมูลหลักสูตร (จำนวน з.е., ชั่วโมงต่อหน่วยกิต) |
 | `const SUBJECTS = ` | รายการวิชาทั้ง 54 วิชาในหลักสูตร ทุกวิชามีการ์ดของตัวเอง ไม่ว่าจะมีเนื้อหาเต็มหรือยัง |
 | `Object.assign(DEEP, ` | **เมทาดาทาของวิชาที่มีเนื้อหาเต็ม** — `{ru, th, lede, topics:[{id,ru,th}], summary:[{id,ru,th}]}` ไม่มี html เพราะ html อยู่ใน `data/t/` |
 | `const ICONS = ` | อีโมจิประจำวิชา |
-| `function dbGet` | ตัวดึงไฟล์ JSON จาก `data/` พร้อมแคชในหน่วยความจำ |
-| `function fillBody` | เติมเนื้อหาหัวข้อ — เรียก `topicHtml()` แล้วยัด html ลง DOM แล้วสั่งติดตั้งแบบจำลองกับรูป |
+| `function dbGet` | ตัวดึงไฟล์ JSON จาก `data/` พร้อมแคชในหน่วยความจำ (data/t เก็บแบบ LRU ≤ 40 หัวข้อ `DB_KEEP`) · `?v=` ของ data/t = `manifest.subjects.<วิชา>.v` ผ่าน `dbVer` / `dbUrl` · data/ix ไม่ผ่าน dbGet — ใช้ `ixUrl(sid)` ในส่วนค้นหา (ค่าเดียวกัน · หัวข้อ 14.4) |
+| `function fillBody` | เติมเนื้อหาหัวข้อ — `topicHtml()` + `subjAssets()` → คิวทีละหัวข้อ (`fillTurn`) ใส่ html ทีละ ~16 KB (`fillChunks`) → `demoMount()` (ติดตั้งแบบจำลองเมื่อห่างจอ ≤ 600 px) → `SUKAFIG` → `tocOnFill` → `HOOKS.run("fill")` |
 | `function renderSubject` | วาดหน้าวิชา ทั้งโหมดสรุปและฉบับเต็ม ใช้ `lazyBody(t)` ใส่ที่ว่างไว้ก่อน |
-| `window.SUKAFIG = function` | ตัวใส่ `src` ให้รูปเมื่อเลื่อนไปถึง — ตั้ง `img.src = "figs/" + id + ".webp"` |
+| `window.SUKAFIG = function` | ตัวใส่ `src` ให้รูปเมื่อเลื่อนไปถึง — ใส่ width/height จาก `data/figdim.json` ก่อน (ไม่มี layout shift) แล้วตั้ง `img.src = "figs/" + id + ".webp"` |
 | `const DEMOS = {` | ทะเบียนแบบจำลองส่วนกลาง |
-| `Object.assign(DEMOS, window.TEDEMOS \|\| {})` | ทะเบียนของแต่ละวิชา (`TEDEMOS`, `ASUDEMOS`, `NASDEMOS`, `PPODEMOS` …) รวม 278 ฟังก์ชัน |
-| `const HOOKS = {` · `/* ===== SLOT S1` | **v6: จุดเกี่ยวและช่องโค้ดต่อ session** (หัวข้อ 14) — ความสามารถใหม่เสียบผ่าน `HOOKS.on/html`, หน้าใหม่ผ่าน `registerPage`, โค้ดอยู่ในช่อง SLOT ก่อน `buildNav()` |
+| `Object.assign(DEMOS, window.TEDEMOS \|\| {})` | ทะเบียนของแต่ละวิชา 9 ชุด รวม 395 ฟังก์ชัน (`TEDEMOS` 30 · `ASUDEMOS` 15 · `PPODEMOS` 40 · `NASDEMOS` 60 · `TAUDEMOS` 30 · `EODEMOS` 77 · `VHDEMOS` 78 · `IHDEMOS` 11 · `NAVDEMOS` 54) + `STD2DEMOS` 1 (quiz2) · `DEMOS` ทั้งหมด 439 คีย์ (`node src/registry.cjs`) · วิชาที่ยกระดับต่อจากนี้ใช้ `js/subj/` แทน |
+| `const HOOKS = {` · `/* ===== SLOT S1` | **v6: จุดเกี่ยว หน้า และช่องโค้ด** (หัวข้อ 14) — ความสามารถใหม่เสียบผ่าน `HOOKS.on/html`, หน้าใหม่ผ่าน `registerPage`, โค้ดอยู่ในช่อง SLOT S1–S8 ก่อน `buildNav()` |
+| `function store(` · `function learnerKey(` | **v6: ข้อมูลผู้เรียน** — ตัวเขียน localStorage ตัวเดียว + ทะเบียนคีย์ (ต้นส่วน APP · หัวข้อ 14) |
+| `/* ---- router (v5)` | ที่อยู่ `#/…` · `go` `navTopic` `scrollToTopic` `scrollToTarget` · งานกระโดด `NAVBUSY` (หัวข้อ 13, 14) |
+| `/* ---- search ---- */` | ค้นหา: ดัชนีโหลดทีละวิชา `IXST` `loadIndex` `ixUrl` · หน้าผล `#/search/…` (หัวข้อ 14.4) |
 | `function buildIndex` | สร้างดัชนีค้นหาจาก `IXHAY` ที่โหลดมาจาก `data/ix/` |
 | `/* ===== ТАУ: демонстрации (window.TAUDEMOS)` | บล็อกเดโมของ ТАУ Т.6–Т.11 (30 ฟังก์ชัน) — **ห้ามแก้ในบล็อกนี้โดยตรง** ต้นฉบับอยู่ที่ `_work/demos/tau-<theme>-<key>.js` (ไฟล์ละหนึ่งฟังก์ชัน ห่อ IIFE แยกกัน) แล้วประกอบด้วย `python _work/demos/assemble.py t6 t7 t8 t9 t10 t11` ซึ่งเขียนทับเฉพาะบล็อกนี้ ตรวจว่าไบต์นอกบล็อกไม่เปลี่ยน คัดลอกบล็อก CSS `.nas` เป็น `.tau` และรัน `node --check` |
 | `/* ===== СН ЛА (ฉบับยกระดับ): демонстрации (window.NAVDEMOS)` | เดโมของ СН ЛА ทั้งวิชา (ครบ 22 หัวข้อในมาตรฐานกลาง v2 · 27 ก.ย. 2026) — 54 ฟังก์ชัน: แอนิเมชันทีละขั้น 41 ตัว (`nav<N>-*`, `navapp-*`) + แบบจำลองเดิมฉบับแก้ 13 ตัว `legacy-<key>.js` ที่**ทับ key เดิมใน DEMOS** (sphereparts, culm, celest, kepler, starpair, trassa, refr, euler, bins, filterconv, mnk, gdop, atmo — ฟังก์ชัน `demoX` เดิมใน app.js ไม่ถูกเรียกแล้ว) · วางหลังบล็อก STD2 ก่อน `/* ================= APP` — ต้นฉบับ `_work/navpilot/demos/<key>.js` ประกอบด้วย `_work/navpilot/build.py` (รัน `_work/std2/tools/integrate.py` ก่อน แล้วแทนที่เฉพาะบล็อกนี้ + entry `nav` ของ DEEP) · เนื้อหา `_work/navpilot/v2/src/*.src.html` → `build_topic.py` → `v2/out` → `data/t/nav__*.json` · สถานะและรายการค้าง `_work/navpilot/R-STATUS.md` |
 | `/* ===== STD2 JS BEGIN` · `/* ===== STD2 CSS BEGIN` | **มาตรฐานกลาง v2 ของทุกวิชา** (ดูหัวข้อ 9) — เอนจินแอนิเมชันทีละขั้น `window.STEPS2` + ปุ่ม `data-jump2` + ควิซ `DEMOS["quiz2"]` · CSS namespace `.std2` · **ห้ามแก้ในบล็อกโดยตรง** แก้ที่ `_work/std2/` แล้วรัน `python3 _work/std2/tools/integrate.py` |
 
 **ลำดับการทำงานเวลาผู้อ่านเปิดวิชา**
-`go({v:"subject", id})` → `renderSubject()` วาดหัวข้อทั้งหมดแต่ใส่แค่กล่องว่าง
+`go({v:"subject", id})` → `renderSubject()` วาดหัวข้อทั้งหมดแต่ใส่แค่กล่องว่าง (+ `HOOKS.render("subject-head"/"subject-end")` → `HOOKS.run("subject")`)
 → IntersectionObserver (rootMargin 900 px) เห็นกล่องใกล้จอ → `fillBody()`
-→ `dbGet("t", "<วิชา>__<หัวข้อ>")` → ยัด html → ติดตั้ง `[data-demo]` ทุกตัว
-→ `SUKAFIG()` ผูก observer ให้ `figure.ifig[data-fig]` ใส่รูปเมื่อเลื่อนถึง
+→ `dbGet("t", "<วิชา>__<หัวข้อ>")` + `subjAssets()` → คิวทีละหัวข้อ ใส่ html ทีละ ~16 KB → `demoMount()` ติดตั้ง `[data-demo]` เมื่อห่างจอ ≤ 600 px
+→ `SUKAFIG()` ผูก observer ให้ `figure.ifig[data-fig]` ใส่รูปเมื่อเลื่อนถึง → `HOOKS.run("fill")` (id ปากเปล่า/quiz2 · ลิงก์บรรยาย · ท้ายหัวข้อ ฯลฯ — หัวข้อ 14)
 
-**ดัชนีค้นหา** โหลดเมื่อผู้อ่านเริ่มค้นหา (โฟกัสช่องค้นหา → `loadIndex()`) ไม่ได้โหลดทุกครั้งที่เปิดเว็บ
-ระหว่างที่ยังไม่มา การค้นหาจะเจอแค่ชื่อวิชา ชื่อหัวข้อ และคำศัพท์ แล้วหน้าผลค้นหาเติมเอง (หัวข้อ 13)
+**ดัชนีค้นหา** โหลดเป็นขั้น ไม่ได้โหลดทุกครั้งที่เปิดเว็บ: โฟกัสช่องค้นหา = เฉพาะวิชาที่เปิดอยู่ (`ixPrime`) · พิมพ์ตัวแรก/เปิด `#/search/…` = วิชานั้นก่อน แล้วที่เหลือทีละวิชา (`loadIndex(first)` · สถานะ `IXST[sid]` · ครบ = `IX_READY`)
+ระหว่างที่ยังไม่มา การค้นหาจะเจอแค่ชื่อวิชา ชื่อหัวข้อ และคำศัพท์ แล้วหน้าผลค้นหาเติมเองทุกครั้งที่วิชาหนึ่งมาถึง (หัวข้อ 14.4)
 
 ## 3. เพิ่มวิชาใหม่ — เช็กลิสต์
 
@@ -73,13 +94,13 @@ _work/                          (อยู่ใน .gitignore — บนเค�
    — ทั้งหัวข้อเนื้อหา (`topics`) และบล็อกสรุป (`summary`) ใช้โฟลเดอร์เดียวกัน
 2. `figs/<รหัสรูป>.webp` รูปทุกใบที่ html อ้างถึงด้วย `data-fig="<รหัสรูป>"`
    รหัสต้องเป็น `[A-Za-z0-9_.-]` เท่านั้น และตั้งชื่อขึ้นต้นด้วยรหัสวิชากันชนกัน
-3. `app.js` — เพิ่มวิชาลง `Object.assign(DEEP, …)` (เมทาดาทาเท่านั้น ห้ามใส่ html),
+3. `app.js` — เพิ่มวิชาลง `Object.assign(DEEP, …)` (เมทาดาทาเท่านั้น ห้ามใส่ html · ฟิลด์ v6 `chk` `rev` `src` `lec` `rel` — หัวข้อ 14),
    เพิ่มอีโมจิใน `ICONS`, เพิ่มฟังก์ชันแบบจำลองเป็น `window.<XXX>DEMOS` แล้วต่อ
    `Object.assign(DEMOS, window.<XXX>DEMOS || {})`, เพิ่มกลุ่มคำศัพท์ใน `MODULES`
 4. `app.css` — เพิ่มบล็อกรูปแบบของวิชานั้นใต้ namespace ของตัวเอง (เช่น `.ppo …`)
    ทุกวิชาใช้ namespace แยกเพื่อไม่ให้ชนกัน
 5. ถ้าวิชานั้นยังไม่มีการ์ดใน `SUBJECTS` ให้เพิ่ม (ปกติมีครบทั้ง 54 วิชาแล้ว)
-6. รัน `python3 src/build_data.py` เพื่ออัปเดตดัชนีค้นหา (และ hash ของ `js/subj/<วิชา>.js|.css` ถ้ามี)
+6. รัน `python3 src/build_data.py` เพื่ออัปเดตดัชนีค้นหา manifest เลขเวอร์ชันแคช และไฟล์จาก `src/build_steps/` (`data/qa` `data/rel.json` `data/figdim.json` · hash ของ `js/subj/<วิชา>.js|.css` ถ้ามี) → `python src/counts.py --update` (เพิ่มเนื้อหาโดยตั้งใจ) → `node --test tests/*.test.cjs`
 7. ตรวจ (หัวข้อ 4) ด้วย `--mobile` ด้วย แล้วให้เจ้าของงาน commit + push ด้วย GitHub Desktop
    · วิชาที่ยกระดับใหม่: แบบจำลอง/CSS ของวิชาใส่ใน `js/subj/<วิชา>.js` / `.css` แทนการต่อบล็อกใน app.js/app.css (หัวข้อ 13)
 
@@ -108,10 +129,11 @@ _work/                          (อยู่ใน .gitignore — บนเค�
   — เนื้อหาเดิมที่ยังผิดอยู่ใน `tests/content-allow.json` (ลดได้เท่านั้น · ดูรายการด้วย `node tests/content-rules.test.cjs --list 2> ค้าง.json`)
 - **บล็อกประกอบอัตโนมัติ `src/blocks.json`** — แก้ในบล็อกตรง ๆ แล้ว `tests/blocks.test.cjs` ตก พร้อมบอกต้นฉบับใน `_work/` · หลังรันสคริปต์ประกอบจริง: `python src/blocks.py --update <ชื่อบล็อก>`
 - **CI `.github/workflows/check.yml`**: ทุก PR/push เข้า main รัน tests + verify `--no-throttle --timeout 240` รายวิชา (PR = วิชาที่ diff แตะ + toe) · กลางคืนรัน `--mobile` ทั้งเว็บ · ผลอยู่ในแท็บ Actions ของ PR
+- **ตรวจรับในเบราว์เซอร์แบบรันมือ** `tests/*.browser.cjs` 8 ไฟล์ (shell · rail · search · practice · perf · navstate · paths · s9 — ไม่อยู่ใน `--test` และ CI) · ในคลาวด์ `NODE_PATH=$(npm root -g) node tests/<ชื่อ>.browser.cjs` · รายละเอียดในหัวข้อ 14 «ชุดตรวจ»
 
-ค่าอ้างอิงล่าสุด (28 ก.ย. 2026 · `counts-baseline.json`): 12 วิชา · 288 ไฟล์หัวข้อ (สรุป 48) · 1 422 ช่องเดโมใน html + 6 ใน DEEP ·
+ค่าอ้างอิงล่าสุด (28 ก.ย. 2026 · ยืนยันซ้ำตอนปิดรุ่น v6 7 ต.ค. 2026 · `counts-baseline.json`): 12 วิชา · 288 ไฟล์หัวข้อ (สรุป 48) · 1 422 ช่องเดโมใน html + 6 ใน DEEP ·
 439 ฟังก์ชันใน DEMOS · 1 332 ช่องรูป · 1 158 ไฟล์รูป · 3 374 id · html 30,2 MB
-· verify `--no-throttle` ทั้งเว็บ: หน้าแรก 0,85 วินาที · 240 กล่องฉบับเต็ม + 48 สรุป · 1 113 แบบจำลองฉบับเต็ม · 1 332 ช่องรูป · ไม่มี `.tfail` · รวม 810 วินาที
+· verify `--no-throttle --mobile` ทั้งเว็บ (ปิดรุ่น v6 · 7 ต.ค. 2026): PASS · หน้าแรก 0,49 วินาที · 240 กล่องฉบับเต็ม + 48 สรุป · 1 113 แบบจำลองฉบับเต็ม = canvas · 1 253 รูปที่แสดง · ไม่มี `.tfail` · ดัชนีค้นหา 288/288 · จอ 360 px ไม่ล้น · รวม 1 067 วินาที (28 ก.ย. `--no-throttle` อย่างเดียว: หน้าแรก 0,85 วินาที · 810 วินาที)
 (ค่าก่อนหน้า 10 ก.ย. 2026 หลังยกระดับ ТАУ Т.6–Т.11: 10 วิชา · 198 กล่อง · 351 แบบจำลอง · 738 ช่องรูป · `--no-throttle` รวม 551 วินาที ·
 ТАУ เดี่ยวถ่วง 6 เท่า: หน้าแรก 6,46 วินาที รวม 115 วินาที)
 `src/build_data.py` ทำงานบน OneDrive ได้แล้ว (mkdir exist_ok + ลบเฉพาะ `data/ix/*.json`)
@@ -270,7 +292,9 @@ session หลักรันด้วย **fable** ทำหน้าที่�
   · จุดเปลี่ยนชุดนี้มีสำเนาแบบเลื่อนลงสำหรับเมนูแบบย่อ/โหมดอ่านในช่อง S2 ของ app.css (หัวข้อ 14.2) — แก้ที่นี่แล้วต้องแก้ที่นั่นตาม
   · **⚠ ก่อนรัน `patch_layout.py` ครั้งหน้า (ค้างจาก S8 · 29 ก.ย. 2026):** ใน app.js บรรทัด `saveQuiz` ของบล็อกนี้ถูกแก้ตรงเป็น `const saveQuiz = () => store(QKEY, QUIZ);` (ตัวเขียนเดียวของข้อมูลผู้เรียน หัวข้อ 14.8)
     แต่ `_work/layout/layout.js` ในเครื่องยังเป็น `try { localStorage.setItem(QKEY, JSON.stringify(QUIZ)); } catch (e) {}` — **แก้บรรทัดนั้นใน layout.js ให้ตรงกันก่อน** ไม่งั้น patch จะคืนแบบเก่า
-    (ผลควิซบันทึกไม่ได้ตอนพื้นที่เต็มแล้วเงียบ) และ `tests/learner-data.test.cjs` ตก «ห้าม localStorage.setItem ตรง ๆ» · แก้แล้วลบคำเตือนนี้ออก
+    (ผลควิซบันทึกไม่ได้ตอนพื้นที่เต็มแล้วเงียบ) และ `tests/learner-data.test.cjs` ตก «ห้าม localStorage.setItem ตรง ๆ»
+    · **อีกบรรทัดที่ถูกแก้ตรงแบบเดียวกัน (S8 ต่อ · ก.ย. 2026):** ใน `margWeak` ปุ่ม «เปิดฉบับเต็ม» เป็น `store("atlas-mode-v1", MODE);` แต่ layout.js ยังเป็น `try { localStorage.setItem("atlas-mode-v1", MODE); } catch (e) {}` — แก้ทั้งสองบรรทัด ·
+    และตั้งแต่ S9 ท้ายส่วน router ทับ `margWeak` (ส่ง «เปิดฉบับเต็ม» ผ่าน `go`) กับ `quizOfSubject` (หัวข้อ 14) — ย้ายเข้า layout.js แล้วลบตัวทับได้ · แก้แล้วลบคำเตือนนี้ออก
 - สารบัญ: แถบสถานะ (หัวข้อปัจจุบัน · ความคืบหน้า · อ่านแล้ว · ควิซ % · ★ บุ๊กมาร์ก · ปุ่มสรุปสอบ/ควิซ) · วงกลม ✓ กดทำเครื่องหมายได้ · จุดผลควิซ · หัวข้อย่อย (`header.sec-h` หรือ `h3`) ของหัวข้อปัจจุบัน · ก่อนหน้า/ถัดไป · หัวกลุ่ม (`TOCGROUPS` สำหรับ vhist/hist, วิชาอื่นจับจากคำขึ้นต้นชื่อ Лекция/ПЗ/ЛР/РГР/Задачи/Приложение เมื่อ ≥ 12 หัวข้อ)
 - แถบข้าง: ฉบับเต็ม = การ์ดของส่วนที่กำลังอ่าน (ศัพท์จาก `MODULES` · `.ru-box` · ชิปของ `.sec-h` · `.k-trap`/`.trap` · สถานะ quiz2) · สรุปทบทวน = «จุดที่ยังอ่อน» (ควิซต่ำ/ยังไม่อ่าน) กดแล้วเปิดฉบับเต็มที่หัวข้อนั้น
 - localStorage ใหม่ **`atlas-quiz-v1`** `{ <tid>: { <ลำดับ quiz2 ในหัวข้อ>: {done, ok, n, t} } }` — quiz2 (`_work/std2/js/quiz.js`) ส่งเหตุการณ์ `std2:quiz` ทุกครั้งที่ตอบ ห้ามตั้งชื่อคีย์ชนกับ `atlas-sula-v1` `atlas-bm-v1` `atlas-last-v1` `atlas-sem-v1` `atlas-mode-v1` `atlas-rail-v1` `atlas-admin-v1` (หัวข้อ 12)
@@ -305,16 +329,16 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 ## 13. โครงเว็บ v5 — สิ่งที่งานยกระดับวิชาต้องรู้ (เพิ่ม 26 ก.ย. 2026)
 
 โครงเว็บ (ส่วนกลางของ app.js/app.css ที่ไม่ใช่บล็อกประกอบอัตโนมัติ) ทำเสร็จก่อนเริ่มยกระดับทุกวิชา — ของทั้งหมดอยู่ในส่วนที่ขึ้นต้น `v5:`
-แก้ได้ตรงใน app.js/app.css (ไม่มีต้นฉบับใน `_work/`) · ทดสอบในเบราว์เซอร์ครบทุกข้อบนจอคอมและมือถือก่อน commit
+แก้ได้ตรงใน app.js/app.css (ไม่มีต้นฉบับใน `_work/`) · ทดสอบในเบราว์เซอร์ครบทุกข้อบนจอคอมและมือถือก่อน commit · ความสามารถที่เพิ่มหลังจากนี้เสียบผ่านจุดเกี่ยว/ช่อง SLOT (หัวข้อ 14) ไม่เขียนลงส่วน `v5:` ตรง ๆ
 
 **ที่อยู่ของหน้า (router · ค้น `/* ---- router (v5)`)**
-- `#/` · `#/<วิชา>` · `#/<วิชา>/sum|full` · `#/<วิชา>/<หัวข้อ>[/<id>]` · `#/glossary[/<คำกรอง>]` · `#/search/<คำค้น>` · `#/flash` · `#/quiz` · `#/sem` (ผู้ดูแล) · `#s=<วิชา>` แบบเก่ายังใช้ได้
+- `#/` · `#/<วิชา>` · `#/<วิชา>/sum|full` · `#/<วิชา>/<หัวข้อ>[/<id>]` · `#/glossary[/<คำกรอง>]` · `#/search/<คำค้น>[/<วิชา>]` · `#/sem` (ผู้ดูแล) · `#s=<วิชา>` แบบเก่ายังใช้ได้ · หน้าของ v6 ผ่าน `registerPage`: `#/subjects` `#/progress` `#/practice` `#/oral` `#/flash` `#/quiz` `#/cram` — ตารางครบในหัวข้อ 14
 - ปุ่ม Back/Forward ย้อนได้ทุกขั้น · เลื่อนอ่านแล้วที่อยู่ชี้หัวข้อที่อ่านอยู่ (`history.replaceState` + ระยะในหัวข้อใน `history.state`) → Back/รีเฟรช/ส่งลิงก์กลับมาตรงที่เดิม · ชื่อแท็บตามหัวข้อ
 - **ลิงก์ในเนื้อหา:** ข้ามหัวข้อ/วิชา `<a href="#/nav/nav-7">` หรือถึงองค์ประกอบ `<a href="#/nav/nav-7/n7-top">` · ในหัวข้อเดียวกัน `<a href="#<id>">` ·
   `<a href="#<รหัสหัวข้อ>">` ของวิชาเดียวกันก็ได้ (สลับโหมดให้เองถ้าหัวข้อปลายทางอยู่อีกโหมด) · `tests/audit-integrity` ตรวจว่าปลายทางมีจริงทุกลิงก์
 - id ขององค์ประกอบในหัวข้อต้องไม่ซ้ำทั้งหน้าวิชา (ขึ้นต้นด้วยรหัสหัวข้อ เช่น STD2 ใช้ `i<N>-` / `n7-`) — ใช้เป็นปลายทางของลิงก์ได้ทันที
-- API: `go({v, id, topic, anchor, mode, hl})` · `navTopic(id)` (เพิ่มประวัติ) · `scrollToTopic(id, {off, anchor, hl})` · `scrollToTarget(el, off)` · `state` (v/id/topic/mode)
-- **กระโดดให้ตรงที่:** `scrollToTarget` กระโดดทันทีแล้วแก้ตำแหน่งจนนิ่ง (สูงสุด 6 วินาที หยุดเมื่อผู้อ่านแตะ/เลื่อนเอง) เพราะกล่องหัวข้อระหว่างทางโหลดทีหลัง
+- API: `go({v, id, topic, anchor, mode, hl, seg, q, sid})` · `navTopic(id)` (เพิ่มประวัติ) · `scrollToTopic(id, {off, anchor, hl})` · `scrollToTarget(el, off)` · `state` (v/id/topic/mode/seg) · หน้าใหม่ `registerPage(ชื่อ, {render, title})` (หัวข้อ 14)
+- **กระโดดให้ตรงที่:** `scrollToTarget` กระโดดทันทีแล้วแก้ตำแหน่งจนนิ่ง (นิ่ง 1.2 วินาทีและไม่มีหัวข้อใกล้จอกำลังโหลด · สูงสุด 6 วินาที หรือ 20 วินาทีถ้ายังโหลดอยู่ · หยุดเมื่อผู้อ่านแตะ/เลื่อนเอง) เพราะกล่องหัวข้อระหว่างทางโหลดทีหลัง
   — ตัวกระโดดของบล็อก v4 (`jumpTopic`/`scrollToEl`/`settleAt` ใน `_work/layout/layout.js`) ถูกแทนด้วยตัวนี้ (กำหนดทับท้าย router) ครั้งหน้าที่แก้ layout.js ให้เรียก `navTopic`/`scrollToTarget` แทน
   · **งานกระโดด (`NAVBUSY` · S9 29 ก.ย. 2026):** ตั้งแต่ `scrollToTopic` เริ่มรอหัวข้อโหลดจนตำแหน่งนิ่ง `writeScrollState` ไม่เขียน แล้ว `navEnd` เขียนครั้งเดียวตอนจบ
   (เดิมตัวหน่วง 400 ms เขียนตำแหน่งกลางทาง — บนสุดของหน้า `#/<วิชา>/full` หรือหัวข้อระหว่างทาง — ที่อยู่/«อ่านต่อ»/ประวัติ S7 ค้างผิดหัวข้อ) · วงแก้ตำแหน่งรอได้ถึง 20 วินาทีถ้าหัวข้อใกล้จอยังโหลดอยู่ · เลื่อนนุ่ม (เป้าหมายใกล้) ก็แก้ตำแหน่งต่อหลังเลื่อนจบ · แก้ตำแหน่งก่อนตัดสินว่าจบทุกเฟรม
@@ -322,74 +346,211 @@ session หลักรันด้วย **fable** ทำหน้าที่�
   · ตรวจด้วย `node tests/navstate.browser.cjs [--cpu 4] [--slow 700] [--mobile]` (session ยาว ~60 หัวข้อ แล้วกระโดด · ไม่อยู่ในชุด `--test`)
 - `verify.py` ยังเปิดวิชาด้วย `location.hash = '#s=<วิชา>'` (ทดสอบรูปแบบเก่าไปด้วย) และรอ `state.id`
 
-**ค้นหา (ค้น `/* ---- search ---- */`)** โหลดดัชนีเมื่อเริ่มค้นหา · เรียงผล ชื่อตรง > ชื่อไทย > จำนวนครั้งในเนื้อหา · วลีไม่เจอแต่ทุกคำอยู่ในหัวข้อเดียวกันก็นับ ·
+**ค้นหา (ค้น `/* ---- search ---- */`)** โหลดดัชนีเป็นขั้นทีละวิชา (หัวข้อ 14.4) · เรียงผล ชื่อตรง > ชื่อไทย > จำนวนครั้งในเนื้อหา · วลีไม่เจอแต่ทุกคำอยู่ในหัวข้อเดียวกันก็นับ ·
 ё = е · บล็อกสรุปค้นได้ · กดผลที่เป็นหัวข้อ → ไฮไลต์คำ (`mark.q-hit`) แล้วเลื่อนไปที่แรกที่เจอ · ไม่ไฮไลต์ใน `script style math svg canvas [data-demo]`
 
 **ไฟล์ JS/CSS แยกรายวิชา (`js/subj/<วิชา>.js` · `.css`)** — ทางใหม่สำหรับแบบจำลองของวิชาที่ยกระดับ
-- app.js โหลดไฟล์ของวิชาเมื่อเปิดวิชานั้นครั้งแรก (`subjAssets()`) ก่อนติดตั้งแบบจำลองในหัวข้อ · ผู้อ่านไม่ต้องโหลดแบบจำลองของวิชาที่ไม่ได้เปิด (เดิม app.js 1.17 MB gzip โหลดทุกวิชาทีเดียว ~90 % เป็นแบบจำลองรายวิชา)
-- ในไฟล์: `Object.assign(DEMOS, { "<key>": host => { … } })` · เรียกของกลางได้ (`buildDemo`, `Plot`, `fitCanvas`, `CV`, `window.STEPS2` ฯลฯ) · **ห้ามแตะ `document` ที่ระดับบนสุด** (tests รันไฟล์นี้ใน vm ต่อจาก app.js) · CSS อยู่ใต้ namespace ของวิชา
+- app.js โหลดไฟล์ของวิชาเมื่อเปิดวิชานั้นครั้งแรก (`subjAssets()`) ก่อนติดตั้งแบบจำลองในหัวข้อ · ผู้อ่านไม่ต้องโหลดแบบจำลองของวิชาที่ไม่ได้เปิด (ตอนปิดรุ่น v6 app.js 6.3 MB · gzip 1.6 MB ยังโหลดทุกวิชาทีเดียว — ส่วนใหญ่เป็นแบบจำลองรายวิชา)
+- ในไฟล์: `Object.assign(DEMOS, { "<key>": host => { … } })` · เรียกของกลางได้ (`buildDemo`, `Plot`, `fitCanvas`, `CV`, `window.STEPS2` ฯลฯ) · **ห้ามแตะ `document` ที่ระดับบนสุด** (tests รันไฟล์นี้ใน vm ต่อจาก app.js) · CSS อยู่ใต้ namespace ของวิชา · ใช้ `buildDemo` หรือ `demoWatch` และหยุดลูปเมื่อ `document.hidden` (หัวข้อ 14.3)
 - `python src/build_data.py` ใส่ hash ของไฟล์ลง `data/manifest.json` (`subjects.<วิชา>.js/.css`) ใช้เป็น `?v=` — **ต้องรันทุกครั้งที่แก้ไฟล์** (tests ฟ้อง «stale manifest» ถ้าลืม)
 - ยังไม่มีวิชาไหนใช้ — ตอนยกระดับแต่ละวิชา ให้สคริปต์ประกอบของวิชา (แบบ `_work/navpilot/build.py`) เขียนไฟล์นี้แทนการแทนที่บล็อกใน app.js แล้วลบบล็อกเดิมออก
 
 **อ่านแบบออฟไลน์ (`sw.js` · `manifest.webmanifest` · `icons/`)**
 - service worker ลงทะเบียนเฉพาะบนเว็บจริง (https ที่ไม่ใช่ localhost) — preview.bat / verify.py ไม่ใช้ จึงไม่มีไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย `?sw=1`
-- หน้าเว็บ = เน็ตก่อน (รอ ≤ 4 วินาที) · ไฟล์อื่น = ส่งสำเนาในเครื่องทันทีแล้วโหลดใหม่เบื้องหลัง (ผู้อ่านเห็นเนื้อหาใหม่ไม่เกินการเปิดครั้งถัดไป แม้ลืมเปลี่ยน `DATA_VERSION`)
-- ปุ่ม «เก็บวิชานี้ไว้อ่านออฟไลน์» ในหน้าวิชา ดึงหัวข้อ + `data-fig` + `data-demo="vh-…"` (→ `data/vh/<…>.json`) + `data/ih/*` (ถ้ามี `ih-…`) + ฟอนต์ + ตัวโปรแกรม + `js/subj/` ของวิชา
-  — **วิชาที่โหลดไฟล์ข้อมูลแบบอื่นเพิ่ม ต้องเพิ่มกฎใน `saveOffline()`** ไม่งั้นส่วนนั้นจะเปิดไม่ได้ตอนออฟไลน์
-- เปลี่ยน `CACHE` ใน sw.js เมื่ออยากล้างสำเนาในเครื่องของผู้อ่านทุกคน
+- หน้าเว็บ = เน็ตก่อน (รอ ≤ 4 วินาที) · ไฟล์อื่น = ส่งสำเนาในเครื่องทันทีแล้วโหลดใหม่เบื้องหลัง (ผู้อ่านเห็นเนื้อหาใหม่ไม่เกินการเปิดครั้งถัดไป แม้ลืมเปลี่ยน `DATA_VERSION`) · คำขอ `cache: "reload"` (ปุ่มเก็บ/อัปเดตสำเนา) = เน็ตก่อนเสมอ
+- ปุ่ม «เก็บวิชานี้ไว้อ่านออฟไลน์» ในหน้าวิชา (`offlineSave`) ดึงหัวข้อ + `data-fig` + `data-demo="vh-…"` (→ `data/vh/<…>.json`) + `data/ih/*` (ถ้ามี `ih-…`) + ฟอนต์ + ตัวโปรแกรม + `js/subj/` ของวิชา
+  + ไฟล์จาก `HOOKS.on("offline")` (`data/figdim.json` · ดัชนีค้นหาของวิชา · `data/qa` · `data/rel.json`) · ดู/อัปเดต/ลบสำเนาทีละวิชาในหน้า `#/progress`
+  — **วิชาที่โหลดไฟล์ข้อมูลแบบอื่นเพิ่ม ต้องคืน URL ใน `HOOKS.on("offline", sid => […])`** (ไม่แก้ `saveOffline()`) ไม่งั้นส่วนนั้นจะเปิดไม่ได้ตอนออฟไลน์
+- เปลี่ยน `CACHE` ใน sw.js เมื่ออยากล้างสำเนาในเครื่องของผู้อ่านทุกคน — ต้องล้าง/ตรวจ `atlas-offline-v1` ในหน้าเว็บให้ตรงกันด้วย ไม่งั้นหน้าวิชาบอกว่าเก็บไว้แล้วทั้งที่สำเนาหาย
 
-**หน้าแรก/ผู้อ่าน** แถว «วิชาที่มีเนื้อหาเต็ม» (จาก `DEEP` อัตโนมัติ) · ผู้อ่านเลือกภาคของตัวเอง (`atlas-mysem-v1` · `curSem()` แทน `PROGRAM.current` ทุกที่) ·
-สำรอง/นำเข้าความคืบหน้าเป็นไฟล์ JSON (ทุกคีย์ `atlas-*` ยกเว้น `atlas-admin-v1`) · ปุ่ม ↑ โผล่เฉพาะตอนเลื่อนขึ้น
+**หน้าแรก/ผู้อ่าน** (v6 จัดใหม่ — หัวข้อ 14.2) หน้าหลัก = เรียนต่อ/เลือกวิชา + วิชาของฉัน + วิชาเนื้อหาเต็มที่เหลือ (จาก `DEEP` อัตโนมัติ) · แค็ตตาล็อก 54 วิชาอยู่ที่ `#/subjects` · ผู้อ่านเลือกภาคของตัวเอง (`atlas-mysem-v1` · `curSem()` แทน `PROGRAM.current` ทุกที่) ·
+สำรอง/นำเข้าความคืบหน้าเป็นไฟล์ JSON ท้าย `#/progress` (รุ่น 2 · ทุกคีย์ `atlas-*` ยกเว้นคีย์ของเครื่อง `atlas-admin-v1` `atlas-backup-prev` `atlas-offline-v1` · นำเข้าแล้วกู้คืนชุดเดิมได้ — หัวข้อ 14.8) · ปุ่ม ↑ โผล่เฉพาะตอนเลื่อนขึ้น
 
-**localStorage ทั้งหมด:** `atlas-sula-v1` (ทบทวนแล้ว) `atlas-bm-v1` `atlas-last-v1` (`{id, mode, topic, off}`) `atlas-sem-v1` `atlas-mode-v1` `atlas-rail-v1`
-`atlas-quiz-v1` `atlas-admin-v1` `atlas-mysem-v1` `atlas-offline-v1` — คีย์ใหม่ต้องขึ้นต้น `atlas-` (ไฟล์สำรองเก็บตามคำขึ้นต้นนี้)
+**localStorage:** คีย์ของ v5 `atlas-sula-v1` (ทบทวนแล้ว) `atlas-bm-v1` `atlas-last-v1` (`{v, id, mode, topic, off, anc?, aoff?}`) `atlas-sem-v1` `atlas-mode-v1` `atlas-rail-v1`
+`atlas-quiz-v1` `atlas-admin-v1` `atlas-mysem-v1` `atlas-offline-v1` + คีย์ของ v6 — **ตารางครบ 22 คีย์และข้อบังคับ (`atlas-<ชื่อ>-v<N>` · `learnerKey()` · เขียนผ่าน `store()`) อยู่ในหัวข้อ 14**
 
 **การเข้าถึง** สีตัวอักษรรอง `--ink-3` / `--accent-2` ผ่าน 4.5:1 บนพื้นทุกสีทั้งสองโหมด — **ห้ามใช้สีเทาอ่อนกว่า `--ink-3` กับตัวอักษร** ·
 ปุ่มพับหัวข้อมี `aria-expanded` (ใช้ `setFold(sec, open)`) · โฟกัสย้ายไปหัวเรื่องเมื่อเปลี่ยนหน้า · axe-core: ไม่เหลือปัญหาระดับ serious ในหน้าหลัก (เหลือ heading-order ในเนื้อหาบางวิชา)
 
 **งานยกระดับวิชา — เช็กลิสต์เพิ่มจากหัวข้อ 3/9:** ลิงก์ข้ามหัวข้อใช้รูปแบบ `#/…` · แบบจำลองใหม่อยู่ใน `js/subj/` · ข้อมูลที่โหลดเพิ่มต้องอยู่ในเว็บเดียวกัน
-และเพิ่มใน `saveOffline()` · `python src/build_data.py` · `node --test tests/*.test.cjs` · `python src/verify.py --subject <วิชา> --mobile`
+และคืน URL ใน `HOOKS.on("offline")` · `python src/build_data.py` · `node --test tests/*.test.cjs` · `python src/verify.py --subject <วิชา> --mobile` · **เช็กลิสต์ v6 ฉบับเต็ม (ฟิลด์ DEEP · id ปากเปล่า/quiz2 · คีย์ใหม่ · counts) อยู่ในหัวข้อ 14**
 
 
 
-## 14. ทำงานหลาย session พร้อมกัน — จุดเกี่ยว (hooks) ช่องโค้ด (SLOT) และเจ้าของไฟล์ (เพิ่ม 27 ก.ย. 2026)
+## 14. โครงเว็บ v6 — จุดเกี่ยว ช่องโค้ด หน้า และข้อมูลผู้เรียน (ปิดรุ่น 7 ต.ค. 2026)
 
-งานยกระดับโครงเว็บรอบ 2 แบ่งเป็น 8 session ทำคู่ขนานบน branch แยกกัน (คำสั่งอยู่ที่ `claude/คำสั่ง-session-S1–S8.md`) กติกาข้างล่างมีไว้ให้ PR ทั้งแปด merge เข้า `main` ได้โดยไม่ชนกัน — **session ของโครงเว็บทุก session ต้องอ่านหัวข้อนี้ก่อนแตะไฟล์**
+โครงเว็บรอบ 2 (v6) ทำเป็น 8 session คู่ขนาน (S1–S8 · คำสั่งใน `claude/คำสั่ง-session-S1–S8.md`) merge เข้า `main` 28–30 ก.ย. 2026 ·
+ต่อด้วย PR #14 (verify รอดัชนีที่โหลดทีละวิชา) · #15 (S8 ต่อ: ทุกคีย์ผ่าน `store()`/`learnerKey()`) · #16 (คำเตือน `saveQuiz` หัวข้อ 11) · #17–#18 (เมนูซ้ายแบบย่อ + โหมดอ่าน · 4 ต.ค.) · S9 (router `NAVBUSY` + ประสานรอยต่อ 39 จุด + ปิดรุ่น · 7 ต.ค.)
+ข้างล่างคือสรุปถาวร — **อ่านก่อนแตะส่วนกลางของ app.js/app.css** · บันทึกตอนพัฒนาราย session อยู่ท้ายหัวข้อ (14.1–14.9 · คงเลขเดิมเพราะหัวข้อ 2, 11, 13 อ้างถึง)
 
-**หลักการ:** เขียนโค้ดใหม่ **ในช่องของตัวเอง** (app.js: `/* ===== SLOT S<n> … BEGIN ===== */` … `END` ก่อน `buildNav();` · app.css: ช่องเดียวกันท้ายไฟล์) แล้วเสียบเข้าหน้าเดิมผ่าน **HOOKS** ไม่แก้ฟังก์ชันร่วม · แก้ฟังก์ชันเดิมได้เฉพาะที่ตารางเจ้าของด้านล่างระบุว่าเป็นของคุณ · ไฟล์ใหม่ตั้งชื่อตาม session (`tests/<ชื่อ>.test.cjs`, `src/build_steps/<ชื่อ>.py`, `data/<ชื่อ>/`)
+### กติกาถาวร — ความสามารถใหม่เสียบเข้า ไม่แก้ฟังก์ชันร่วม
 
-**API ที่ commit เตรียมพื้นให้ (ค้น `v6:` ใน app.js)**
-- `HOOKS.on("fill", (el, t, sid) => …)` หลังเติมหัวข้อ (el = `.tbody`, t = เมทาดาทาหัวข้อ) · `HOOKS.on("subject", (s, deep, mode) => …)` หลังวาดหน้าวิชา · `HOOKS.on("overview", () => …)` · `HOOKS.on("go", st => …)` หลังเปลี่ยนหน้าทุกครั้ง · `HOOKS.on("clear", () => …)` ก่อนล้างหน้า (หยุด timer/observer ของคุณ) · `HOOKS.on("offline", sid => [url…])` ไฟล์เพิ่มให้ปุ่มเก็บไว้อ่านออฟไลน์
-- `HOOKS.html("overview-top" | "overview-end" | "subject-head" | "subject-end" | "progress", ctx => html)` ใส่ HTML ในหน้าเดิม (คืนสตริง · ห้ามใส่ `<script>`) แล้วผูกปุ่มใน `HOOKS.on("overview"/"subject"/"go")` · `progress` = การ์ดในหน้า `#/progress` ที่ S2 สร้าง
-- `registerPage("oral", { render(st), title(st) })` → ที่อยู่ `#/oral[/seg/…]` · `state = {v:"oral", seg:[…]}` · `go({v:"oral", seg:["tau"]})` · Back/ชื่อแท็บทำให้เอง · โหมดวิชาเพิ่ม (เช่นคืนก่อนสอบ) ทำเป็นหน้า `#/cram/<sid>` ไม่แก้ `renderSubject`
-- `stableId(text)` (app.js) = `stable_id(text)` (`src/buildlib.py`) — id เสถียรจากข้อความ ตรงกันทุกไบต์ (`tests/hooks.test.cjs` ตรวจ)
-- `termKey(m, t, i)` — คีย์ความคืบหน้าของศัพท์ ทุกที่ต้องเรียกผ่านนี้ (S8 เปลี่ยนเป็น id ถาวรที่เดียว)
-- `python src/build_data.py` รัน `src/build_steps/*.py` ทุกไฟล์ (`run(ctx)` · ดู README ในโฟลเดอร์นั้น) — ขั้นตอนใหม่เขียนไฟล์ของตัวเองใน `data/` ห้ามแตะ manifest/ix
+- โค้ดของ v6 อยู่ใน **ช่อง** — app.js: `/* ===== SLOT S<n> (<งาน>) BEGIN ===== */` … `/* ===== SLOT S<n> END ===== */` เรียง S1–S8 ก่อน `/* ===== SLOTS END ===== */` และ `buildNav();` (โค้ดในช่องรันก่อนเริ่มแอป จึงลงทะเบียน hook/หน้าได้ทัน) ·
+  app.css: `/* ===== SLOT S<n> BEGIN ===== */` … `END` (ไม่มีชื่องานในวงเล็บ — tests ตรวจรูปนี้) ท้ายไฟล์ก่อน `SLOTS END` แล้วตามด้วยบล็อก `v6 (S9 ปิดรุ่น)` (ประสานของหลายช่องบนจอเดียวกัน — แก้ตรงได้) · `tests/hooks.test.cjs` ตรวจว่า S1–S8 มีครบ เรียงถูก
+- แก้ความสามารถเดิม = แก้ในช่อง/ส่วนของมัน (ตารางข้างล่าง) · ความสามารถใหม่ = ช่องใหม่ต่อจาก S8 ก่อน `SLOTS END` ทั้งสองไฟล์ ·
+  **ไม่เขียน logic ใหม่ลงฟังก์ชันร่วม** (`fillBody` `renderSubject` `renderOverview` `go` `saveOffline` …) — ถ้าจุดเกี่ยวไม่พอ เพิ่มจุดเกี่ยวใหม่ (`HOOKS.run/render` หนึ่งบรรทัดในฟังก์ชันร่วม + บรรทัดใน `tests/hooks.test.cjs`)
+- ห่อ/ทับฟังก์ชันร่วมได้เมื่อจำเป็นจริง และต้องเขียนไว้ในบันทึก — ที่ห่ออยู่แล้ว: ช่อง S2 ห่อ `go` `navTopic` `scrollToTarget` `focusSearch` ·
+  ท้ายส่วน router ทับของบล็อก v4: `jumpTopic` `scrollToEl` `settleAt` `margWeak` (ส่ง «เปิดฉบับเต็ม» ผ่าน `go`) `quizOfSubject` (= ตัวเลขของ `subjTrip`) — ครั้งหน้าที่แก้ `_work/layout/layout.js` ให้ย้ายพฤติกรรมเหล่านี้เข้าไปแล้วลบตัวทับ
+- หน้าใหม่ = `registerPage` (ไม่เพิ่มกรณีใน `go`/`parseRoute`) · โหมดวิชาเพิ่ม (เช่นคืนก่อนสอบ) = หน้าแยก `#/<หน้า>/<วิชา>` ไม่แก้ `renderSubject`
+- ส่วนที่คำนวณล้วน (ไม่แตะ DOM) แยกไว้ระหว่าง marker ให้ tests รันใน vm (`S6 core BEGIN/END` · `S7 PURE BEGIN/END` · `S5 end of pure helpers`) · โค้ดระดับบนสุดที่แตะ `document` ต้องเช็ก `typeof document`
+- ปุ่ม/การ์ดที่พาไปหน้าอื่นเป็น `<a href="#/…">` จริง (คัดลอก/เปิดแท็บใหม่ได้) · `<button>` ใช้กับการกระทำ · ข้อความบนจอพูดกับผู้อ่าน (หัวข้อ 12 · `tests/content-rules` ตรวจสตริงใน app.js)
+- ไฟล์ใหม่ตั้งชื่อตามความสามารถ: `tests/<ชื่อ>.test.cjs` · `tests/<ชื่อ>.browser.cjs` · `src/build_steps/<ชื่อ>.py` · `data/<ชื่อ>/` หรือ `data/<ชื่อ>.json`
+- ทุกงานจบด้วย `python src/build_data.py` → `node --test tests/*.test.cjs` → `python src/verify.py --no-throttle --mobile` (ทั้งเว็บ หรือ `--subject` · หน้ายาว `--timeout 240`) · หน้าเว็บห้ามเรียกเซิร์ฟเวอร์ภายนอก
+- **สิ่งที่ `src/verify.py` พึ่ง — ห้ามเปลี่ยนชื่อ/ความหมาย:** `#s=<วิชา>` · `#/<วิชา>/full|sum` (รอบมือถือ) · `state.v`/`state.id` (+ `state.v === "search"`) · `#search` · `#view .modebar [data-mode]` · `#view section.topic .tbody` · `.tbody[data-lazy]` ·
+  `.tload` (อยู่จนเติมหัวข้อครบ) / `.tfail` · `fillAllBodies()` · การ์ด `#view .subj-grid .subj[data-go]` · `IX_READY` `ixMissing()` `ixBusy()` `IXHAY` · ผล `#view .res-item` · `figure.ifig[data-fig] .fw img` ·
+  canvas = `[data-demo]` (กล่อง `ih-…` ที่มีลูกนับว่าติดตั้งแล้ว) · `console.error` (จอคอม) / page error (ทุกรอบ) = FAIL
 
-**ข้อตกลงร่วมที่หลาย session ใช้ (ห้ามตีความต่างกัน)**
-- id ของคำถามปากเปล่า `details.qa` ที่ไม่มี id: `"qa-" + stableId(ข้อความคำถาม)` โดยข้อความคำถาม = เนื้อใน `<summary>` (รูปแบบเดิม) หรือ `.qa-q` (STD2) หลังถอดแท็ก — S5 ใส่ใน DOM ตอนเติมหัวข้อ (hook `fill`) และใน `data/qa/<sid>.json` · S6/S7 ใช้ค่าเดียวกัน
-- คีย์ SRS: หัวข้อ `k:<tid>` · ศัพท์ = `termKey()` · ปากเปล่า `q:<sid>/<tid>/<qaId>` · ควิซ `quiz2` รายบล็อก `z:<tid>/<data-id ของ host>` — S6 ประกาศ `window.SRS = { grade(key, g0to5), due(prefix), get(key) }` · session อื่นเรียกแบบมีเงื่อนไข `window.SRS && SRS.grade(...)`
-- คีย์ localStorage ใหม่ทุกตัวขึ้นต้น `atlas-` (เข้าไฟล์สำรองอัตโนมัติ) · ห้ามซ้ำ: S2 `atlas-ui-v1` · S3 `atlas-offline-v1` (มีแล้ว ขยายได้) · S4 `atlas-search-v1` · S5 `atlas-oral-v1` `atlas-practice-v1` · S6 `atlas-srs-v1` `atlas-exam-v1` `atlas-seen-v1` · S7 `atlas-recent-v1` `atlas-notes-v1` `atlas-pins-v1` · S8 `atlas-meta-v1` (เลขรุ่นสคีมา)
-- เมนูหลัก 5 พื้นที่ (S2 ทำ): หน้าหลัก `#/` · รายวิชา `#/subjects` · ฝึกทบทวน `#/practice` (S5 ทำหน้า — ถ้ายังไม่มี S2 ให้ปุ่มไป `#/flash`) · ค้นหา · ความก้าวหน้า `#/progress`
-- ปุ่ม/การ์ดที่พาไปหน้าอื่นเป็น `<a href="#/…">` จริง (คัดลอก/เปิดแท็บใหม่ได้) ส่วน `<button>` ใช้กับการกระทำ
-- ทุก session จบด้วย `python src/build_data.py` → `node --test tests/*.test.cjs` → `python src/verify.py --no-throttle --mobile` (ทั้งเว็บ หรือ `--subject` ที่เกี่ยว) และห้ามให้เว็บเรียกเซิร์ฟเวอร์ภายนอก · ไม่แก้ `src/verify.py` (ของ S1) — ถ้าต้องเปลี่ยนวิธีตรวจ ให้เขียนไว้ใน PR
+**ช่องและส่วนกลาง — โค้ดของอะไรอยู่ที่ไหน** (ค้นด้วยข้อความในวงเล็บ)
 
-**เจ้าของไฟล์/ฟังก์ชัน (แก้ได้เฉพาะเจ้าของ · ที่เหลือใช้ hooks)**
-
-| session | ชื่องาน | เป็นเจ้าของ (แก้ตรงได้) |
+| งาน | ในช่อง (app.js) | นอกช่อง (ส่วนกลางที่แก้ตรงได้) |
 |---|---|---|
-| S1 | ด่านอัตโนมัติของ build | `src/verify.py` · `src/build_data.py` ส่วนหลัก (เวอร์ชัน hash) · `src/counts.py` + `src/counts-baseline.json` · `tests/audit-integrity.test.cjs` · `tests/content-rules.test.cjs` · `.github/workflows/` · `index.html` เฉพาะ `?v=` · app.js บริเวณ `DATA_VERSION`/`dbGet`/`DBCACHE` · `data/t` เฉพาะ 21 ไฟล์ที่อ้างโฟลเดอร์ในเครื่อง · `.claude/agents/demo-writer.md` · CLAUDE.md §4 |
-| S2 | เปลือกนำทาง + หน้าแรก + มือถือ + อ่านง่าย | `index.html` เฉพาะ `#bbar` · app.js: `renderOverview` `subjCard` `buildNav` ตัวจัดการ `#bbar` `topBtn` · app.css: `.topic-nav` `.topbar` `#bbar` `@media (max-width: 900px)` ทั้งสองบล็อก `v5: กันเนื้อหาล้นจอแคบ` · หน้า `#/subjects` `#/progress` |
-| S3 | ประสิทธิภาพ + ความทนทานของแบบจำลอง/ออฟไลน์ | app.js: `buildDemo`/`fitCanvas`/`Plot` (scaffold กลาง 1098–1180) · ภายใน `fillBody` (การติดตั้ง `[data-demo]`) · `SUKAFIG` · `subjAssets` · `saveOffline`/`offlineUi`/`netBar` · `sw.js` · `src/build_steps/figdim.py` |
-| S4 | ค้นหาและดัชนี | app.js: ทั้งส่วน `/* ---- search ---- */` · `filterGloss` ใน `renderGlossary` · บล็อก `/* ---- search box ---- */` · ที่อยู่ `#/search/…` ใน `parseRoute`/`routeHash` |
-| S5 | ฝึกทบทวน: `#/practice` · ปากเปล่า `#/oral` · เสียงรัสเซีย · Flashcard/ควิซ | app.js: `renderFlash` `renderQuiz` `POOL` ตัวจัดการ `#quizBtn` · `src/build_steps/qa.py` → `data/qa/` |
-| S6 | ทวนตามกำหนด (SRS) · วันสอบ · `#/cram` | ช่อง S6 เท่านั้น (ใช้ hooks ทั้งหมด) |
-| S7 | ลิงก์อัตโนมัติ · หัวข้อเกี่ยวข้อง · ประวัติ/ปัก/แชร์/บันทึก/แจ้งจุดผิด · ป้ายสถานะเนื้อหา | ช่อง S7 · `src/build_steps/rel.py` → `data/rel.json` |
-| S8 | ข้อมูลผู้เรียน: id ถาวรของศัพท์ · นำเข้า/สำรองแบบกู้คืนได้ · พื้นที่เต็ม | app.js: `termKey` · บล็อก `persist*`/`save*` (`KEY`…`saveRail`) · `progressExport`/`progressImport` · ช่อง S8 |
+| S1 ด่าน build | ว่างทั้งสองไฟล์ | `src/` `tests/` `.github/` · `DATA_VERSION` `dbVer` `dbUrl` `dbGet` `DBCACHE` |
+| S2 เปลือกนำทาง | `#/subjects` `#/progress` · `dialog.tsheet` · ชิปหัวข้อ `S2NAV` · แถบหลบ `html.reading` · ท้ายหัวข้อ `nav.tend` · ชุดอ่านง่าย · `html.rail-mini` + `html.read-mode` | `renderOverview` `subjCard` `buildNav` `subjTrip` `topicQuiz` `practiceStore` · `#bbar` ใน index.html · CSS `.topic-nav` `.topbar` `#bbar` `@media (max-width: 900px)` `v5: กันเนื้อหาล้นจอแคบ` |
+| S3 ประสิทธิภาพ/ออฟไลน์ | `demoInstall` `demoMount` · `fontWarm` · `fillTurn` `fillChunks` · การ์ดออฟไลน์ | `demoWatch` `buildDemo` `fitCanvas` `Plot` · `fillBody` · `SUKAFIG` · `subjAssets` · `offline*` `saveOffline` `offlineUi` (`S3: สำเนาออฟไลน์`) · `sw.js` · `src/build_steps/figdim.py` |
+| S4 ค้นหา | hook go/subject/offline | `/* ---- search ---- */` ทั้งส่วน · `filterGloss` · `/* ---- search box ---- */` · `#/search/…` ใน `parseRoute`/`routeHash` |
+| S5 ฝึกทบทวน | `qaText` `qaIds` `qaIndex` · `SAY` `sayButton` · hook fill (id ปากเปล่า/quiz2) · `#/practice` `#/oral` · ลงทะเบียน `#/flash` `#/quiz` | `renderFlash` `renderQuiz` `POOL` · `#quizBtn` · `src/build_steps/qa.py` |
+| S6 SRS/วันสอบ | ทั้งหมด: `S6 core` · `window.SRS` `examPlan` · แถว `subject-head` · `#/cram` | — |
+| S7 ลิงก์/ส่วนตัว | ทั้งหมด: `S7 PURE` · `.s7-bar` · ประวัติ/ปัก/บันทึก/แชร์/แจ้งจุดผิด | `src/build_steps/rel.py` |
+| S8 ข้อมูลผู้เรียน | `storeFailed` · การ์ดพื้นที่เก็บ/ชุดก่อนนำเข้า · `clearTemp` · reload เมื่อแท็บอื่นนำเข้า | ต้นส่วน APP: `store` `LEARNER` `learnerKey` `METAKEY` `SCHEMA` `DEVICE_KEYS` · `stableId` `termKey` `migrateQuizKeys` `learnerStart` · `progressExport` `importPlan` `applyLearnerData` `restorePrev` |
+| S9 router | — | `/* ---- router (v5)`: `NAVJOB` `NAVBUSY` `navBegin/End/Stop` `navLine` `restoreY` ในตัวเขียนตำแหน่ง/ตัวกระโดด · ตัวทับของบล็อก v4 ท้าย router · CSS `v6 (S9 ปิดรุ่น)` |
 
-**ขั้นตอน merge:** เรียง S1 → S8 → S2 → S3 → S4 → S5 → S6 → S7 · PR ที่รอคิวกด «Update branch» บน GitHub ก่อน merge · ถ้าชนกันให้ session นั้นรวม `main` แก้เอง · หลัง merge ครบ เปิด session รวม (S9) รัน build/tests/verify ทั้งเว็บ ปรับ §14 นี้เป็นสรุปถาวร และ tag รุ่น
+### จุดเกี่ยว (ค้น `v6: จุดเกี่ยว`)
 
-**บันทึกของแต่ละ session** (เขียนเฉพาะใต้หัวข้อของตัวเอง 3–8 บรรทัด: ทำอะไร คีย์/ไฟล์/hook ที่เพิ่ม ข้อควรระวัง)
+- `HOOKS.on(ชื่อ, fn)` — วงเล็บท้าย = ช่องที่ใช้อยู่ · fn ที่โยน error ถูกจับและ `console.error` (หน้าไม่พัง แต่ verify นับเป็น FAIL)
+  - `"fill", (el, t, sid)` หลังเติมหัวข้อครบ (`el` = `.tbody` · `t` = เมทาดาทาใน DEEP) · แบบจำลองติดตั้งเมื่อใกล้จอ — ต้องการ DOM ของมันตอนนี้ให้เรียก `demoInstall(host, sid)` (S2 S5 S6 S7)
+  - `"subject", (s, deep, mode)` หลังวาดหน้าวิชา · ทุกวิชา (`deep` undefined = วิชาโครงร่าง) (S2 S3 S4 S5 S6) · `"overview", ()` หลังวาดหน้าแรก (S6)
+  - `"go", st` ท้าย `go()` ทุกครั้ง รวมหน้าจาก `registerPage` — **ไม่ยิง** เมื่อเลื่อนภายในวิชาเดียวกัน (`navTopic` · Back/ลิงก์ในวิชาเดียวกันโหมดเดียวกัน) (S2 S3 S4 S5 S7 S8)
+  - `"clear", ()` ก่อนล้างหน้า — หยุด timer/observer/เสียงของคุณ (S2 S3 S5 S6 S7) · `"offline", sid => [url…]` ไฟล์เพิ่มของปุ่มเก็บออฟไลน์ (`HOOKS.collect`) — S3 `data/figdim.json` · S4 `ixUrl(sid)` · S5 `data/qa/_index.json` + `data/qa/<sid>.json` · S7 `data/rel.json`
+- `HOOKS.html(ช่อง, ctx => html)` คืนสตริง (ห้าม `<script>`) แล้วผูกปุ่มใน hook `overview`/`subject`/`go`: `"overview-top"` (S6 วันนี้ทวนอะไร · S7 อ่านล่าสุด/ปักไว้) · `"overview-end"` ·
+  `"subject-head"` ใต้หัวหน้าวิชา ก่อนแถบโหมด `ctx = {s, deep, mode}` (S5 ปุ่มฝึก · S6 ครบกำหนดทวน/วันสอบ — จอ ≤ 600 px ต้องสั้น: ของรองพับไว้) · `"subject-end"` · `"progress"` การ์ดใน `#/progress` (S3 S6 S7 S8)
+- `registerPage(ชื่อ, { render(st), title(st) })` → `#/<ชื่อ>[/seg/…]` · `state = {v: ชื่อ, seg: […]}` · `go({v: ชื่อ, seg: […]})` · Back/ประวัติ/ชื่อแท็บทำให้เอง · ใช้อยู่: `subjects` `progress` (S2) · `practice` `oral` `flash` `quiz` (S5) · `cram` (S6)
+
+### API สาธารณะ — สัญญาบรรทัดเดียว
+
+**id และคีย์**
+- `stableId(text)` (app.js) = `stable_id(text)` (`src/buildlib.py`) — ถอดแท็กเป็นช่องว่าง ยุบช่องว่าง → djb2 32 บิต ฐาน 36 · ตรงกันทุกไบต์ (`tests/hooks`)
+- `termKey(m, t, i)` = `"g:" + m.id + "-" + stableId(t.ru)` (คำรัสเซียซ้ำในกลุ่ม → `-2`, `-3`) — **ทุกที่ต้องเรียกผ่านนี้** · แก้ `t.ru` ของคำเดิม = คีย์ใหม่
+- id คำถามปากเปล่า `details.qa` = id เดิม หรือ `"qa-" + stableId(qaText(.qa-q หรือ <summary>))` · คำถามซ้ำข้ามหัวข้อ → `-<tid>` (`data/qa/_index.json` → `fix`) · **อย่าคำนวณเอง** — อ่านจาก DOM หรือ `data/qa`, ในเอกสารที่ parse เอง (เช่น `#/cram`) เรียก `qaIds(root, sid, tid)` หลัง `qaIndex()`
+- host `quiz2` ไม่มี id → `id` = `data-id` = `<tid>-q<n>` (นับจาก 1 · hook fill ของ S5)
+- คีย์ SRS: หัวข้อ `k:<tid>` · ศัพท์ `termKey()` · ปากเปล่า `q:<sid>/<tid>/<qaId>` · ควิซรายบล็อก `z:<tid>/<data-id ของ host>` · วิชาโครงร่าง `k:<sid>:<ลำดับ>`
+
+**ข้อมูลผู้เรียน (S8)**
+- `store(key, value)` → true/false — ตัวเขียนเดียวของ localStorage (สตริงเขียนตรง · `undefined` ลบ · อื่น ๆ JSON · ล้ม → แถบแจ้งครั้งเดียว) · tests ตกถ้ามี `localStorage.setItem` ตรง ๆ นอกข้อยกเว้น
+- `learnerKey(key, {kind: "set"|"list"|"obj"|"any"|"raw", re, check(v), label, count(v), temp, meta})` ลงทะเบียนคีย์ที่ระดับบนสุดของช่อง · tests ตกถ้ามีคีย์ `atlas-*-vN` ไม่ลงทะเบียน
+- `learnerStart()` + **`SCHEMA = 3`** + `atlas-meta-v1` — รันก่อนช่อง SLOT · ย้ายข้อมูลทีละขั้นเมื่อ schema ต่ำกว่า (1→2 คีย์ศัพท์ถาวร · 2→3 คีย์ควิซรายบล็อกตามลำดับ → id ของ host ใน `atlas-srs-v1` + คัดลอก `atlas-quiz-v1` ที่ S5 ยังไม่มีเข้า `atlas-practice-v1`) · ล้ม = schema ไม่ขยับ · เปลี่ยนความหมายคีย์ใด = เพิ่ม `SCHEMA` + ขั้นย้าย
+- ไฟล์สำรองรุ่น 2 `{app: "atlas-site", v: 2, schema (= schema จริงของข้อมูลในเครื่อง ไม่ใช่ SCHEMA), saved, data}` — ไม่รวม **`DEVICE_KEYS`** (`atlas-admin-v1` `atlas-backup-prev` `atlas-offline-v1` — ของเครื่องนี้ ไม่ส่งออก ไม่รับจากไฟล์ ไม่ลบตอนนำเข้า) ·
+  `progressImport(file)` → `importPlan` ตรวจ+สรุป → `confirm` → `applyLearnerData` (เก็บชุดเดิมลง `atlas-backup-prev` ก่อน) → โหลดใหม่ · แท็บอื่นที่เปิดอยู่โหลดใหม่เอง (ฟัง `storage` ของ `atlas-backup-prev`) · `restorePrev()` สลับกับชุดก่อนนำเข้า
+
+**ที่อยู่และการกระโดด (router)**
+- `go(st, opt)` — `st = {v, id?, topic?, anchor?, mode?, hl?, off?, anc?, aoff?, seg?, q?, sid?}` · `opt = {replace, pop, init, y}` · เขียนตำแหน่งของหน้าที่ออก → `navStop()` → วาด → ประวัติ → `HOOKS.run("go")` · «อ่านต่อ» (`atlas-last-v1`) เฉพาะวิชาที่มี DEEP ·
+  `GO_POP` = go ครั้งล่าสุดมาจาก Back/Forward (หน้าที่ทำต่อจากเดิมได้ใช้ตัดสิน) · บนหัวหน้าวิชา (ไม่มีหัวข้อ) ที่อยู่จดโหมด `#/<วิชา>/sum|full` ไว้ด้วย — Back จากอีกโหมดกลับโหมดเดิม
+- `navTopic(id, o)` กระโดดในวิชาที่เปิดอยู่ + เพิ่มประวัติ · `scrollToTopic(id, {off, anchor, hl, anc, aoff})` รอหัวข้อโหลดแล้วเลื่อน · `hl` ไฮไลต์คำ (ตรงแค่ชื่อหัวข้อ → ไฮไลต์ที่ชื่อ) ·
+  **คืนตำแหน่ง** (Back · รีเฟรช · «อ่านต่อ») ใช้จุดอ้างอิง `anc` = id ขององค์ประกอบสุดท้ายเหนือเส้นอ่าน (`anchorAt`) + `aoff` — ทนต่อความสูงด้านบนที่เปลี่ยน (แบบจำลองติดตั้งเมื่อใกล้จอ) · ไม่มีจุดอ้างอิงค่อยใช้ `off` จากหัวหัวข้อ
+- `scrollToTarget(el, off)` เลื่อนแล้วแก้ตำแหน่งจนนิ่ง 1.2 วินาทีโดยไม่มีหัวข้อใกล้จอกำลังโหลด (สูงสุด 6 · 20 วินาทีถ้ายังโหลด) · `restoreY(y)` หน้าที่เนื้อหามาทีหลัง (`#/cram` ผลค้นหา) — เลื่อนซ้ำจนถึง y และความสูงนิ่ง (≤ 20 วินาที) · ทั้งสองหยุดเมื่อผู้อ่านแตะ/เลื่อน/กดคีย์
+- `NAVBUSY` ≠ 0 = มีงานกระโดดค้าง · `navBegin()` → เลขงาน · `navEnd(job)` เขียนที่อยู่ + «อ่านต่อ» ครั้งเดียวตอนจบ · `navStop()` ยกเลิก · ระหว่างงาน `writeScrollState()` ไม่เขียน และแถบหลบของ S2 ไม่นับการเลื่อน ·
+  **โค้ดที่เลื่อนหน้าเอง:** ใช้ `scrollToTarget` · ถ้าใช้ `window.scrollTo` เอง เรียก `navStop()` และ `unread(true)` ก่อน
+- `navOffset()` ความสูงแถบที่ติดบนจอ (คงที่ ใช้กระโดด) · `navLine()` เส้นที่มองเห็นจริงตอนแถบหลบ (ใช้เฉพาะตอนบันทึกตำแหน่ง — ห้ามใช้กระโดด ค่าแกว่งระหว่างแถบเลื่อน)
+- `parseRoute(hash)` · `routeHash(st)` · `routeOnly(st)` · `topicsOf(sid)` = หัวข้อ + บล็อกสรุป · `curMode()` · `curSem()` · `practiceHref(sid, tid)` · `focusSearch()` · `openSheet()` · ลิงก์ `#<id>` ในหน้าเพิ่มประวัติให้ Back กลับมาได้
+
+**เนื้อหาและแบบจำลอง**
+- `dbGet(coll, name)` → Promise ของ JSON หรือ null (data/t แคช LRU ≤ `DB_KEEP` = 40) · `dbVer` / `dbUrl` (?v= ของ data/t, data/ix = `manifest.subjects.<sid>.v`) · `manifestGet()` · `subjAssets(sid)` → Promise<true|false>
+- `buildDemo(host, spec)` สำหรับแบบจำลองใหม่ทุกตัว · `demoWatch(el, {suspend(), resume(), tick?()})` · `demoMount(root, sid)` ติดตั้งเมื่อห่างจอ ≤ 600 px · `demoInstall(host, sid)` ทันที ครั้งเดียว (ล้ม → `.demo-fail` + ลองใหม่) · `DEMO_DONE` · `fillAllBodies()`
+
+**ค้นหา (S4)** `ixUrl(sid)` · `loadIndex(first)` · `ixPrime(sids)` · `ixRetry()` · `IXST[sid]` wait/load/ok/fail · `IX_READY` · `ixMissing()` · `searchQueries(q)` · `textMatch` · `markHits(root, q)` · `searchRefresh()`
+
+**ฝึกทบทวน (S5)** `window.SAY = {ok, speak(text, rate, onEnd), stop(), voice(), hint()}` (เสียงในเครื่องเท่านั้น) · `sayButton(getText, label)` · `qaText` / `qaRuText` = `text()` / `ru_text()` ใน `qa.py` · `qaIndex()` → `QAIX` ·
+ชุดซ้อมปากเปล่าที่ทำค้าง (`S5RUN`) ทำต่อ/สรุปชุดเดิมเฉพาะเมื่อกลับมาด้วย Back (`GO_POP` · 30 นาที) — กดเริ่มซ้อมจากลิงก์ใด ๆ ได้ชุดใหม่เสมอ · Flashcard `#/flash[/<กลุ่ม|วิชา>]/due` = เฉพาะคำที่ครบกำหนดทวน
+
+**ทวนตามกำหนด/วันสอบ (S6)**
+- `window.SRS = { grade(key, g 0–5, now?), due(prefix, now?) → [{key, …rec}], get(key), all(), reload() }` · ยิง `srs:grade` · เรียกแบบ `window.SRS && SRS.grade(key, g)` · ปากเปล่า 1/3/5 · ศัพท์ 1/5 · ติ๊ก ✓ (หัวหัวข้อ สารบัญ คลังศัพท์ ท้ายหัวข้อ) = 4 · quiz2 ให้คะแนนครั้งเดียวตอน «เพิ่งตอบครบ» ตาม % ·
+  **วันหนึ่งนับ «จำได้» (g ≥ 3) ต่อคีย์ได้ครั้งเดียว** (นับใหม่ได้หลังลืมในวันเดียวกัน · ตัวห่อใน S6 — `srsCore` ไม่มีกติกานี้) · ลืม (g < 3) นับเสมอ
+- `window.examPlan(sid, now?)` → null | `{sid, date, kind, days, past}` | `+ {final, topics, oral, terms}` แต่ละหมวด `{pending, quota, today}` · จำนวนปากเปล่าทั้งหมดจาก `QAIX` (ชุดเดียวกับ `#/oral`) และจดไว้ใน `atlas-exam-v1[sid].qa` ให้หน้าอื่นใช้เลขเดียวกัน ·
+  แถว `subject-head` บนจอแคบ (≤ 600 px หรือมือถือแนวนอน): ปุ่ม «ตั้งวันสอบ» / ป้าย «อีก N วัน» · ช่องวันสอบ + แผนพับใน ▾ (เลือกวันแล้วยังเปิดค้าง)
+
+**ออฟไลน์ (S3)** `offlineSave(sid, say)` / `offlineUpdate` → `{ok, fails, n, bytes}` · `offlineList()` · `offlineRemove(sid)` · ตัดสินว่าไฟล์ «ยังใช้อยู่» โดยเทียบที่อยู่ **ไม่รวม `?v=`** (`offlinePath`) เพราะตัวลบลบทุกรุ่น · หัวข้อเก็บด้วย `dbUrl` และดัชนีหลังโหลด manifest (?v= เดียวกับที่หน้าขอ) ·
+  บันทึกที่ไม่มีสำเนาจริงใน Cache API ถูกลบเองตอนเปิดหน้าวิชา · sw.js เก็บเป็นหน้าเว็บเฉพาะ `./` และ `index.html`
+
+**build (S1)** `src/build_steps/<ชื่อ>.py` มี `run(ctx)` (`ctx = {root, data, topics, manifest}`) — `build_data.py` รันทุกไฟล์เรียงชื่อ · เขียนเฉพาะ `data/<ชื่อ>/` หรือ `data/<ชื่อ>.json` · ห้ามแตะ `data/manifest.json` `data/ix/` · คู่มือ `src/build_steps/README.md`
+
+### localStorage — ทุกคีย์
+
+ข้อบังคับ: คีย์ใหม่ `atlas-<ชื่อ>-v<N>` · ลงทะเบียน `learnerKey()` · เขียนผ่าน `store()` · สร้างใหม่ได้ = `temp: true` · ไฟล์สำรองเก็บทุกคีย์ `atlas-*` ยกเว้น `DEVICE_KEYS`
+
+| คีย์ | เจ้าของ | รูปแบบ | temp |
+|---|---|---|---|
+| `atlas-sula-v1` | `DONE` | set: `k:<หัวข้อ>` · `k:<วิชา>:<ลำดับ>` (วิชาโครงร่าง) · `termKey()` (ศัพท์ «จำได้») | |
+| `atlas-bm-v1` | `BM` | set ของ `termKey()` ที่บุ๊กมาร์ก | |
+| `atlas-last-v1` | router `LAST` | `{v: "subject", id, mode, topic, off, anc?, aoff?}` «อ่านต่อ» (เฉพาะวิชาที่มี DEEP) | ✓ |
+| `atlas-mode-v1` · `atlas-sem-v1` · `atlas-mysem-v1` | `MODE` · `SEMOVR` · `MYSEM` | `sum`/`full` · `{<วิชา>: [ภาค…]}` (ผู้ดูแล) · `1`–`9` ภาคของผู้อ่าน | |
+| `atlas-rail-v1` | `RAILOPEN` | set ของกลุ่มภาคที่กางในเมนูซ้าย | ✓ |
+| `atlas-admin-v1` | `ADMIN` | `1`/`0` โหมดผู้ดูแล — ของเครื่อง (`DEVICE_KEYS`) | – |
+| `atlas-quiz-v1` | v4 `QUIZ` | `{<หัวข้อ>: {<ลำดับ quiz2>: {done, ok, n, t}}}` (ยังเขียนคู่กับ S5) | |
+| `atlas-offline-v1` | S3 | `{<วิชา>: {t, n, bytes, v, urls}}` — ของเครื่อง (`DEVICE_KEYS`) | |
+| `atlas-ui-v1` · `atlas-search-v1` | S2 · S4 | `{subjF, railMini?, focus?}` · `{q, from, scope, kind, shown}` | ✓ |
+| `atlas-oral-v1` | S5 | `{"<วิชา>/<หัวข้อ>/<qaId>": {r: 1/3/5, t, n}}` | |
+| `atlas-practice-v1` | S5 | `{<หัวข้อ>: {<id host>: {done, ok, n, t}}, _terms: {<termKey>: {r, t, n}}, _opt: {timer, dir}}` | |
+| `atlas-srs-v1` · `atlas-exam-v1` · `atlas-seen-v1` | S6 | `{<คีย์ SRS>: {due, ivl, ef, reps, lapses, last}}` · `{<วิชา>: {date, kind, qa?}}` (qa = จำนวนปากเปล่าทั้งหมด) · `{<หัวข้อ>: {read, t}}` | |
+| `atlas-recent-v1` · `atlas-pins-v1` · `atlas-notes-v1` | S7 | `[{sid, tid, t}]` ≤ 12 · `[{sid, tid, t}]` · `{<หัวข้อ>: {sid, text, t}}` | |
+| `atlas-meta-v1` | S8 | `{schema, created, lastActive}` (`SCHEMA = 3`) | |
+| `atlas-backup-prev` | S8 | `{saved, why, data}` ชุดก่อนนำเข้า — ของเครื่อง · «ล้างข้อมูลชั่วคราว» ถามแยก | (ถาม) |
+
+Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **ไม่ต้องเปลี่ยนตอนออกรุ่น** (ไฟล์รุ่นเก่าที่ต่างกันแค่ `?v=` ถูกลบเองเมื่อได้ตัวใหม่) · เปลี่ยนชื่อ = ล้างสำเนาของทุกคน ต้องล้าง/ตรวจ `atlas-offline-v1` ให้ตรงกันด้วย
+
+### หน้าและที่อยู่ทั้งหมด
+
+| ที่อยู่ | หน้า | ทำที่ |
+|---|---|---|
+| `#/` | หน้าหลัก: เรียนต่อ/เลือกวิชา · `overview-top` · วิชาของฉัน · วิชาเนื้อหาเต็มที่เหลือ | `renderOverview` (S2) |
+| `#/subjects` · `#/progress` | แค็ตตาล็อก 54 วิชา + ตัวกรอง + ภาคของผู้อ่าน · ความคืบหน้าสามอย่าง + การ์ด `progress` + สำรอง/นำเข้า | S2 |
+| `#/<วิชา>[/sum\|/full]` · `#/<วิชา>/<หัวข้อ>[/<id>]` · `#s=<วิชา>` | หน้าวิชา · เลื่อนไปหัวข้อ/องค์ประกอบ (สลับโหมดให้เอง) · รูปแบบเก่า (verify ใช้) | `renderSubject` · router |
+| `#/glossary[/<คำกรอง>]` · `#/search/<คำ>[/<วิชา>]` | คลังศัพท์ · ผลค้นหา | S4 |
+| `#/practice[/<วิชา>[/<หัวข้อ>]]` · `#/oral[/<วิชา>[/<หัวข้อ>]][/n<k>][/weak]` | ศูนย์ฝึกทบทวน · ซ้อมปากเปล่า (ไม่มีวิชา = หน้าเลือกวิชา) | S5 |
+| `#/flash[/<กลุ่ม\|วิชา>][/weak\|/due]` · `#/quiz[/<กลุ่ม\|วิชา>][/n<k>][/weak]` | Flashcard · ควิซศัพท์ | S5 |
+| `#/cram/<วิชา>` | คืนก่อนสอบ (เฉพาะวิชาเนื้อหาเต็ม) | S6 |
+| `#/sem` · `#<id>` | ปรับภาคเรียน (ผู้ดูแล) · ลิงก์ในหน้า (`inPageAnchor`) | router |
+
+### ไฟล์ที่สร้างอัตโนมัติ — ห้ามแก้มือ
+
+| ไฟล์ | ผู้สร้าง | รูปแบบ |
+|---|---|---|
+| `data/ix/<วิชา>.json` · `data/manifest.json` · `?v=` ใน index.html + `DATA_VERSION` | `src/build_data.py` | ดัชนีค้นหา · `{subjects: {<วิชา>: {n, v, js?, css?}}}` · sha1[:10] ของ app.js+app.css+manifest (CRLF → LF) |
+| `data/qa/<วิชา>.json` · `data/qa/_index.json` | `src/build_steps/qa.py` | `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `{<วิชา>: {n, t, z, fix}}` · 2 666 ข้อ |
+| `data/rel.json` · `data/figdim.json` | `rel.py` · `figdim.py` | หัวข้อเกี่ยวข้อง 231 หัวข้อ · ขนาดรูป 1 158 ใบ |
+| `src/counts-baseline.json` · `src/blocks.json` | `python src/counts.py --update` · `python src/blocks.py --update <บล็อก>` | หัวข้อ 4 |
+| `data/vh/*.json` · `data/ih/*.json` | สคริปต์ใน `_work/` / ต้นทาง История (หัวข้อ 8, 10) | — |
+
+ไม่บังคับ (ยังไม่มี): `data/feedback.json` = `{"url": "https://…"}` → ปุ่ม ⚑ แจ้งจุดผิดเปิดลิงก์นั้นด้วย (S7)
+
+### ชุดตรวจ
+
+- `node --test tests/*.test.cjs` — 11 ไฟล์ 100 เทสต์ ไม่ต้องมีเบราว์เซอร์ (ข้อสุดท้ายของ `srs` เปิด Chromium ผ่าน Playwright ของ Python ถ้ามี · ข้าม 1: เทียบ ZIP ต้นฉบับ `node tests/audit-integrity.test.cjs --baseline-zip <zip>`) — `audit-integrity` `blocks` `content-rules` `hooks` `learner-data` `links` `practice` `search` `srs` `step-response` `ui-learning`
+- `tests/*.browser.cjs` — Playwright ของ Node รันมือ (ไม่อยู่ใน `--test` และ CI) · ในคลาวด์ `NODE_PATH=$(npm root -g) node tests/<ชื่อ>.browser.cjs` · `shell` (S2) · `rail` (เมนูย่อ/โหมดอ่าน) · `search` (S4) · `practice` (S5) · `perf` (S3) ·
+  `navstate` (router · `--rounds --mobile --cpu`) · **`paths` (S9 · เส้นทางหลัก 7 เส้นที่จอ 390 และ 1280 px: ผู้อ่านใหม่ · เรียนต่อ→ฝึก→ผล→กลับ · ค้นหา→Back · ปากเปล่า→reload · ออฟไลน์ · นำเข้าไฟล์เสีย · Flashcard ด้วยแป้นพิมพ์ · `[1-7] [--width]`)** ·
+  **`s9` (รอยต่อที่ S9 แก้: คืนตำแหน่งหลังรีเฟรช · Back หลัง «เปิดฉบับเต็ม» · ชุดปากเปล่าต่อ/ใหม่ · ติ๊กซ้ำวันเดียว · quiz2 ครั้งเดียว · ปุ่มตั้งวันสอบ · Back กลับ #/cram · ลิงก์ #<id>)** — แก้ส่วนกลางแล้วรันทุกตัว
+- `python src/verify.py` (หัวข้อ 4) · **CI** `.github/workflows/check.yml`: push/PR/กลางคืน/กดเอง — `tests` (`node --test` + `python src/counts.py`) + `verify` รายวิชา `--no-throttle --timeout 240` (+ `--mobile` กลางคืน)
+
+### งานยกระดับวิชา — ต้องทำอะไรกับ v6 (เพิ่มจากหัวข้อ 3, 9, 13)
+
+1. **DEEP**: `chk: false` ตั้งแต่แรก → `chk: true` + `rev: "YYYY-MM-DD"` หลังผ่าน tech + lang · `src` ต้นทางสั้น · `lec: N`/`[N, M]` เมื่อชื่อหัวข้อไม่ขึ้นต้น «Лекция N»/«Тема N» · `rel: [...]` ทับหัวข้อเกี่ยวข้อง
+2. **คำถามปากเปล่า** `details.qa` > `summary` (STD2 `.qa-q`) + `.ans` (`.ans-ru` ได้ 🔊) · ไม่ต้องใส่ id · **แก้ข้อความคำถาม = id ใหม่** ผลซ้อม/SRS ข้อนั้นหาย (อยากคงที่ใส่ `id` เอง)
+3. **quiz2** ได้ id `<tid>-q<n>` ตามลำดับ — แทรกบล็อกก่อนบล็อกเดิม = ผลของบล็อกถัดไปเลื่อน (ต้องคงผลใส่ `id`/`data-id` เอง)
+4. id ขององค์ประกอบไม่ซ้ำทั้งวิชา ขึ้นต้นด้วยรหัสหัวข้อ · ลิงก์ `#/<วิชา>/<หัวข้อ>[/<id>]`
+5. **แบบจำลอง** ใน `js/subj/<วิชา>.js|.css` (`buildDemo`/`demoWatch` · หยุดลูปเมื่อ `document.hidden` · ไม่แตะ `document` ระดับบนสุด) แล้วลบบล็อกเดิมจาก app.js (+ `src/blocks.json`)
+6. **ไฟล์ข้อมูลใหม่**: อยู่ในเว็บเดียวกัน · คืน URL ใน `HOOKS.on("offline", …)` (ไม่แก้ `saveOffline`) · สร้างจากเนื้อหา → `src/build_steps/<ชื่อ>.py`
+7. **คลังศัพท์**: กลุ่มใน `MODULES` id = รหัสวิชา (ไม่ตรง → `MODMAP`) · ห้ามแก้ `ru` ของคำเดิม (ต้องแก้ = ขั้นย้ายใน `learnerStart()` + `SCHEMA` + 1)
+8. ชนิดกล่องสรุปใหม่ของ STD2 → เพิ่มใน `CR_SEL` (`#/cram`) · แก้หัวข้อที่อยู่ใน `tests/content-allow.json` จนผ่าน → ลบออก + ลด `CAP`
+9. `python src/build_data.py` → `python src/counts.py --update` (อ่าน diff) → `node --test tests/*.test.cjs` → `python src/verify.py --subject <วิชา> --mobile` → `node tests/practice.browser.cjs` + `paths` ถ้าแตะคำถาม/การนำทาง
+
+### งานค้างหลังปิดรุ่น v6
+
+- **`_work/layout/layout.js` (บนเครื่องเจ้าของงาน)** ยังเป็นแบบเดิม **สองบรรทัด**: `saveQuiz` และ `localStorage.setItem("atlas-mode-v1", MODE)` ในปุ่ม «เปิดฉบับเต็ม» ของ `margWeak` — แก้ให้ตรง app.js ตามคำเตือนในหัวข้อ 11 ก่อนรัน `patch_layout.py` · ครั้งเดียวกันย้ายตัวทับท้าย router (`margWeak` `quizOfSubject` `jumpTopic` …) เข้า layout.js
+- **`tests/content-allow.json`**: ไม่มีบรรทัดอ้างอิง 37 หัวข้อ · ไทยติดซีริลลิก 7 หัวข้อ + 6 สตริงในเดโม · พูดกับเจ้าของงาน 9 หัวข้อ — แก้ตอนยกระดับวิชานั้น
+- `js/subj/` ยังไม่มีวิชาไหนใช้ (แบบจำลองทั้ง 12 วิชาอยู่ใน app.js 6.3 MB · gzip 1.6 MB) · ฟิลด์ DEEP `rev` `chk` `src` `lec` `rel` ยังไม่มีวิชาไหนใส่ (ไม่มีป้ายสถานะ) · `data/feedback.json` ยังไม่มี
+- ลูปของ VHMAP / STD2 ยังไม่ผ่าน `demoWatch` · axe-core: heading-order ในเนื้อหาบางวิชา · `tests/hooks.test.cjs` ยังไม่ตรวจจุดเกี่ยว `HOOKS.render("progress")` · ปุ่มออกจากโหมดอ่านบนจอคอมบางความกว้าง (901–1399 px) ยังอยู่ในขอบซ้ายติดคอลัมน์ข้อความ (มือถือย้ายไปกองขวาแล้ว)
+
+### รายละเอียดราย session (บันทึกตอนพัฒนา)
+
+ข้างล่างคือบันทึกที่แต่ละ session เขียนตอนทำงาน (คงไว้ตามเดิม · จุดที่ S9 เปลี่ยนภายหลังมีหมายเหตุ «S9:») — ข้อตกลงร่วมตอนทำคู่ขนาน (เจ้าของไฟล์ · ลำดับ merge) ใช้จบแล้ว ดูประวัติได้ใน git และ `claude/คำสั่ง-session-S1–S8.md`
 
 #### 14.1 S1 — ด่านอัตโนมัติ
 - ของใหม่: `src/counts.py` → `src/counts-baseline.json` (ใช้ทั้ง tests/verify · ลบ `verify-baseline.json`) · `src/registry.cjs` (อ่าน DEEP/DEMOS จาก app.js ใน vm — tests และ counts ใช้ร่วม) · `tests/content-rules.test.cjs` + `tests/content-allow.json` (ratchet) · `src/blocks.py` + `src/blocks.json` + `tests/blocks.test.cjs` · `src/ci_subjects.py` + `.github/workflows/check.yml`
@@ -407,7 +568,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - ท้ายหัวข้อ `nav.tend` ต่อท้าย `.tbody` (hook `fill`): ✓ `[data-s2key]` ซิงก์กับ `.topic-check` · ผลควิซ · «ฝึกเรื่องนี้» (เมื่อมี #/practice) · ก่อนหน้า/ถัดไปเป็นลิงก์ `#/<sid>/<tid>` · ชุดอ่านง่าย: `.tw.scrolls` (เงาขอบ) + `p.tw-hint` · `.tbody.s2-legacy` = วิชาที่ไม่ใช่ STD2 ตัวอักษร 16/1.7 · sub/sup ≥ 11.5 px · ปุ่มสำคัญ ≥ 40 px ที่ ≤ 600 px · หัวหน้าวิชาบนมือถือ ≤ 200 px (ซ่อน eyebrow, แถบ %, ชื่อซ้ำใน crumb · คำนำ 2 บรรทัด)
 - คีย์ใหม่ `atlas-ui-v1` = `{ subjF: {sem, status, deep}, railMini?, focus? }` (ตัวกรองหน้ารายวิชา · เมนูซ้ายแบบย่อ · โหมดอ่าน) · ตรวจรับ `node tests/shell.browser.cjs` (ต้องมี playwright ของ Node · จอ 390 px + 1500 px)
 - **เมนูซ้ายแบบย่อ + โหมดอ่าน (4 ต.ค. 2026 · ท้ายช่อง S2 ทั้ง app.js/app.css · แถบไอคอนเฉพาะจอ > 900 px)** — `html.rail-mini` = แถบไอคอน 60 px (`.rmini`: ☰ ขยาย · 5 เมนูหลักใช้ไอคอนจาก `#bbar` · «วิชานี้» · โหมดอ่าน) ค่าเดียวใช้ทุกหน้า และ**ย่อเองทุกครั้งที่เปิดวิชาที่มี DEEP** (เปลี่ยนวิชา/เข้าจากหน้าอื่น — ทำใน `go` ที่ห่อไว้ ก่อนวาดหน้า) · ปุ่ม `.rail-acts` (โหมดอ่าน · ย่อ) มุมขวาบนของเมนูเต็ม
-  · `html.read-mode` = โหมดอ่าน (เฉพาะหน้าวิชา · ทุกขนาดจอ): ไม่มีเมนูซ้ายและ `.topbar` — จอ ≤ 900 px ซ่อนแถบชื่อเว็บ `#bbar` และแถบชิปด้วย เปิดจากปุ่ม `#bbar [data-bb=read]` (ช่องที่ 6 เฉพาะหน้าวิชา · `#bbar.bb6`) · ออกด้วย `#readExit` มุมซ้ายล่าง (ป้ายกาง 2.5 วินาทีตอนเข้าโหมด) / Esc / ] / ไปหน้าที่ไม่ใช่หน้าวิชา · `focusSearch` ถูกห่อให้ออกจากโหมดก่อน และกด / ก็ออก · ปุ่มลัด `[` ย่อ/ขยาย `]` โหมดอ่าน (ใช้ `e.code` ทำงานบนแป้นไทย)
+  · `html.read-mode` = โหมดอ่าน (เฉพาะหน้าวิชา · ทุกขนาดจอ): ไม่มีเมนูซ้ายและ `.topbar` — จอ ≤ 900 px ซ่อนแถบชื่อเว็บ `#bbar` และแถบชิปด้วย เปิดจากปุ่ม `#bbar [data-bb=read]` (ช่องที่ 6 เฉพาะหน้าวิชา · `#bbar.bb6`) · ออกด้วย `#readExit` มุมซ้ายล่าง (S9: จอ ≤ 900 px กองขวาเหนือปุ่ม ↑) (ป้ายกาง 2.5 วินาทีตอนเข้าโหมด) / Esc / ] / ไปหน้าที่ไม่ใช่หน้าวิชา · `focusSearch` ถูกห่อให้ออกจากโหมดก่อน และกด / ก็ออก · ปุ่มลัด `[` ย่อ/ขยาย `]` โหมดอ่าน (ใช้ `e.code` ทำงานบนแป้นไทย)
   · สลับแล้วคงตำแหน่งที่อ่าน (`railKeep`: ระยะของข้อความบนสุดจาก `navOffset()` เท่าเดิม แล้ววัด `.m-wide`/ตาราง `.scrolls` ใหม่ เพราะ resize ไม่ยิง) · จุดเปลี่ยนสารบัญ/แถบข้างของบล็อก v4 เลื่อนลงใน CSS ช่อง S2: แถบไอคอน 1214/1374/1574 · โหมดอ่าน 1154/1314/1514 (= เดิม − 186 / − 246) — **แก้จุดเปลี่ยนหรือความกว้างคอลัมน์ใน `_work/layout/layout.css` ต้องแก้ชุดนี้ตาม** · ตรวจรับ `node tests/rail.browser.cjs`
 
 #### 14.3 S3 — ประสิทธิภาพ/ออฟไลน์
@@ -437,9 +598,9 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 
 #### 14.6 S6 — SRS/วันสอบ/คืนก่อนสอบ
 - โค้ดทั้งหมดอยู่ในช่อง SLOT S6 (app.js/app.css) · ส่วนคำนวณล้วนอยู่ระหว่าง `/* ---- S6 core BEGIN` … `END` (`srsCore` `srsPlanCat` `srsSidOf` `srsQuizGrade`) ซึ่ง `tests/srs.test.cjs` รันใน vm — ห้ามแตะ DOM ในส่วนนั้น
-- **`atlas-srs-v1`** `{ <คีย์>: {due, ivl, ef, reps, lapses, last} }` · due/last = ms (due = เที่ยงคืนเวลาท้องถิ่นของวันครบกำหนด) · SM-2 ตัดทอน: ivl 1 → 3 → round(ivl×ef ก่อนปรับ) · ef เริ่ม 2.5 ต่ำสุด 1.3 · g < 3 = reps 0, lapses +1, ivl 1 · ivl ≤ 365 และ ≤ วันก่อนสอบของวิชา · **`atlas-exam-v1`** `{ <วิชา>: {date "YYYY-MM-DD", kind exam|zach|zacho, qa?} }` (qa = จำนวนคำถามปากเปล่าที่ #/cram นับได้) · **`atlas-seen-v1`** `{ <หัวข้อ>: {read, t} }` (read = จำนวนครั้งที่หัวข้อค้างกลางจอ > 20 วินาที)
+- **`atlas-srs-v1`** `{ <คีย์>: {due, ivl, ef, reps, lapses, last} }` · due/last = ms (due = เที่ยงคืนเวลาท้องถิ่นของวันครบกำหนด) · SM-2 ตัดทอน: ivl 1 → 3 → round(ivl×ef ก่อนปรับ) · ef เริ่ม 2.5 ต่ำสุด 1.3 · g < 3 = reps 0, lapses +1, ivl 1 · ivl ≤ 365 และ ≤ วันก่อนสอบของวิชา · **`atlas-exam-v1`** `{ <วิชา>: {date "YYYY-MM-DD", kind exam|zach|zacho, qa?} }` (qa = จำนวนคำถามปากเปล่าทั้งหมด · S9: จาก `QAIX[sid].n` ของ S5 จดตอนเปิดหน้าวิชา/#/cram — เดิมคือจำนวนที่ #/cram นับได้) · **`atlas-seen-v1`** `{ <หัวข้อ>: {read, t} }` (read = จำนวนครั้งที่หัวข้อค้างกลางจอ > 20 วินาที)
 - **API:** `window.SRS.grade(key, 0–5, now?)` · `.due(prefix, now?)` (เรียงครบกำหนดก่อน แล้ว lapses มากก่อน) · `.get(key)` · `.all()` · `.reload()` · ทุกครั้งที่ให้คะแนนยิง `document` เหตุการณ์ `srs:grade` `{key, rec}` · `window.examPlan(sid, now?)` → `{days, final, topics|oral|terms: {pending, quota, today:[คีย์]}}` หรือ null ถ้าไม่ตั้งวันสอบ
-- **session อื่นป้อนคะแนน:** `window.SRS && SRS.grade(key, g)` — Flashcard/ควิซศัพท์ใช้ `termKey()` · ปากเปล่า `q:<วิชา>/<หัวข้อ>/<id>` (id เดิม หรือ `"qa-" + stableId(innerHTML ของ .qa-q หรือ summary)`) · แนะนำ จำได้ = 4 ลังเล = 3 ไม่ได้ = 1 · ที่ S6 ป้อนเอง: ติ๊ก ✓ หัวข้อ/สารบัญ/คลังศัพท์ = 4 · quiz2 ตอบครบบล็อก → `z:<หัวข้อ>/<data-id หรือลำดับ quiz2>` ตาม % (100 = 5 · ≥ 80 = 4 · ≥ 60 = 3 · ≥ 40 = 2)
+- **session อื่นป้อนคะแนน:** `window.SRS && SRS.grade(key, g)` — Flashcard/ควิซศัพท์ใช้ `termKey()` · ปากเปล่า `q:<วิชา>/<หัวข้อ>/<id>` (id จาก DOM/`data/qa` — S9: `#/cram` เดิมคิดจาก innerHTML ทำให้บางข้อมีสองคีย์ ตอนนี้เรียก `qaIds()` ของ S5) · แนะนำ จำได้ = 4 ลังเล = 3 ไม่ได้ = 1 · ที่ S6 ป้อนเอง: ติ๊ก ✓ หัวข้อ/สารบัญ/คลังศัพท์ = 4 · quiz2 ตอบครบบล็อก → `z:<หัวข้อ>/<data-id หรือลำดับ quiz2>` ตาม % (100 = 5 · ≥ 80 = 4 · ≥ 60 = 3 · ≥ 40 = 2)
 - ที่เสียบไว้: `overview-top` การ์ด «วันนี้ทวนอะไร» + ชิป «อีก N วัน» · `subject-head` (เฉพาะวิชาเนื้อหาเต็ม) «ครบกำหนดทวน n · ยังอ่อน m» (ขยายแล้วเรียก `margWeak()` เดิม) + ปุ่ม ☾ โหมดคืนก่อนสอบ + ช่องวันสอบ/แผนวันนี้ · `progress` ตารางกำหนดทวน · หน้า `#/cram/<วิชา>` (registerPage) · hooks `subject` `fill` `clear` `overview`
 - `#/cram` คัด `header.sec-h .k-sum .k-trap details.qa` + `.call` ที่ป้ายมี «กับดัก/ออกสอบ» จาก `DEEP[sid].topics` (ไม่รวมบล็อกสรุป) · CSS แบบแน่นของกล่อง STD2 อยู่ใต้ `.cram` · vhist ทั้งวิชา ~55 000 px ที่ 1280 px · ถ้าเพิ่มชนิดกล่องสรุปใหม่ใน STD2 ให้เพิ่มใน `CR_SEL`
 - `tests/srs.test.cjs` มีเทสต์เบราว์เซอร์ (Playwright ของ Python · ~15 วินาที · ข้ามเองถ้าไม่มี) — `page.clock` มีผลทั้ง context จึงเปิด context ใหม่ที่คัดลอก localStorage มาสำหรับ «+8 วัน»
@@ -454,9 +615,19 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 
 #### 14.8 S8 — ข้อมูลผู้เรียน
 - **คีย์ศัพท์ถาวร:** `termKey(m, t, i)` = `"g:" + m.id + "-" + stableId(t.ru)` (คำรัสเซียซ้ำในกลุ่ม → `-2`, `-3` ตามลำดับที่พบ) — เพิ่ม/ย้ายคำใน MODULES ได้ เครื่องหมายไม่เลื่อน · **แก้คำรัสเซียของคำเดิม = คีย์ใหม่** (เครื่องหมายของคำนั้นหาย) ถ้าจำเป็นต้องแก้ ให้เขียนขั้นย้ายคีย์เพิ่มใน `learnerStart()`
-- **`atlas-meta-v1` = `{schema, created, lastActive}`** · `SCHEMA = 2` · `learnerStart()` (ต่อจาก `termKey` — รันก่อนช่อง SLOT เพราะ S6 อ่าน `atlas-srs-v1` ตอนเริ่ม) ย้ายคีย์ `g:<กลุ่ม>-<ลำดับ>` ใน DONE/BM/`atlas-srs-v1` ครั้งเดียวเมื่อ schema < 2 (เขียนไม่สำเร็จ → schema ไม่ขยับ ย้ายใหม่ครั้งหน้า) · เปลี่ยนความหมายคีย์ใดอีก → เพิ่ม SCHEMA + ขั้นย้ายใน `learnerStart()`
-- **`store(key, value)`** (ต้นส่วน APP) = ตัวเขียนเดียวของข้อมูลผู้เรียน: สตริงเขียนตรง · `undefined` ลบ · อื่น ๆ JSON · คืน true/false · ล้ม → `STORE_ERR` + แถบ «บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม» ครั้งเดียวพร้อมลิงก์ `#/progress` — **ทุกตัวเขียนของทุก session ผ่าน `store()` แล้ว** (S2 `saveUI` · S4 `sxSave` · S6 `wr` · S7 `s7Save` · โหมดอ่าน · ภาคของผู้อ่าน) ยกเว้นสำเนาออฟไลน์ของ S3 ที่มีทางลดขนาดเองเมื่อพื้นที่เต็ม · tests ตก ถ้ามี `localStorage.setItem` ตรง ๆ ที่อื่น · `saveQuiz` (บล็อก v4) เปลี่ยนเป็น `store(QKEY, QUIZ)` แล้ว ต้องแก้ `_work/layout/layout.js` ในเครื่องตามก่อนรัน patch_layout ครั้งหน้า
+- **`atlas-meta-v1` = `{schema, created, lastActive}`** · `SCHEMA = 2` (S9: = 3 · ขั้น 2→3 `migrateQuizKeys`) · `learnerStart()` (ต่อจาก `termKey` — รันก่อนช่อง SLOT เพราะ S6 อ่าน `atlas-srs-v1` ตอนเริ่ม) ย้ายคีย์ `g:<กลุ่ม>-<ลำดับ>` ใน DONE/BM/`atlas-srs-v1` ครั้งเดียวเมื่อ schema < 2 (เขียนไม่สำเร็จ → schema ไม่ขยับ ย้ายใหม่ครั้งหน้า) · เปลี่ยนความหมายคีย์ใดอีก → เพิ่ม SCHEMA + ขั้นย้ายใน `learnerStart()`
+- **`store(key, value)`** (ต้นส่วน APP) = ตัวเขียนเดียวของข้อมูลผู้เรียน: สตริงเขียนตรง · `undefined` ลบ · อื่น ๆ JSON · คืน true/false · ล้ม → `STORE_ERR` + แถบ «บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม» ครั้งเดียวพร้อมลิงก์ `#/progress` — **ทุกตัวเขียนของทุก session ผ่าน `store()` แล้ว** (S2 `saveUI` · S4 `sxSave` · S6 `wr` · S7 `s7Save` · โหมดอ่าน · ภาคของผู้อ่าน) ยกเว้นสำเนาออฟไลน์ของ S3 (ลดขนาดเองเมื่อเต็ม) · โหมดผู้ดูแล `ADMINKEY` · นำเข้า/คืนชุดเดิมใน `applyLearnerData` · tests ตก ถ้ามี `localStorage.setItem` ตรง ๆ ที่อื่น (รายการยกเว้นใน `tests/learner-data.test.cjs`) · `saveQuiz` (บล็อก v4) เปลี่ยนเป็น `store(QKEY, QUIZ)` แล้ว ต้องแก้ `_work/layout/layout.js` ในเครื่องตามก่อนรัน patch_layout ครั้งหน้า
 - **ทะเบียนคีย์ `learnerKey(key, {kind: "set"|"list"|"obj"|"any"|"raw", re, label, count(v), temp})`** (ลงทะเบียนครบทุกคีย์ของ S2–S7 แล้ว · tests ตก ถ้ามีคีย์ `atlas-*-vN` ใหม่ที่ไม่ลงทะเบียน) — ใช้ตรวจไฟล์สำรองและสรุปก่อนนำเข้า · session อื่นเรียกได้ที่ระดับบนสุดของช่องตัวเอง (ไม่ลงทะเบียน = นำเข้าได้แต่ขึ้น «ไม่รู้จัก n รายการ») · `temp: true` = ปุ่ม «ล้างข้อมูลชั่วคราว» ลบได้ (ตอนนี้ `atlas-last-v1` `atlas-rail-v1` `atlas-ui-v1` `atlas-search-v1` + `atlas-backup-prev` ถามแยก)
-- **ไฟล์สำรองรุ่น 2** `{app: "atlas-site", v: 2, schema, saved, data: {คีย์ atlas-*: สตริงดิบ}}` ไม่รวม `atlas-admin-v1` `atlas-backup-prev` · รับรุ่น 1 ได้ (schema 1 → ย้ายหลังโหลดใหม่) · รุ่นไฟล์/ข้อมูลใหม่กว่า/คีย์ผิดรูปแบบ → ปฏิเสธ ไม่แตะข้อมูล
+- **ไฟล์สำรองรุ่น 2** `{app: "atlas-site", v: 2, schema, saved, data: {คีย์ atlas-*: สตริงดิบ}}` ไม่รวม `atlas-admin-v1` `atlas-backup-prev` (S9: + `atlas-offline-v1` = `DEVICE_KEYS`) · รับรุ่น 1 ได้ (schema 1 → ย้ายหลังโหลดใหม่) · รุ่นไฟล์/ข้อมูลใหม่กว่า/คีย์ผิดรูปแบบ → ปฏิเสธ ไม่แตะข้อมูล
 - นำเข้า = `importPlan()` (ตรวจ+สรุป) → `confirm` → `applyLearnerData()` เก็บชุดปัจจุบันลง **`atlas-backup-prev`** `{saved, why, data}` ก่อน (เก็บไม่ได้ = ยกเลิก) → เขียน · ล้มกลางทางคืนชุดเดิมทีละคีย์ · `restorePrev()` = ปุ่ม «กู้คืนชุดก่อนนำเข้า» (สลับชุด กดซ้ำย้อนกลับ) · `progressImport(file)` ยังเรียกแบบเดิม (throw = เหตุผล · ยกเลิก = false)
 - การ์ด «พื้นที่เก็บในเครื่องนี้» + «ชุดก่อนนำเข้า» ผ่าน `HOOKS.html("progress")` (หน้า `renderProgress` ของ S2 · หน้าสำรองของ S8 ลบแล้ว) · tests: `tests/learner-data.test.cjs`
+
+#### 14.9 S9 — router และปิดรุ่น (29 ก.ย. + 7 ต.ค. 2026)
+- **router `NAVBUSY`** (session 29 ก.ย. ค้างใน branch `blissful-mendel` รวมเข้าตอนปิดรุ่น): งานกระโดดตั้งแต่ `scrollToTopic` รอหัวข้อโหลดจนตำแหน่งนิ่ง — `writeScrollState` ไม่เขียนระหว่างงาน `navEnd` เขียนครั้งเดียวตอนจบ · `go()`/Back แบบพิกเซล `navStop()` · ResizeObserver บน `#view` · ตรวจ `node tests/navstate.browser.cjs [--cpu 4] [--slow 700] [--mobile]`
+- **ตรวจรอยต่อ 6 ด้าน** (lifecycle · navigation · storage · offline · มือถือ · หน้าใหม่) ได้ 39 ข้อ แก้ทุกข้อที่ยืนยันจากโค้ดได้: quiz2 ให้คะแนน SRS ซ้ำทุกครั้งที่กดหลังตอบครบ (`ZWAS`) · ผลควิซท้ายหัวข้อช้าไปหนึ่งคำตอบ · ✓ ท้ายหัวข้อไม่สร้างรายการทวน · `srsSidOf` ไม่รู้จักคีย์ศัพท์รุ่น S8 · `#/cram` id ปากเปล่าคนละแบบกับ `#/oral` · «เปิดฉบับเต็ม» ไม่ผ่าน router · คืนตำแหน่งเลยไป 2–4 จอเพราะแบบจำลองด้านบนยังไม่ติดตั้ง · ผลค้นหาต้นหัวข้อ/ตรงชื่อหัวข้อ → ที่อยู่ชี้หัวข้อก่อนหน้า/ไม่มีไฮไลต์ · Back กลับ `#/cram` แล้วไปบนสุด (`restoreY`) · ซ้อมปากเปล่าเริ่มชุดใหม่หลัง Back (`S5RUN`) · เปิดวิชาโครงร่างทับ «อ่านต่อ» · ลิงก์ `#<id>` ไม่เพิ่มประวัติ
+- **ออฟไลน์:** «อัปเดต» หลังเว็บออกรุ่นใหม่ลบไฟล์ของวิชาเอง (เทียบรายการทั้ง `?v=` แต่ตัวลบลบทุกรุ่น → `offlinePath`) · หัวข้อเก็บด้วย ?v= คนละตัวกับที่หน้าขอ (→ `dbUrl`) · sw.js เก็บการเปิดไฟล์ใด ๆ (เช่นรูปในแท็บใหม่) เป็นหน้าเว็บ (→ `isShell`) · ไฟล์สำรองพา `atlas-offline-v1` ไปเครื่องอื่น (→ `DEVICE_KEYS`) · นำเข้าในแท็บหนึ่งถูกแท็บอื่นเขียนทับ (→ แท็บอื่นโหลดใหม่) · วิชาที่ไม่มีคำถามปากเปล่าเก็บออฟไลน์ไม่ได้เพราะ hook ของ S5 ขอไฟล์ qa ที่ไม่มี (→ ข้ามเมื่อ `QAIX` บอกว่าไม่มี) · **`CACHE` ใน sw.js คงเป็น `atlas-v1` โดยตั้งใจ** (แผนเดิมสั่งเปลี่ยน แต่จะลบวิชาที่ผู้อ่านเก็บไว้ขณะหน้าเว็บยังบอกว่าเก็บแล้ว · รูปแบบสำเนาไม่เปลี่ยน)
+- **มือถือ:** แถววันสอบ/แผนของ S6 พับใน ▾ ที่จอ ≤ 600 px + ป้าย «อีก N วัน» · ข้อความอธิบายปุ่มออฟไลน์ซ่อนจนกด · `#netbar` เป็นเม็ดมุมซ้ายล่าง · ปุ่มออกจากโหมดอ่านไปกองขวา · ช่องกรอกใน `#view` 16 px (iPhone ไม่ซูม) · ยกปุ่ม ↑ พ้นแถบ `#s8bar` · `navLine()` · แถบหลบของ S2 ไม่นับการเลื่อนระหว่าง `NAVBUSY` (เดิมงานกระโดดที่นานกว่า 1.2 วินาทีสั่งหลบแถบเอง)
+- **ข้อมูล:** `SCHEMA = 3` — `migrateQuizKeys` ย้ายคีย์ควิซรายบล็อกตามลำดับ (ก่อน S5) · แผนสอบนับปากเปล่าจาก `QAIX` (toe/surn เดิมนับไม่ได้) · Flashcard `/due` + ลิงก์จากการ์ดวันนี้/แผง S6 · «ฝึกเรื่องนี้» ในหัวข้อที่ไม่มีอะไรให้ฝึก → ฝึกทั้งวิชา · % ควิซของวิชาเป็นตัวเลขเดียวกันทุกหน้า
+- **รอบตรวจทานโค้ดที่แก้ (4 ด้าน 25 ข้อ):** คืนตำแหน่งเปลี่ยนเป็นจุดอ้างอิง `anchorAt` (วิธีแรก «ติดตั้งแบบจำลองเหนือเส้นก่อนกระโดด» ผิดเมื่อผู้อ่านกระโดดเข้ากลางหัวข้อ) · ชุดปากเปล่าทำต่อเฉพาะ Back (`GO_POP`) ·
+  «จำได้» วันละครั้งต่อคีย์ (กด «ลองใหม่» · ติ๊กซ้ำ · «จำได้» ซ้ำใน cram ไม่ดันช่วงทวน) · Back หลัง «เปิดฉบับเต็ม» กลับโหมดสรุป · ปุ่ม «ตั้งวันสอบ» บนจอแคบ · ย้ายคีย์ SRS ของ cram รุ่นก่อนเมื่อเปิด cram · ไฟล์สำรองบอก schema จริง · บันทึกออฟไลน์ที่ไม่มีสำเนาถูกลบเอง · CSS (ข้อความยืนยันลบสำเนา · แถบออฟไลน์ธีมมืด · มือถือแนวนอน · ปุ่มเหนือ `#s8bar`)
+- ชุดตรวจใหม่ `tests/paths.browser.cjs` + `tests/s9.browser.cjs` (กับโค้ดก่อนแก้ ตก 6 ใน 12 ข้อ) · `tests/rail.browser.cjs` รองานกระโดดของ router จบจริงก่อนวัด (เดิมรอตายตัว 1.5 วินาที — เวลาเปิดหน้าแกว่ง 0.8–2 วินาที) · `learner-data` ทดสอบสคีมา 3 · `srs` ใช้คีย์ศัพท์รุ่น S8 และแถวที่พับบนมือถือ
