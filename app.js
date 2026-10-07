@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "949e58b91a";
+const DATA_VERSION = "64ef95468c";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -69995,7 +69995,7 @@ function store(key, value) {
 }
 /* S8: รุ่นสคีมาของข้อมูลผู้เรียน (atlas-meta-v1 = {schema, lastActive, created}) · 2 = คีย์ศัพท์เป็น id ถาวรจากคำรัสเซีย (termKey)
    ย้ายข้อมูลรุ่น 1 → 2 ทำครั้งเดียวในช่อง SLOT S8 (learnerStart) หลัง MODULES ครบ */
-const METAKEY = "atlas-meta-v1", SCHEMA = 2, BACKUP_V = 2, PREVKEY = "atlas-backup-prev";
+const METAKEY = "atlas-meta-v1", SCHEMA = 3, BACKUP_V = 2, PREVKEY = "atlas-backup-prev";   // 3 = ผลควิซรายบล็อกคีย์ตาม id ของ host (S9)
 /* S8: ทะเบียนคีย์ของข้อมูลผู้เรียน — ใช้ตรวจไฟล์สำรองก่อนนำเข้าและสรุปสิ่งที่จะเปลี่ยน
    kind: "set" = JSON array ของสตริง/ตัวเลข · "list" = JSON array อะไรก็ได้ · "obj" = JSON object · "any" = JSON ใดก็ได้ · "raw" = สตริงตามรูปแบบ re · count(v) = จำนวนรายการ (ค่าที่ parse แล้ว)
    temp: true = สร้างใหม่ได้ ปุ่ม «ล้างข้อมูลชั่วคราว» ลบได้ · session อื่นลงทะเบียนคีย์ของตัวเองได้ด้วย learnerKey(key, spec) */
@@ -70131,6 +70131,32 @@ function migrateTermKeys(set, map) {
   set.forEach(k => { const nk = map.get(k); if (nk !== undefined) n++; out.add(nk !== undefined ? nk : k); });
   return { out, n };
 }
+const lsJSON = k => { try { const v = JSON.parse(localStorage.getItem(k)); return v && typeof v === "object" && !Array.isArray(v) ? v : null; } catch (e) { return null; } };
+/* สคีมา 2 → 3: · atlas-srs-v1 คีย์ z:<หัวข้อ>/<ลำดับ> (S6 ให้คะแนนก่อน S5 ใส่ id ให้ host) → z:<หัวข้อ>/<หัวข้อ>-q<ลำดับ+1> — ไม่งั้นค้างครบกำหนดตลอดไป
+   (ทั้งสองคีย์มี = เก็บตัวที่ทวนล่าสุด) · atlas-quiz-v1 (บล็อก v4 คีย์ตามลำดับ) → atlas-practice-v1 (S5 คีย์ตาม id) เฉพาะบล็อกที่ S5 ยังไม่มี
+   — หน้าแรก/ความก้าวหน้าใช้ atlas-practice-v1 ทันทีที่หัวข้อมีบล็อกเดียว ผลก่อน S5 จึงหายไปจากตัวเลข % · คืน {srs, srsN, prac, pracN} ไม่แตะ localStorage */
+function migrateQuizKeys(srs, quiz, prac) {
+  srs = srs || {}; prac = prac || {};
+  let srsN = 0, pracN = 0;
+  const out = {};
+  Object.keys(srs).forEach(k => {
+    const m = /^z:([^/]+)\/(\d+)$/.exec(k);
+    if (!m) { if (!(k in out) || ((srs[k] || {}).last || 0) >= ((out[k] || {}).last || 0)) out[k] = srs[k]; return; }
+    const nk = "z:" + m[1] + "/" + m[1] + "-q" + (+m[2] + 1);
+    srsN++;
+    if (!(nk in out) || ((srs[k] || {}).last || 0) > ((out[nk] || {}).last || 0)) out[nk] = srs[k];
+  });
+  Object.keys(quiz || {}).forEach(tid => {
+    const r = quiz[tid];
+    if (!r || typeof r !== "object" || tid.startsWith("_")) return;
+    Object.keys(r).forEach(i => {
+      if (!/^\d+$/.test(i) || !r[i] || typeof r[i] !== "object") return;
+      const P = prac[tid] = prac[tid] && typeof prac[tid] === "object" ? prac[tid] : {}, hid = tid + "-q" + (+i + 1);
+      if (!P[hid]) { P[hid] = r[i]; pracN++; }
+    });
+  });
+  return { srs: out, srsN, prac, pracN };
+}
 function readMeta() {
   try { const v = JSON.parse(localStorage.getItem(METAKEY)); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; }
 }
@@ -70154,7 +70180,14 @@ function learnerStart() {
       Object.keys(srs).forEach(k => { const nk = map.get(k); if (nk !== undefined) { n++; if (!(nk in srs)) out[nk] = srs[k]; } else out[k] = srs[k]; });
       if (n) ok = store("atlas-srs-v1", out) && ok;
     }
-    meta.schema = ok ? SCHEMA : meta.schema || 1;
+    meta.schema = ok ? 2 : meta.schema || 1;
+  }
+  if (meta.schema === 2) {                          // S9: ก่อน S5 ผลควิซรายบล็อกคีย์ตามลำดับบล็อกในหัวข้อ (0, 1 …) — S5 ให้ id ของ host = <หัวข้อ>-q<ลำดับ+1>
+    const r = migrateQuizKeys(lsJSON("atlas-srs-v1"), lsJSON("atlas-quiz-v1"), lsJSON("atlas-practice-v1"));
+    let ok = true;
+    if (r.srsN) ok = store("atlas-srs-v1", r.srs) && ok;
+    if (r.pracN) ok = store("atlas-practice-v1", r.prac) && ok;
+    if (ok) meta.schema = 3;
   }
   meta.lastActive = now;
   store(METAKEY, meta);
@@ -70333,13 +70366,17 @@ function buildNav() {
 }
 
 /* ---- สำรอง/นำเข้าความคืบหน้า (v5 · S8 ทำให้กู้คืนได้) — ทุกคีย์ atlas-* ใน localStorage เป็นไฟล์ JSON ----
-   ไฟล์รุ่น 2: {app: "atlas-site", v: 2, schema, saved, data: {<คีย์ atlas-*>: <สตริงดิบใน localStorage>}} ไม่รวม atlas-admin-v1 และ atlas-backup-prev
+   ไฟล์รุ่น 2: {app: "atlas-site", v: 2, schema, saved, data: {<คีย์ atlas-*>: <สตริงดิบใน localStorage>}} ไม่รวมคีย์ของเครื่อง (DEVICE_KEYS: atlas-admin-v1 atlas-backup-prev atlas-offline-v1)
    นำเข้า: ตรวจรูปแบบทุกคีย์ตามทะเบียน LEARNER (คีย์ที่ไม่รู้จักรับไว้แต่นับแจ้ง) → สรุปสิ่งที่จะเปลี่ยนให้ยืนยัน
    → เก็บชุดปัจจุบันลง atlas-backup-prev → เขียน · เขียนล้มกลางทาง = คืนชุดเดิมจาก atlas-backup-prev แล้วแจ้ง
    ไฟล์เสีย/รุ่นใหม่กว่าที่เว็บนี้รู้จัก → ปฏิเสธพร้อมเหตุผล ไม่แตะข้อมูลเดิม · รับไฟล์รุ่น 1 (schema 1 → learnerStart ย้ายคีย์ศัพท์หลังโหลดใหม่) */
+/* คีย์ที่ผูกกับเครื่องนี้ ไม่ใช่ความคืบหน้า — ไม่ส่งออก ไม่รับจากไฟล์ ไม่ลบ/เขียนทับตอนนำเข้า
+   atlas-offline-v1 บอกว่าวิชาไหนมีสำเนาใน Cache API ของเครื่องนี้ — ไฟล์สำรองไม่มีสำเนาเหล่านั้น
+   (ถ้าติดไปด้วย เครื่องใหม่จะบอกว่าเก็บไว้แล้วทั้งที่ไม่มี และเครื่องเดิมจะลบสำเนาจริงจากหน้าเว็บไม่ได้) */
+const DEVICE_KEYS = new Set([ADMINKEY, PREVKEY, "atlas-offline-v1"]);
 const learnerKeysNow = () => {
   const out = [];
-  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("atlas-") && k !== ADMINKEY && k !== PREVKEY) out.push(k); }
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("atlas-") && !DEVICE_KEYS.has(k)) out.push(k); }
   return out;
 };
 function learnerSnapshot() {
@@ -70349,7 +70386,7 @@ function learnerSnapshot() {
 }
 function progressExport() {
   try {
-    const blob = new Blob([JSON.stringify({ app: "atlas-site", v: BACKUP_V, schema: SCHEMA, saved: new Date().toISOString(), data: learnerSnapshot() }, null, 1)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ app: "atlas-site", v: BACKUP_V, schema: readMeta().schema || 1, saved: new Date().toISOString(), data: learnerSnapshot() }, null, 1)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "study-program-progress-" + new Date().toISOString().slice(0, 10) + ".json";
@@ -70389,7 +70426,7 @@ function importPlan(text) {
   const v = j.v === undefined ? 1 : j.v;
   if (!Number.isInteger(v) || v < 1) throw new Error("ไฟล์เสีย — ไม่รู้รุ่นของไฟล์");
   if (v > BACKUP_V) throw new Error("ไฟล์มาจากเว็บรุ่นใหม่กว่า (ไฟล์รุ่น " + v + ") — โหลดหน้าเว็บใหม่ให้เป็นรุ่นล่าสุดแล้วลองอีกครั้ง");
-  const keys = Object.keys(j.data).filter(k => /^atlas-[\w-]+$/.test(k) && k !== ADMINKEY && k !== PREVKEY);
+  const keys = Object.keys(j.data).filter(k => /^atlas-[\w-]+$/.test(k) && !DEVICE_KEYS.has(k));
   if (!keys.length) throw new Error("ไฟล์ไม่มีข้อมูลความคืบหน้า");
   const data = {}, unknown = [];
   keys.forEach(k => { learnerParse(k, j.data[k]); data[k] = j.data[k]; if (!LEARNER[k]) unknown.push(k); });
@@ -70556,7 +70593,7 @@ function renderOverview() {
   if (rb) rb.addEventListener("click", e => {          // ลิงก์ชี้หัวข้อ (เปิดแท็บใหม่ได้) · คลิกปกติกลับไปตรงระยะที่อ่านค้างด้วย
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off });
+    go({ v: "subject", id: LAST.id, mode: LAST.mode, topic: LAST.topic, off: LAST.off, anc: LAST.anc, aoff: LAST.aoff });
   });
   HOOKS.run("overview");
 }
@@ -71206,8 +71243,30 @@ function navOffset() {                            // ความสูงขอ
   if (tn && tn.offsetParent && getComputedStyle(tn).position === "sticky") off = Math.max(off, (parseFloat(getComputedStyle(tn).top) || 0) + tn.offsetHeight);
   return Math.round(off) + 12;
 }
-function currentTopicEl() {
-  const line = navOffset() + 2;
+/* เส้นที่ผู้อ่านเห็นจริง — เหมือน navOffset แต่นับเฉพาะส่วนของแถบบนที่อยู่บนจอ (แถบหลบตอนอ่าน html.reading ของ S2 เลื่อนแถบพ้นจอ)
+   ใช้ตอนบันทึกตำแหน่ง (writeScrollState) เท่านั้น: เก็บระยะจากเส้นที่เห็น → คืนตำแหน่งตอนแถบกลับมาแล้วข้อความเดิมอยู่ใต้แถบพอดี ไม่จมใต้ชิปหัวข้อ
+   ห้ามใช้แทน navOffset ในการกระโดด — ค่าแกว่งระหว่างแถบเลื่อนเข้า/ออก งานกระโดดจะไล่แก้ตำแหน่งตาม (ลองแล้ว ตำแหน่งที่อ่านขยับ 25–46 px) */
+function navLine() {
+  const tb = document.querySelector(".topbar");
+  if (!tb || getComputedStyle(tb).position !== "sticky" || !document.documentElement.classList.contains("reading")) return navOffset();
+  const r = tb.getBoundingClientRect(), tn = view.querySelector(".topic-nav");
+  let off = Math.max(0, Math.min(r.height, r.bottom));
+  if (tn && tn.offsetParent && getComputedStyle(tn).position === "sticky") off = Math.max(off, tn.getBoundingClientRect().bottom);
+  return Math.round(off) + 12;
+}
+/* จุดอ้างอิงของตำแหน่งที่อ่าน: องค์ประกอบมี id ตัวสุดท้าย (ตามลำดับในหน้า) ที่ขอบบนอยู่เหนือเส้น — ไม่นับของข้างในแบบจำลอง
+   คืนตำแหน่งด้วยองค์ประกอบนี้แทนระยะจากหัวหัวข้อ: ความสูงเหนือมันเปลี่ยนได้ (แบบจำลองที่ติดตั้งเมื่อใกล้จอ · รูป · กล่องพับ)
+   ตำแหน่งยังตรง เพราะ scrollToTarget ตามองค์ประกอบจริงทุกเฟรม (เดิมใช้ระยะจากหัวหัวข้ออย่างเดียว → เลยไป 2–4 จอ) */
+function anchorAt(sec, line) {
+  let a = null;
+  for (const e of sec.querySelectorAll("[id]")) {
+    if (e.parentElement && e.parentElement.closest("[data-demo]")) continue;
+    if (e.getClientRects().length && e.getBoundingClientRect().top <= line) a = e;
+  }
+  return a;
+}
+function currentTopicEl(at) {                       // at = เส้นที่ใช้ (ไม่ส่ง = navOffset) — writeScrollState ส่ง navLine() ให้ตรงกับระยะที่เก็บ
+  const line = (at == null ? navOffset() : at) + 2;
   let cur = null;
   for (const sec of view.querySelectorAll("section.topic[id]")) { if (sec.getBoundingClientRect().top <= line) cur = sec; else break; }
   return cur;
@@ -71218,13 +71277,20 @@ function writeScrollState() {                     // เขียนตำแห
   if (NAVBUSY) return;                             // กำลังกระโดด: ตำแหน่งตอนนี้เป็นกลางทาง (บนสุดของหน้า/หัวข้อระหว่างทาง) — งานกระโดดเขียนเองตอนจบ (navEnd)
   const st = routeOnly(state), extra = { y: Math.round(window.scrollY) };
   if (state.v === "subject") {
-    const cur = currentTopicEl();
+    const line = navLine(), cur = currentTopicEl(line);
     delete st.anchor;
-    if (cur) { st.topic = cur.id; extra.off = Math.round(navOffset() - cur.getBoundingClientRect().top); }
-    else delete st.topic;
+    if (cur) {
+      st.topic = cur.id; extra.off = Math.round(line - cur.getBoundingClientRect().top);
+      const a = anchorAt(cur, line);
+      if (a && a !== cur) { extra.anc = a.id; extra.aoff = Math.round(line - a.getBoundingClientRect().top); }
+    }
+    else { delete st.topic; if (DEEP[state.id]) st.mode = curMode(); }   // บนหัวหน้าวิชา: จดโหมดไว้ในที่อยู่ — Back จากอีกโหมด (เปิดฉบับเต็มจาก «จุดที่ยังอ่อน») กลับมาโหมดเดิม
     state.topic = st.topic;
-    LAST = { v: "subject", id: state.id, mode: curMode(), topic: st.topic || null, off: extra.off || 0 };
-    saveLast();
+    if (DEEP[state.id]) {                          // «อ่านต่อ» เฉพาะวิชาที่มีเนื้อหาเต็ม — เปิดดูโครงร่างวิชาอื่นไม่ทับจุดที่อ่านค้าง
+      LAST = { v: "subject", id: state.id, mode: curMode(), topic: st.topic || null, off: extra.off || 0 };
+      if (extra.anc) { LAST.anc = extra.anc; LAST.aoff = extra.aoff; }
+      saveLast();
+    }
   }
   setHistory("replace", st, extra);
 }
@@ -71234,7 +71300,7 @@ function writeScrollState() {                     // เขียนตำแห
    (เคยวัดได้เลยเป้า 600–1 900 px) → กระโดดทันทีแล้วคอยแก้ตำแหน่งจนนิ่ง หยุดทันทีที่ผู้อ่านแตะ/เลื่อนเอง
    ระหว่างงานกระโดด (NAVBUSY) writeScrollState ไม่เขียน — เดิมตัวหน่วง 400 ms หลัง scroll อ่านตำแหน่งกลางทาง (หลัง go() เลื่อนขึ้นบนสุด
    ระหว่างรอหัวข้อโหลด หรือหัวข้อก่อนเป้าหมายระหว่างแก้ตำแหน่ง) แล้วไม่มี scroll มาแก้ ที่อยู่/«อ่านต่อ» จึงค้างผิดหัวข้อ → เขียนครั้งเดียวตอนงานจบ */
-let NAVJOB = 0, NAVBUSY = 0;                      // NAVJOB = เลขงานล่าสุด (งานเก่าเห็นว่าไม่ตรงแล้วหยุดเอง) · NAVBUSY = งานที่ยังไม่จบ (0 = ไม่มี)
+let NAVJOB = 0, NAVBUSY = 0, GO_POP = false;     // GO_POP = go() ครั้งล่าสุดมาจาก Back/Forward (หน้าที่ทำต่อจากเดิมได้ เช่นชุดซ้อมปากเปล่า)                      // NAVJOB = เลขงานล่าสุด (งานเก่าเห็นว่าไม่ตรงแล้วหยุดเอง) · NAVBUSY = งานที่ยังไม่จบ (0 = ไม่มี)
 function navBegin() { NAVBUSY = ++NAVJOB; return NAVJOB; }
 function navEnd(job) { if (NAVBUSY === job) { NAVBUSY = 0; writeScrollState(); } }   // จบแล้ว: ที่อยู่ + «อ่านต่อ» = หัวข้อที่อยู่บนจอจริง
 function navStop() { NAVJOB++; NAVBUSY = 0; }      // เปลี่ยนหน้า/เลื่อนไปตำแหน่งอื่น — งานที่ค้างอยู่หยุด ไม่เขียนทับ
@@ -71281,7 +71347,7 @@ function bodyReady(body) {                        // รอจนกล่อง
     })();
   });
 }
-async function scrollToTopic(id, o) {             // o: { off, anchor (id ในหัวข้อ), hl (คำที่ค้นหา — ไฮไลต์แล้วไปที่แรกที่เจอ) }
+async function scrollToTopic(id, o) {             // o: { off, anchor (id ในหัวข้อ), hl (คำที่ค้นหา — ไฮไลต์แล้วไปที่แรกที่เจอ), anc + aoff (จุดอ้างอิงที่ writeScrollState จด) }
   o = o || {};
   const sec = document.getElementById(id);
   if (!sec || !view.contains(sec)) return;
@@ -71292,7 +71358,15 @@ async function scrollToTopic(id, o) {             // o: { off, anchor (id ใน
   if (job !== NAVJOB || !sec.isConnected) { navEnd(job); return; }   // มีงานใหม่แทนแล้ว (กดหัวข้ออื่นระหว่างรอ) — ไม่กระโดดทับ
   let el = sec, off = o.off || 0;
   if (o.anchor) { const a = document.getElementById(o.anchor); if (a && sec.contains(a)) { el = a; off = 0; } }
-  if (o.hl && body && typeof markHits === "function") { const m = markHits(body, o.hl); if (m) { el = m; off = -Math.round(window.innerHeight * 0.2); } }
+  else if (o.anc && !o.hl) { const a = document.getElementById(o.anc); if (a && sec.contains(a)) { el = a; off = o.aoff || 0; } }   // คืนตำแหน่ง (Back · รีเฟรช · «อ่านต่อ») ด้วยจุดอ้างอิง — anchorAt
+  if (o.hl && body && typeof markHits === "function") {
+    const m = markHits(body, o.hl);
+    // คำอยู่ลงมา 20 % ของจอ แต่ไม่ให้หัวหัวข้อตกลงใต้เส้น (คำที่อยู่ต้นหัวข้อ) — ไม่งั้นที่อยู่/«อ่านต่อ» ชี้หัวข้อก่อนหน้า
+    if (m) { el = m; off = -Math.min(Math.round(window.innerHeight * 0.2), Math.max(0, Math.round(m.getBoundingClientRect().top - sec.getBoundingClientRect().top))); }
+    // ผลที่ตรงแค่ชื่อหัวข้อ (ค้นหาให้คะแนนชื่อสูงสุด จึงขึ้นอันดับแรก) — ไฮไลต์ที่ชื่อ แล้วกระโดดไปหัวข้อตามปกติ
+    // (เลื่อนให้ชื่ออยู่ลงมา 20 % จะทำให้ท้ายหัวข้อก่อนหน้ากินบนจอ แล้วที่อยู่ชี้หัวข้อก่อนหน้า)
+    else for (const h of sec.querySelectorAll(".topic-head h2, .topic-head .th")) if (markHits(h, o.hl)) break;
+  }
   scrollToTarget(el, off);
 }
 function navTopic(id, o) {                        // กดสารบัญ/ชิปหัวข้อ/ก่อนหน้า-ถัดไป — เพิ่มประวัติ Back จึงกลับมาที่เดิมได้
@@ -71312,14 +71386,44 @@ function navTopic(id, o) {                        // กดสารบัญ/�
 jumpTopic = id => navTopic(id);
 scrollToEl = el => scrollToTarget(el);
 settleAt = () => {};
+/* % ควิซของวิชาในแถบสถานะสารบัญ v4 = ตัวเลขเดียวกับหน้าแรก/สารบัญแบบแผ่น/#/progress (subjTrip ของ S2: รวมบล็อกสรุป
+   และใช้ผลรายบล็อกของ S5) — เดิม v4 นับเฉพาะหัวข้อฉบับเต็ม หน้าเดียวกันจึงขึ้นสองตัวเลข */
+document.addEventListener("std2:quiz", () => setTimeout(() => { if (TOCX.sid) tocStrip(); }, 0));   // ตัวเก็บของ S5 ลงทะเบียนทีหลังบล็อก v4 — วาดแถบสถานะใหม่หลังทุกตัวบันทึกแล้ว
+quizOfSubject = sid => {                          // เฉพาะส่วนควิซของ subjTrip (ไม่นับศัพท์ — ถูกเรียกทุกครั้งที่เติมหัวข้อ/สารบัญขยับ)
+  if (!DEEP[sid]) return null;
+  const P = practiceStore();
+  let ok = 0, done = 0;
+  topicsOf(sid).forEach(t => { const r = topicQuiz(t.id, P); if (r) { ok += r.ok; done += r.done; } });
+  return done ? { ok, done, pct: Math.round(100 * ok / done) } : null;
+};
+/* «จุดที่ยังอ่อน → เปิดฉบับเต็ม» ของบล็อก v4 วาดหน้าใหม่เองโดยไม่ผ่าน go() — Back ไปผิดหน้า/โหมด (และรายการประวัติของหน้าสรุปถูกเขียนทับ)
+   การ์ดนี้ใช้ทั้งในแถบข้าง v4 · สารบัญแบบแผ่น S2 · แถว subject-head ของ S6 → ดักคลิกก่อนตัวเดิม (capture ที่กล่อง) แล้วส่งผ่าน router */
+{
+  const margWeakV4 = margWeak;
+  margWeak = function (m) {
+    margWeakV4(m);
+    if (!m || m.dataset.wkRoute) return;
+    m.dataset.wkRoute = "1";
+    m.addEventListener("click", e => {
+      const b = e.target.closest && e.target.closest("[data-full]");
+      if (!b || !m.contains(b)) return;
+      e.stopPropagation();
+      store("atlas-mode-v1", "full");                // ผู้อ่านเลือกฉบับเต็ม (เหมือนตัวเดิม) · MODE ให้ go() ตั้งจากหัวข้อ — ตั้งก่อนจะทำให้ Back คิดว่าอยู่โหมดเดียวกัน
+      const dlg = m.closest("dialog[open]");
+      if (dlg) dlg.close();
+      go({ v: "subject", id: TOCX.sid, topic: b.dataset.full });
+    }, true);
+  };
+}
 
 function go(st, opt) {
   opt = opt || {};
+  GO_POP = !!opt.pop;
   if (!opt.pop && !opt.init) writeScrollState();   // เก็บตำแหน่งของหน้าที่กำลังออก (ถ้ากำลังกระโดดอยู่ รายการนั้นชี้หัวข้อเป้าหมายไว้แล้ว)
   navStop();
   st = Object.assign({}, st);
-  const hl = st.hl, off = st.off;
-  delete st.hl; delete st.off;
+  const hl = st.hl, off = st.off, anc = st.anc, aoff = st.aoff;
+  delete st.hl; delete st.off; delete st.anc; delete st.aoff;
   if (st.v === "sem" && !ADMIN) st = { v: "overview" };
   if (st.v === "subject") {
     if (!ALL_SUBJ.some(x => x.id === st.id)) st = { v: "overview" };
@@ -71355,14 +71459,37 @@ function go(st, opt) {
   if (opt.pop) { ROUTED = location.hash; document.title = pageTitle(st); }
   else setHistory(opt.replace || opt.init ? "replace" : "push", st, { y: opt.y || 0, off: off || 0 });
   window.scrollTo({ top: st.topic ? 0 : opt.y || 0, behavior: "instant" });
+  if (!st.topic && opt.y && Math.abs(window.scrollY - opt.y) > 2) restoreY(opt.y);   // หน้ายังสั้นกว่าตำแหน่งเดิม (เนื้อหามาทีหลัง)
   if (st.v === "subject") {
-    if (st.topic) scrollToTopic(st.topic, { off, anchor: st.anchor, hl });
-    LAST = { v: "subject", id: st.id, mode: curMode(), topic: st.topic || null, off: off || 0 };
-    saveLast();
+    if (st.topic) scrollToTopic(st.topic, { off, anchor: st.anchor, hl, anc, aoff });
+    if (DEEP[st.id]) {                               // «อ่านต่อ» เฉพาะวิชาที่มีเนื้อหาเต็ม
+      LAST = { v: "subject", id: st.id, mode: curMode(), topic: st.topic || null, off: off || 0 };
+      saveLast();
+    }
   }
   const h1 = view.querySelector("h1");               // ผู้ใช้คีย์บอร์ด/โปรแกรมอ่านจอเริ่มที่หัวเรื่องของหน้าใหม่ (ไม่แย่งโฟกัสจากช่องค้นหา)
   if (h1 && !opt.init && document.activeElement !== searchEl) { h1.setAttribute("tabindex", "-1"); h1.focus({ preventScroll: true }); }
   HOOKS.run("go", st);
+}
+/* Back กลับหน้าที่เนื้อหามาทีหลัง (#/cram โหลดทีละหัวข้อ · หน้าผลค้นหา …): ตอน go() หน้ายังสั้น เลื่อนได้ไม่ถึง y
+   แล้วตำแหน่งที่ถูกตัดถูกเขียนทับรายการประวัติ → คอยเลื่อนซ้ำจนถึง y (≤ 20 วินาที — #/cram ยาวโหลดนาน · หยุดเมื่อผู้อ่านแตะ/เลื่อนเอง) ระหว่างนั้นไม่เขียนตำแหน่ง */
+function restoreY(y) {
+  const job = navBegin(), t0 = performance.now();
+  const evs = ["wheel", "touchstart", "keydown", "mousedown"];
+  const cancel = () => { if (job === NAVJOB) NAVJOB++; };
+  evs.forEach(ev => window.addEventListener(ev, cancel, { once: true, passive: true }));
+  let h = -1, calm = t0;
+  const tick = () => {
+    const now = performance.now(), H = document.documentElement.scrollHeight;
+    if (H !== h) { h = H; calm = now; }              // เนื้อหาด้านบนยังเติมอยู่ — ถึง y แล้วก็ยังเลื่อนได้ จึงรอให้ความสูงนิ่งก่อนจบ
+    const at = Math.abs(window.scrollY - y) <= 2;
+    if (job !== NAVJOB || now - t0 > 20000 || (at && now - calm > 1200)) {
+      evs.forEach(ev => window.removeEventListener(ev, cancel)); navEnd(job); return;
+    }
+    if (!at) window.scrollTo({ top: y, behavior: "instant" });
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 function onRoute() {
   if (location.hash === ROUTED) return;
@@ -71375,11 +71502,11 @@ function onRoute() {
     ROUTED = location.hash;
     state.topic = st.topic; state.mode = st.mode; state.anchor = st.anchor;
     document.title = pageTitle(st);
-    if (st.topic) scrollToTopic(st.topic, { off: hs.off, anchor: st.anchor });
+    if (st.topic) scrollToTopic(st.topic, { off: hs.off, anchor: st.anchor, anc: hs.anc, aoff: hs.aoff });
     else { navStop(); window.scrollTo({ top: hs.y || 0, behavior: "instant" }); }
     return;
   }
-  go(Object.assign(st, { off: hs.off }), { pop: true, y: hs.y });
+  go(Object.assign(st, { off: hs.off, anc: hs.anc, aoff: hs.aoff }), { pop: true, y: hs.y });
 }
 function inPageAnchor(raw, push) {
   let id = raw;
@@ -71388,7 +71515,12 @@ function inPageAnchor(raw, push) {
   if (!push) { try { history.replaceState(history.state, "", ROUTED || "#/"); } catch (e) {} }   // คืนที่อยู่ของหน้า
   if ((!el || !view.contains(el)) && state.v === "subject" && subjRoute(state.id, id).topic) { navTopic(id); return; }   // #<หัวข้อ> ที่ไม่ได้อยู่บนหน้า (เช่นลิงก์จากบล็อกสรุปไปฉบับเต็ม)
   if (!el || !view.contains(el)) return;
-  if (push) { writeScrollState(); setHistory("push", routeOnly(state), {}); }
+  if (push) {                                       // รายการประวัติใหม่ชี้เป้าหมาย — เดิมที่อยู่เท่าเดิมจึงกลายเป็น replace แล้ว Back ข้ามหน้าที่อ่านอยู่
+    writeScrollState();
+    const st = routeOnly(state), sec = el.closest("section.topic[id]");
+    if (state.v === "subject" && sec) { st.topic = sec.id; if (el === sec) delete st.anchor; else st.anchor = el.id; }
+    setHistory("push", st, {});
+  }
   scrollToTarget(el);
 }
 document.addEventListener("click", e => {          // <a href="#…"> ในเนื้อหา: ที่อยู่ของหน้า → go · #<id> → เลื่อนไปในหน้า
@@ -71941,12 +72073,13 @@ function sxClick(e) {
    โฟกัสอยู่บนการ์ดตลอดเมื่อเปลี่ยนใบ (การ์ดสร้างครั้งเดียวแล้วเปลี่ยนแค่เนื้อใน) · ผลต่อคำ → termResult(termKey(...)) (atlas-practice-v1._terms + SRS) */
 function renderFlash(st) {
   const o = termScope(st && st.seg);
-  let src = o.weak ? "weak" : "all", deck = [], idx = 0, flip = false, okCount = 0;
+  let src = o.due && window.SRS ? "due" : o.weak ? "weak" : "all", deck = [], idx = 0, flip = false, okCount = 0;
   let dir = s5opt("dir") === "th" ? "th" : "ru";
   const mods = MODULES.filter(m => !o.mod || m.id === o.mod);
   const allCards = mods.flatMap(m => m.terms.map((t, i) => ({ t, mod: m.th, k: termKey(m, t, i) })));
   const build = () => {
-    deck = s5shuffle(allCards.filter(c => src === "all" ? true : src === "unk" ? !DONE.has(c.k) : src === "weak" ? termIsWeak(c.k) : BM.has(c.k)));
+    const due = src === "due" && window.SRS ? new Set(SRS.due("g:").map(r => r.key)) : null;   // คำที่ครบกำหนดทวน (S6) — การ์ด «วันนี้ทวนอะไร» พามาที่นี่
+    deck = s5shuffle(allCards.filter(c => src === "all" ? true : src === "unk" ? !DONE.has(c.k) : src === "weak" ? termIsWeak(c.k) : src === "due" ? !!due && due.has(c.k) : BM.has(c.k)));
     if (o.n) deck = deck.slice(0, o.n);
     idx = 0; flip = false; okCount = 0;
   };
@@ -71959,7 +72092,8 @@ function renderFlash(st) {
     '<div class="fopts"><label>กลุ่มศัพท์ <select id="fMod">' + groupOptions(o.mod) + '</select></label>' +
     '<span class="fdir" role="group" aria-label="ทิศทาง"><button type="button" data-dir="ru" aria-pressed="' + (dir === "ru") + '"' + (dir === "ru" ? ' class="on"' : '') + '>รัสเซีย → ไทย</button>' +
     '<button type="button" data-dir="th" aria-pressed="' + (dir === "th") + '"' + (dir === "th" ? ' class="on"' : '') + '>ไทย → รัสเซีย</button></span></div>' +
-    '<div class="fsrc">' + srcBtn("all", "ทั้งหมด") + srcBtn("unk", "ที่ยังไม่ติ๊ก") + srcBtn("weak", "ยังไม่แม่น") + srcBtn("bm", "★ บุ๊กมาร์ก") + '</div></div>' +
+    '<div class="fsrc">' + srcBtn("all", "ทั้งหมด") + srcBtn("unk", "ที่ยังไม่ติ๊ก") + srcBtn("weak", "ยังไม่แม่น") + srcBtn("bm", "★ บุ๊กมาร์ก") +
+    (window.SRS ? srcBtn("due", "ครบกำหนดทวน") : "") + '</div></div>' +
     '<div class="fmeta"><span id="fPos"></span><span id="fOk"></span></div>' +
     '<div id="fBox"><button type="button" class="fcard" id="fc" aria-describedby="fKeys"></button>' +
     '<div class="fbtns"><button type="button" id="fNo">ยังไม่แม่น <kbd>1</kbd></button><button type="button" id="fYes" class="yes">จำได้ ✓ <kbd>2</kbd></button></div>' +
@@ -71975,7 +72109,7 @@ function renderFlash(st) {
     if (!deck.length || idx >= deck.length) {
       box.hidden = true; end.hidden = false;
       if (!deck.length) {
-        end.innerHTML = '<p class="empty">ไม่มีการ์ดในชุดนี้' + (src === "bm" ? " — กด ★ ในคลังศัพท์เพื่อบุ๊กมาร์กคำก่อน" : src === "weak" ? " — ยังไม่มีคำที่กด «ยังไม่แม่น»" : " — ติ๊กครบทุกคำแล้ว เก่งมาก") + '</p>' +
+        end.innerHTML = '<p class="empty">ไม่มีการ์ดในชุดนี้' + (src === "bm" ? " — กด ★ ในคลังศัพท์เพื่อบุ๊กมาร์กคำก่อน" : src === "weak" ? " — ยังไม่มีคำที่กด «ยังไม่แม่น»" : src === "due" ? " — วันนี้ไม่มีคำที่ครบกำหนดทวน" : " — ติ๊กครบทุกคำแล้ว เก่งมาก") + '</p>' +
           '<div class="fbtns"><button type="button" data-src-all>ดูการ์ดทั้งหมด</button></div>';
         end.querySelector("[data-src-all]").addEventListener("click", () => setSrc("all"));
         return;
@@ -71985,7 +72119,7 @@ function renderFlash(st) {
         '<div class="fnote">จำได้ ' + okCount + ' จาก ' + deck.length + ' ใบ</div></div>' +
         '<div class="fbtns"><button type="button" id="fAgain">สับไพ่ใหม่อีกรอบ</button>' +
         (weakN ? '<button type="button" id="fWeak">ทวนเฉพาะที่ยังไม่แม่น (' + weakN + ')</button>' : '') +
-        '<a class="btn" href="#/quiz' + (termSeg(o).length ? "/" + termSeg(o).join("/") : "") + '">ควิซศัพท์กลุ่มนี้</a><a class="btn" href="#/glossary">ไปคลังศัพท์</a></div>';
+        '<a class="btn" href="#/quiz' + (termSeg(Object.assign({}, o, { due: false })).length ? "/" + termSeg(Object.assign({}, o, { due: false })).join("/") : "") + '">ควิซศัพท์กลุ่มนี้</a><a class="btn" href="#/glossary">ไปคลังศัพท์</a></div>';
       document.getElementById("fAgain").addEventListener("click", () => { build(); draw(); card.focus(); });
       const w = document.getElementById("fWeak");
       if (w) w.addEventListener("click", () => setSrc("weak"));
@@ -72031,7 +72165,7 @@ function renderFlash(st) {
     flip = false; draw();
   }));
   document.getElementById("fMod").addEventListener("change", e => {
-    const st2 = { v: "flash", seg: termSeg({ mod: e.target.value, weak: src === "weak" }) };
+    const st2 = { v: "flash", seg: termSeg({ mod: e.target.value, weak: src === "weak", due: src === "due" }) };
     s5replace("flash", st2.seg);
     document.title = pageTitle(st2);
     renderFlash(st2);
@@ -72244,7 +72378,7 @@ const offlineReady = () => SW_OK && !!navigator.serviceWorker.controller;
 async function offlineUrls(s, get) {                // s = วิชา ({ id }) · ไฟล์จาก HOOKS "offline" ของ session อื่นรวมด้วย
   const sid = s.id, own = new Set(), topics = topicsOf(sid);
   const bodies = await Promise.all(topics.map(async t => {
-    const u = "data/t/" + sid + "__" + t.id + ".json?v=" + DATA_VERSION;
+    const u = await dbUrl("t", sid + "__" + t.id);   // ?v= เดียวกับที่ dbGet ขอ (รุ่นรายวิชาจาก manifest) — ไม่งั้นสำเนาไม่ตรงคำขอ ต้องรอเน็ตก่อนทุกครั้ง
     own.add(u);
     try { const txt = await get(u); return txt ? JSON.parse(txt).html || "" : ""; } catch (e) { return ""; }
   }));
@@ -72254,10 +72388,15 @@ async function offlineUrls(s, get) {                // s = วิชา ({ id })
   });
   topics.forEach(t => (t.demos || (t.demo ? [t.demo] : [])).forEach(k => { const m = /^vh-([a-z0-9-]+)$/.exec(k); if (m) own.add("data/vh/" + m[1] + ".json"); }));
   if (bodies.some(h => h.includes('data-demo="ih-'))) { own.add("data/ih/atlas.json"); own.add("data/ih/world.json"); }
+  if (typeof ixSubjects === "function") { try { await ixSubjects(); } catch (e) {} }   // ixUrl ใช้ ?v= จาก manifest — โหลดก่อน ไม่งั้นได้ DATA_VERSION (สำเนาไม่ตรงกับที่ค้นหาขอ)
   HOOKS.collect("offline", s.id).forEach(u => own.add(u));
   try { const m = (((await manifestGet()) || {}).subjects || {})[sid] || {}; if (m.js) own.add("js/subj/" + sid + ".js?v=" + m.js); if (m.css) own.add("js/subj/" + sid + ".css?v=" + m.css); } catch (e) {}
   return own;
 }
+// offlineDrop ลบทุกรุ่น ?v= ของไฟล์ — การตัดสินว่าไฟล์ไหน «ยังใช้อยู่» จึงต้องเทียบแบบไม่มี ?v= ด้วย
+// (เทียบทั้งสตริง: หลังเว็บอัปเดต รุ่นเก่าของไฟล์ที่ยังใช้ไม่อยู่ในรายการใหม่ → ถูกลบทุกรุ่น รวมตัวที่เพิ่งโหลดมา)
+const offlinePath = u => String(u).split("?")[0];
+const offlineKeep = lists => new Set(lists.flat().map(offlinePath));
 async function offlineDrop(urls) {                   // ลบออกจากสำเนาของ service worker (ทุกรุ่น ?v= ของไฟล์นั้น)
   if (!urls.length || typeof caches === "undefined") return 0;
   let n = 0;
@@ -72273,10 +72412,10 @@ async function offlineRemove(sid) {
   if (!rec) return 0;
   delete o[sid];
   offlineWrite(o);
-  const keep = new Set(Object.values(o).flatMap(r => r.urls || []));
+  const keep = offlineKeep(Object.values(o).map(r => r.urls || []));
   let urls = rec.urls;
   if (!urls) urls = [...await offlineUrls({ id: sid }, u => fetch(u).then(r => r.ok ? r.text() : "").catch(() => ""))];
-  return offlineDrop(urls.filter(u => !keep.has(u)));
+  return offlineDrop(urls.filter(u => !keep.has(offlinePath(u))));
 }
 // เก็บ/อัปเดตทุกไฟล์ของวิชา · say(ข้อความ) รายงานความคืบหน้า · คืน { ok, fails, n, bytes }
 async function offlineSave(sid, say) {
@@ -72311,8 +72450,8 @@ async function offlineSave(sid, say) {
     o[sid] = { t: Date.now(), n: total, bytes, v: DATA_VERSION, urls: [...own] };
     offlineWrite(o);
     if (prev && prev.urls) {                         // ไฟล์ที่วิชานี้ไม่ใช้แล้ว (เช่นรูปที่ถูกลบ) และวิชาอื่นไม่ใช้
-      const keep = new Set([...own, ...Object.keys(o).filter(k => k !== sid).flatMap(k => o[k].urls || [])]);
-      offlineDrop(prev.urls.filter(u => !keep.has(u)));
+      const keep = offlineKeep([[...own], ...Object.keys(o).filter(k => k !== sid).map(k => o[k].urls || [])]);
+      offlineDrop(prev.urls.filter(u => !keep.has(offlinePath(u))));
     }
   }
   return { ok: !fails, fails, n: total, bytes };
@@ -72327,16 +72466,21 @@ function offlineUi(s) {
   box.hidden = false;
   box.innerHTML = '<button type="button" id="offlBtn">' + (rec ? "↻ อัปเดตสำเนาออฟไลน์" : "⤓ เก็บวิชานี้ไว้อ่านออฟไลน์") + '</button>' +
     (rec ? '<button type="button" id="offlDel">ลบสำเนา</button>' : '') +
-    '<span class="m" id="offlMsg" role="status">' + (rec ? offlineMeta(rec) + " — เปิดอ่านได้แม้ไม่มีเน็ต"
+    '<span class="m' + (rec ? '' : ' hint') + '" id="offlMsg" role="status">' + (rec ? offlineMeta(rec) + " — เปิดอ่านได้แม้ไม่มีเน็ต"
       : "ดาวน์โหลดทุกหัวข้อ รูป และแผนที่ของวิชานี้เก็บไว้ในเครื่อง") + '</span>';
   document.getElementById("offlBtn").addEventListener("click", () => saveOffline(s));
+  if (rec && rec.urls && rec.urls.length && typeof caches !== "undefined")      // บันทึกบอกว่าเก็บแล้วแต่ไม่มีสำเนาจริง → ลบบันทึก (ให้กดเก็บใหม่ได้)
+    caches.match(new URL(rec.urls[0], location.href).href, { ignoreSearch: true }).then(hit => {
+      if (hit || !box.isConnected) return;
+      const o = offlineRead(); delete o[s.id]; offlineWrite(o); offlineUi(s);
+    }).catch(() => {});
   const del = document.getElementById("offlDel");
   if (del) del.addEventListener("click", async () => {
     del.disabled = true;
     await offlineRemove(s.id);
     offlineUi(s);
     const msg = document.getElementById("offlMsg");
-    if (msg) msg.textContent = "ลบสำเนาออฟไลน์ของวิชานี้แล้ว (ความคืบหน้าการอ่านยังอยู่ครบ)";
+    if (msg) { msg.classList.remove("hint"); msg.textContent = "ลบสำเนาออฟไลน์ของวิชานี้แล้ว (ความคืบหน้าการอ่านยังอยู่ครบ)"; }
   });
 }
 async function saveOffline(s) {
@@ -72345,7 +72489,7 @@ async function saveOffline(s) {
   btn.disabled = true;
   const del = document.getElementById("offlDel");
   if (del) del.disabled = true;
-  const say = t => { if (msg.isConnected) msg.textContent = t; };
+  const say = t => { if (msg.isConnected) { msg.classList.remove("hint"); msg.textContent = t; } };
   const r = await offlineSave(s.id, say);
   if (r.ok) {
     if (btn.isConnected) offlineUi(s);
@@ -72699,7 +72843,7 @@ window.addEventListener("scroll", () => {
   const html = document.documentElement;
   clearTimeout(S2RD.idle);
   if (!narrowMQ.matches || y < 80 || html.classList.contains("s2-modal") || document.activeElement === searchEl) { if (html.classList.contains("reading")) unread(); S2RD.from = y; return; }
-  if (performance.now() < S2RD.hold) { S2RD.from = y; return; }
+  if (performance.now() < S2RD.hold || NAVBUSY) { S2RD.from = y; return; }   // งานกระโดดของ router (S9) แก้ตำแหน่งได้นานกว่า 1.2 วินาที — การเลื่อนอัตโนมัติไม่ใช่ผู้อ่านเลื่อนลง
   const dir = dy > 0 ? 1 : dy < 0 ? -1 : S2RD.dir;
   if (dir !== S2RD.dir) { S2RD.dir = dir; S2RD.from = y - dy; }
   if (dir > 0 && y - S2RD.from > 80) html.classList.add("reading");
@@ -72745,7 +72889,9 @@ function topicEnd(el, t, sid) {
     (full ? '<button type="button" class="tend-chk' + (DONE.has(k) ? ' done' : '') + '" data-s2key="' + k + '" aria-pressed="' + DONE.has(k) + '">' +
       '<span class="b" aria-hidden="true">✓</span><span class="l">' + (DONE.has(k) ? 'ทบทวนแล้ว' : 'ทำเครื่องหมายว่าทบทวนแล้ว') + '</span></button>' : '') +
     '<span class="tend-q" hidden></span>' +
-    (PAGE_DEFS.practice ? '<a class="tend-pr" href="' + practiceHref(sid, t.id) + '">ฝึกเรื่องนี้ →</a>' : '') + '</div>' +
+    (!PAGE_DEFS.practice ? '' : el.querySelector('[data-demo="quiz2"], details.qa')     // หัวข้อที่ไม่มีควิซ/คำถามปากเปล่า → ฝึกทั้งวิชาแทน (ไม่พาไปหน้าที่บอกว่าไม่มีอะไร)
+      ? '<a class="tend-pr" href="' + practiceHref(sid, t.id) + '">ฝึกเรื่องนี้ →</a>'
+      : '<a class="tend-pr" href="' + practiceHref(sid) + '">ฝึกทบทวนวิชานี้ →</a>') + '</div>' +
     (prev || next ? '<div class="tend-np">' + lnk(prev, "prev") + lnk(next, "next") + '</div>' : '') + '</nav>');
   const nav = el.querySelector(":scope > .tend"), chk = nav.querySelector(".tend-chk");
   if (chk) chk.addEventListener("click", () => { toggleKey(k); s2SyncKey(k); });
@@ -72757,9 +72903,9 @@ view.addEventListener("click", e => {                 // ✓ บนหัวห�
   const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark]");
   if (b) s2SyncKey(b.dataset.key || b.dataset.mark);
 });
-document.addEventListener("std2:quiz", e => {         // ตัวเก็บผลของ v4/S5 ลงทะเบียนก่อน → อ่านค่าใหม่ได้เลย
+document.addEventListener("std2:quiz", e => {         // ตัวเก็บของ S5 (ช่อง S5) ลงทะเบียนทีหลังตัวนี้ — รอให้ทุกตัวรับบันทึกเสร็จก่อนค่อยอ่าน
   const sec = e.target && e.target.closest && e.target.closest("section.topic[id]");
-  if (sec) tendQuiz(sec);
+  if (sec) setTimeout(() => tendQuiz(sec), 0);
 });
 
 /* ---- ชุดอ่านง่าย: ตาราง .tw ที่กว้างกว่ากล่อง → .scrolls (เงาขอบ) + ป้าย «เลื่อนดู →» จนเลื่อนครั้งแรก · ข้อความวิชารูปแบบเดิม 16/1.7 ---- */
@@ -72899,7 +73045,7 @@ function readToggle() {
     const sid = st && st.v === "subject" && DEEP[st.id] ? st.id : null;
     if (sid && !(state.v === "subject" && state.id === sid)) { RAIL.mini = true; UI.railMini = true; saveUI(); }
     if (!st || st.v !== "subject") { if (RAIL.focus) { RAIL.focus = false; delete UI.focus; saveUI(); } }
-    railApply();
+    railKeep(railApply);                              // หน้าที่กำลังออกจัดใหม่ตามเมนู — คงข้อความที่อ่านอยู่ไว้ go() จึงเก็บตำแหน่งที่ถูก
     return g0.apply(this, arguments);
   };
 }
@@ -73299,7 +73445,8 @@ HOOKS.html("subject-head", ctx => ctx.deep
   ? '<p class="s5-go s5-head"><a class="btn" href="#/practice/' + ctx.s.id + '">🎯 ฝึกทบทวนวิชานี้</a> <a href="#/oral/' + ctx.s.id + '">ซ้อมปากเปล่า' +
     (QAIX && QAIX[ctx.s.id] ? ' ' + QAIX[ctx.s.id].n + ' ข้อ' : '') + '</a></p>'
   : "");
-HOOKS.on("offline", sid => ["data/qa/_index.json?v=" + DATA_VERSION, "data/qa/" + sid + ".json?v=" + DATA_VERSION]);
+HOOKS.on("offline", sid => ["data/qa/_index.json?v=" + DATA_VERSION]
+  .concat(QAIX && !QAIX[sid] ? [] : ["data/qa/" + sid + ".json?v=" + DATA_VERSION]));   // วิชาที่ไม่มีคำถามปากเปล่าไม่มีไฟล์ (qa.py ไม่เขียน) — 404 ทำให้ปุ่มเก็บออฟไลน์บอกว่าไม่สำเร็จ
 /* ผลควิซ quiz2 ต่อ host (คีย์ตาม id ของ host ไม่ใช่ลำดับ — ตัวรับของ v4 ยังเก็บ atlas-quiz-v1 ตามลำดับเหมือนเดิม) */
 document.addEventListener("std2:quiz", e => {
   const host = e.target && e.target.closest ? e.target.closest('[data-demo="quiz2"]') : null;
@@ -73380,7 +73527,7 @@ function renderPractice(st) {
   document.getElementById("s5Weak").addEventListener("change", e => { o.weak = e.target.checked; draw(); });
   draw();
   const tok = ++S5TOK;
-  if (!QAIX) qaIndex().then(() => { if (tok === S5TOK && state.v === "practice") draw(); });
+  if (!QAIX) qaIndex().then(() => { if (tok === S5TOK && (state.v === "practice" || state.v === "oral")) draw(); });   // #/oral เฉย ๆ ก็วาดหน้านี้
 }
 function practiceModes(o, ix) {
   const n = o.n || 3, X = o.sid ? ix[o.sid] : null, T = o.tid ? s5topic(o.sid, o.tid) : null;
@@ -73474,7 +73621,7 @@ function renderOral(st) {
     '<div class="page-title-th">' + (T ? 'หัวข้อ: ' + escT(T.th) : 'ทั้งวิชา') + (o.weak ? ' · เฉพาะข้อที่ยังไม่แม่น' : '') + ' · <span id="s5Stat">กำลังโหลดคำถาม…</span></div></div>' +
     '<div id="s5Card" class="s5-cardbox"></div></div>';
   const box = document.getElementById("s5Card"), stat = document.getElementById("s5Stat");
-  const tok = ++S5TOK;
+  const tok = ++S5TOK, pop = typeof GO_POP !== "undefined" && GO_POP;
   dbGet("qa", o.sid).then(all => {
     if (tok !== S5TOK || state.v !== "oral") return;
     if (!all) {
@@ -73489,13 +73636,18 @@ function renderOral(st) {
     const upd = () => { stat.textContent = pool.length + " ข้อ · " + statTxt(oralStats(o.sid, pool)); };
     upd();
     if (!pool.length) { box.innerHTML = '<p class="s5-muted">ขอบเขตนี้ไม่มีคำถามปากเปล่า — <a href="#/oral/' + o.sid + '">ซ้อมทั้งวิชา</a></p>'; return; }
-    oralRun(o, pool, box, upd);
+    oralRun(o, pool, box, upd, false, pop);
   });
 }
-function oralRun(o, pool, box, upd) {
-  const k = o.n || 3;
-  const set = oralPick(o.sid, pool, k, o.weak), res = [];
-  let i = 0;
+let S5RUN = null;                                   // ชุดที่กำลังซ้อม { key ขอบเขต, set, res, i, t } — อยู่ในหน่วยความจำของแท็บนี้
+function oralRun(o, pool, box, upd, fresh, resume) {
+  const k = o.n || 3, key = s5seg(o).join("/");
+  // กลับมาจาก «ดูในเนื้อหา» / «อ่านซ้ำ» ด้วย Back (resume) → ทำชุดเดิมต่อจากข้อเดิม หรือสรุปชุดเดิม (ภายใน 30 นาที)
+  // มาจากลิงก์/ปุ่มเริ่มซ้อม = ชุดใหม่เสมอ (การ์ดวันนี้ทวนอะไรต้องได้ข้อที่ครบกำหนด ไม่ใช่ชุดค้างเก่า)
+  const run = !fresh && resume && S5RUN && S5RUN.key === key && Date.now() - S5RUN.t < 18e5 ? S5RUN
+    : (S5RUN = { key, set: oralPick(o.sid, pool, k, o.weak), res: [], i: 0, t: Date.now() });
+  const set = run.set, res = run.res;
+  let i = run.i;
   if (!set.length) {
     box.innerHTML = '<p class="s5-muted">ยังไม่มีข้อที่เคยตอบไม่ได้หรือตอบได้บางส่วนในขอบเขตนี้</p><p><a class="btn" href="#/oral/' + s5seg(Object.assign({}, o, { weak: false })).join("/") + '">ซ้อมทุกข้อแทน →</a></p>';
     return;
@@ -73565,6 +73717,7 @@ function oralRun(o, pool, box, upd) {
     upd();
     SAY.stop();
     i++;
+    run.i = i; run.t = Date.now();
     if (i < set.length) card(); else summary();
   }
   function summary() {
@@ -73578,10 +73731,10 @@ function oralRun(o, pool, box, upd) {
       '<p class="s5-acts"><button type="button" class="s5-primary" id="s5Again">ฝึกอีกชุด</button>' +
       (miss.length ? ' <button type="button" id="s5Miss">ซ้อมข้อที่พลาดอีกรอบ (' + miss.length + ')</button>' : '') +
       ' <a class="btn" href="#/practice/' + [o.sid, o.tid].filter(Boolean).join("/") + '">เปลี่ยนขอบเขต</a></p></section>';
-    document.getElementById("s5Again").addEventListener("click", () => oralRun(o, pool, box, upd));
+    document.getElementById("s5Again").addEventListener("click", () => oralRun(o, pool, box, upd, true));
     const m = document.getElementById("s5Miss");
     if (m) m.addEventListener("click", () => {
-      set.splice(0, set.length, ...miss.map(z => z.x)); res.length = 0; i = 0; card();
+      set.splice(0, set.length, ...miss.map(z => z.x)); res.length = 0; i = 0; run.i = 0; run.t = Date.now(); card();
     });
     document.getElementById("s5SumH").focus({ preventScroll: true });
     box.scrollIntoView({ block: "start", behavior: REDUCED ? "auto" : "smooth" });
@@ -73591,11 +73744,11 @@ function oralRun(o, pool, box, upd) {
     const b = box.querySelectorAll(".s5-rate [data-r]")[+e.key - 1];
     if (b && "123".includes(e.key)) { e.preventDefault(); b.click(); }
   };
-  card();
+  if (i < set.length) card(); else summary();
 }
 registerPage("oral", {
   render: renderOral,
-  title: st => { const o = s5scope(st.seg); return "ซ้อมปากเปล่า" + (o.sid ? " · " + s5subj(o.sid).th : ""); }
+  title: st => { const o = s5scope(st.seg); return o.sid ? "ซ้อมปากเปล่า · " + s5subj(o.sid).th : "ฝึกทบทวน"; }   // ไม่มีวิชา = หน้าเลือกวิชา (renderPractice)
 });
 
 /* ---- Flashcard / ควิซศัพท์: ที่อยู่ #/flash[/<กลุ่ม|วิชา>][/weak] · #/quiz[/<กลุ่ม|วิชา>][/n<จำนวน>][/weak] ----
@@ -73606,6 +73759,7 @@ function termScope(seg) {
     const m = /^n(\d{1,3})$/.exec(x);
     if (m) o.n = Math.max(1, +m[1]);
     else if (x === "weak") o.weak = true;
+    else if (x === "due") o.due = true;                // เฉพาะคำที่ครบกำหนดทวน (Flashcard)
     else if (!i && MODULES.some(g => g.id === x)) o.mod = x;
     else if (!i && DEEP[x]) {
       o.sid = x; o.mod = modFor(x);
@@ -73615,7 +73769,7 @@ function termScope(seg) {
   return o;
 }
 const quizScope = termScope;
-const termSeg = (o, keepN) => [o.sid && !o.mod ? o.sid : o.mod, keepN && o.n ? "n" + o.n : "", o.weak ? "weak" : ""].filter(Boolean);
+const termSeg = (o, keepN) => [o.sid && !o.mod ? o.sid : o.mod, keepN && o.n ? "n" + o.n : "", o.weak ? "weak" : "", o.due ? "due" : ""].filter(Boolean);
 const groupOptions = cur => '<option value="">ทั้งคลัง (' + MODULES.reduce((a, m) => a + m.terms.length, 0) + ' คำ)</option>' +
   MODULES.map(m => '<option value="' + m.id + '"' + (m.id === cur ? " selected" : "") + '>' + escT(m.th) + ' (' + m.terms.length + ')</option>').join("");
 ["flash", "quiz"].forEach(p => { const i = PAGES.indexOf(p); if (i >= 0) PAGES.splice(i, 1); });
@@ -73691,7 +73845,13 @@ function srsSidOf(key, topicSid, modSid) {
   if ((m = /^q:([^/]+)\//.exec(key))) return m[1];
   if ((m = /^k:([^:]+):\d+$/.exec(key))) return m[1];                             // วิชาที่ยังเป็นโครงร่าง k:<วิชา>:<ลำดับ>
   if ((m = /^[kz]:([^/]+)/.exec(key))) return topicSid(m[1]) || null;
-  if ((m = /^g:(.+)-\d+$/.exec(key))) return modSid(m[1]) || null;
+  // ศัพท์ g:<กลุ่ม>-<ท้าย> · ท้าย = stableId ของคำรัสเซีย (สคีมา 2 · S8 ตัวอักษร base36 [+ -2, -3 คำซ้ำ]) หรือลำดับ (สคีมา 1)
+  // id กลุ่มอาจมี «-» → ลองตัดที่ «-» จากซ้ายจนเจอกลุ่มที่รู้จัก
+  if ((m = /^g:(.+)$/.exec(key))) {
+    const s = m[1];
+    for (let i = s.indexOf("-"); i > 0; i = s.indexOf("-", i + 1)) { const r = modSid(s.slice(0, i)); if (r) return r; }
+    return null;
+  }
   return null;
 }
 /* ผลควิซทั้งบล็อก (%) → คะแนน 0–5 */
@@ -73748,6 +73908,14 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     cap: capOf,
     onGrade: (key, rec) => { try { document.dispatchEvent(new CustomEvent("srs:grade", { detail: { key, rec } })); } catch (e) { /* เบราว์เซอร์เก่า */ } },
   });
+  // วันหนึ่งนับ «จำได้» ได้ครั้งเดียวต่อคีย์ (SM-2) — «ลองใหม่» แล้วทำ quiz2 ซ้ำ · ติ๊ก/ยกเลิก/ติ๊ก · «จำได้» ซ้ำใน #/cram ในวันเดียวกัน
+  // ไม่ดันช่วงทวน 1 → 3 → 7 วัน · ลืม (g < 3) นับเสมอ (ทำแย่ลงในรอบซ้ำยังได้ทวนพรุ่งนี้) · srsCore ไม่มีกติกานี้ (tests ให้คะแนนซ้ำที่เวลาเดียวกัน)
+  const grade0 = SRS.grade;
+  SRS.grade = (key, g, now) => {
+    const r = SRS.get(key), t = now == null ? Date.now() : +now;
+    if (+g >= 3 && r && r.reps > 0 && r.last && srsDays(r.last, t) === 0) return r;
+    return grade0(key, g, now);
+  };
   window.SRS = SRS;
   window.addEventListener("storage", e => {                                          // อีกแท็บ/นำเข้าไฟล์สำรอง → อ่านใหม่
     if (e.key === SRSKEY) SRS.reload();
@@ -73758,19 +73926,25 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
   /* ---- ตัวป้อน 1: ปุ่มติ๊ก «ทบทวนแล้ว» (หัวข้อ · สารบัญ · คลังศัพท์) → 4 เมื่อติ๊ก
      ฟังแบบ capture บน #view (ปุ่มในคลังศัพท์หยุด bubbling) แล้วอ่าน DONE หลังตัวจัดการเดิมทำงานเสร็จ ---- */
   view.addEventListener("click", e => {
-    const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark], .card .tick");
+    const b = e.target.closest && e.target.closest(".topic-check[data-key], .toc [data-mark], .card .tick, .tend-chk[data-s2key]");   // + ✓ ท้ายหัวข้อของ S2
     if (!b || !view.contains(b)) return;
-    const key = b.dataset.key || b.dataset.mark || (b.closest(".card[data-k]") || { dataset: {} }).dataset.k;
+    const key = b.dataset.key || b.dataset.mark || b.dataset.s2key || (b.closest(".card[data-k]") || { dataset: {} }).dataset.k;
     if (key) setTimeout(() => { if (DONE.has(key)) SRS.grade(key, 4); }, 0);
   }, true);
 
   /* ---- ตัวป้อน 2: quiz2 ตอบครบทั้งบล็อก → z:<หัวข้อ>/<data-id ของ host>
      (host ยังไม่มี data-id = ลำดับของ quiz2 ในหัวข้อ ตรงกับคีย์ใน atlas-quiz-v1) · ตัวรับของ v4 ยังเก็บผลเหมือนเดิม ---- */
+  const ZWAS = new WeakMap();                        // host → จำนวนข้อที่ตอบแล้วตอนเหตุการณ์ก่อน
   document.addEventListener("std2:quiz", e => {
     const host = e.target && e.target.closest ? e.target.closest('[data-demo="quiz2"]') : null;
     const sec = host && host.closest("section.topic[id]");
     const d = e.detail || {};
-    if (!sec || !d.total || d.done < d.total) return;
+    if (!sec) return;
+    // ให้คะแนนครั้งเดียวตอน «เพิ่งตอบครบ» — หลังครบแล้ว quiz2 ยังยิงทุกครั้งที่กดตัวเลือกที่ถูกในข้อที่ตอบผิด (ลองเลือกใหม่)
+    // ถ้าให้คะแนนซ้ำ ช่วงทวนจะกระโดด 1 → 3 → 8 วันในการนั่งครั้งเดียว · «ลองใหม่» ยิง done = 0 จึงนับรอบใหม่ได้
+    const was = ZWAS.get(host) || 0;
+    ZWAS.set(host, d.done || 0);
+    if (!d.total || d.done < d.total || was >= d.total) return;
     const hid = host.dataset.id || host.id || String([...sec.querySelectorAll('[data-demo="quiz2"]')].indexOf(host));
     SRS.grade("z:" + sec.id + "/" + hid, srsQuizGrade(d.ok, d.total));
   });
@@ -73813,9 +73987,11 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     const D = Math.max(1, days);
     plan.final = day + 9 * 36e5 - now <= 48 * 36e5;                                   // 48 ชม.สุดท้าย (สอบเริ่มราว 9 โมงเช้าของวันสอบ)
     const qKeys = Object.keys(SRS.all()).filter(k => k.startsWith("q:" + sid + "/"));
+    // จำนวนคำถามปากเปล่าทั้งหมด: ดัชนี data/qa ของ S5 (ทุกหัวข้อ รวมบล็อกสรุป — ชุดเดียวกับ #/oral) · ยังไม่โหลด = จำนวนที่ #/cram นับไว้
+    const qaTot = (typeof QAIX !== "undefined" && QAIX && QAIX[sid] && QAIX[sid].n) || e.qa || 0;
     plan.topics = srsPlanCat(deepTopics(sid).map(t => "k:" + t.id), SRS.get, now, D, plan.final);
-    plan.oral = srsPlanCat(qKeys, SRS.get, now, D, plan.final, e.qa ? e.qa - qKeys.length : 0);
-    plan.oral.known = !!e.qa || qKeys.length > 0;                                   // จำนวนคำถามทั้งหมดรู้หลังเปิด #/cram ครั้งแรก
+    plan.oral = srsPlanCat(qKeys, SRS.get, now, D, plan.final, qaTot ? qaTot - qKeys.length : 0);
+    plan.oral.known = !!qaTot || qKeys.length > 0;
     plan.terms = srsPlanCat(modTerms(sid), SRS.get, now, D, plan.final);
     return plan;
   }
@@ -73829,7 +74005,7 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     const part = (n, lab) => '<span><b>' + n + '</b> ' + lab + '</span>';
     return '<p class="s6-plan"><span class="s6-pl">' + (p.final ? "48 ชม.สุดท้าย · ข้อที่ลืมบ่อยขึ้นก่อน" : "วันนี้ควรทวน") + '</span>' +
       part(p.topics.quota, "หัวข้อ") +
-      (p.oral.known ? part(p.oral.quota, "ข้อปากเปล่า") : '<span>ปากเปล่า — เปิด<a href="#/cram/' + p.sid + '">โหมดคืนก่อนสอบ</a>หนึ่งครั้งเพื่อนับคำถาม</span>') +
+      (p.oral.known ? part(p.oral.quota, "ข้อปากเปล่า") : '<span>ปากเปล่า — <a href="' + oralHref(p.sid) + '">ซ้อมปากเปล่า</a></span>') +
       (p.terms.pending ? part(p.terms.quota, "คำศัพท์") : "") +
       '<span class="s6-pend">ค้างทั้งหมด ' + (p.topics.pending + p.oral.pending + p.terms.pending) + ' · แบ่งเท่า ๆ กันจนถึงวันสอบ</span></p>';
   }
@@ -73841,6 +74017,8 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     const now = Date.now(), e = EXAMS[sid] || {}, d = daysLeft(sid, now);
     return '<div class="s6-row"><button type="button" class="s6-due" data-s6open aria-expanded="false" aria-controls="s6panel">' +
       'ครบกำหนดทวน <b>' + subjDue(sid, now).length + '</b> · ยังอ่อน <b>' + weakTopics(sid).length + '</b> <span aria-hidden="true">▾</span></button>' +
+      (d != null && d >= 0 ? '<span class="s6-left s6-left-m' + (d <= 3 ? ' near' : '') + '">' + leftTxt(d) + '</span>'   // จอแคบ: แถววันสอบ/แผนพับอยู่ใน ▾
+        : !e.date ? '<button type="button" class="s6-set" data-s6set>ตั้งวันสอบ</button>' : '') +                            // ยังไม่ตั้ง → ทางเข้าบนจอแคบ
       '<a class="s6-cram" href="#/cram/' + sid + '"' + (CRAM_OK.has(sid) ? '' : ' hidden') + '>☾ โหมดคืนก่อนสอบ</a></div>' +
       '<div class="s6-panel" id="s6panel" hidden></div>' +
       '<div class="s6-row s6-ex"><label>สอบวันที่ <input type="date" data-s6date value="' + escT(e.date || "") + '"></label>' +
@@ -73864,18 +74042,19 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     else h += '<ul class="s6-dl">' + [...byTopic].map(([tid, keys]) => {
       const t = topicMeta(tid);
       const name = t ? escT(t.th) : tid === "oral" ? "คำถามปากเปล่า" : tid === "terms" ? "คำศัพท์" : "หัวข้อที่ติ๊กไว้";
-      const href = t ? "#/" + sid + "/" + tid : tid === "oral" ? oralHref(sid) : tid === "terms" ? "#/flash" : "#/" + sid;
+      const href = t ? "#/" + sid + "/" + tid : tid === "oral" ? oralHref(sid) : tid === "terms" ? "#/flash/" + sid + "/due" : "#/" + sid;
       return '<li><a href="' + href + '">' + name + '</a><small>' + keys.length + ' รายการ</small>' +
         '<button type="button" data-s6g="4" data-s6k="' + escT(keys.join(" ")) + '">ทวนแล้ว ✓</button></li>';
     }).join("") + '</ul>';
     return h + '</div><div class="s6-weak"></div>';
   }
   function bindHead(box, sid) {
-    const refresh = open => { box.innerHTML = headInner(sid); bindHead(box, sid); if (open) box.querySelector("[data-s6open]").click(); };
+    const refresh = open => { box.innerHTML = headInner(sid); box.classList.remove("open"); bindHead(box, sid); if (open) box.querySelector("[data-s6open]").click(); };
     const btn = box.querySelector("[data-s6open]"), panel = box.querySelector(".s6-panel");
     btn.addEventListener("click", () => {
       const open = btn.getAttribute("aria-expanded") !== "true";
       btn.setAttribute("aria-expanded", String(open));
+      box.classList.toggle("open", open);              // จอ ≤ 600 px: ช่องวันสอบ + แผนวันนี้ แสดงเมื่อเปิด ▾ (ไม่ดันแถบโหมด/หัวข้อแรกลงใต้จอ)
       panel.hidden = !open;
       if (!open) { panel.innerHTML = ""; return; }
       panel.innerHTML = panelHtml(sid);
@@ -73890,9 +74069,15 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
       if (date.value) EXAMS[sid] = Object.assign({}, EXAMS[sid], { date: date.value, kind: kind.value });
       else delete EXAMS[sid];
       saveExams();
-      refresh();
+      refresh(box.classList.contains("open"));          // จอแคบ: ช่องวันสอบอยู่ใน ▾ — เปิดค้างไว้ให้เลือกชนิดการสอบต่อได้
     };
     date.addEventListener("change", save);
+    const set = box.querySelector("[data-s6set]");
+    if (set) set.addEventListener("click", () => {
+      if (!box.classList.contains("open")) btn.click();
+      const d2 = box.querySelector("[data-s6date]");
+      if (d2) { d2.focus(); try { d2.showPicker(); } catch (e) { /* เบราว์เซอร์ที่ไม่มี showPicker */ } }
+    });
     kind.addEventListener("change", () => { if (date.value) save(); });
     if (clr) clr.addEventListener("click", () => { date.value = ""; save(); });
   }
@@ -73909,6 +74094,16 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     const box = deep && view.querySelector('.s6-head[data-s6sid="' + s.id + '"]');
     if (!box) return;
     bindHead(box, s.id);
+    if (EXAMS[s.id] && typeof qaIndex === "function") {   // แผนสอบนับปากเปล่าจากดัชนีของ S5 — จดจำนวนไว้ใน atlas-exam-v1 ให้หน้าแรก/#/cram ใช้เลขเดียวกันแม้ดัชนียังไม่โหลด
+      const had = typeof QAIX !== "undefined" && !!QAIX;
+      qaIndex().then(() => {
+        const n = typeof QAIX !== "undefined" && QAIX && QAIX[s.id] && QAIX[s.id].n, e = EXAMS[s.id];
+        const changed = !!(n && e && e.qa !== n);
+        if (changed) { e.qa = n; saveExams(); }
+        if ((had && !changed) || !box.isConnected || box.querySelector('[data-s6open][aria-expanded="true"]')) return;
+        box.innerHTML = headInner(s.id); bindHead(box, s.id);
+      });
+    }
     if (CRAM_OK.has(s.id)) return;
     clearTimeout(PROBE_T);
     PROBE_T = setTimeout(async () => {
@@ -73961,7 +74156,7 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
       it.score = 36;
     });
     if (terms.length) {
-      const it = item("g", { title: "คำศัพท์ " + terms.length + " คำ", sub: "Flashcard", href: "#/flash", keys: terms });
+      const it = item("g", { title: "คำศัพท์ " + terms.length + " คำ", sub: "Flashcard", href: "#/flash/due", keys: terms });
       it.why.push("ครบกำหนด SRS");
       it.score = 35 + Math.min(10, terms.length);
     }
@@ -74071,7 +74266,8 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     const s = d.querySelector(":scope > summary"), q = s && (s.querySelector(".qa-q") || s);
     return "qa-" + stableId(q ? q.innerHTML : "");
   };
-  const anchorOf = el => { for (let x = el; x; x = x.parentElement) if (x.id) return x.id; return ""; };
+  // id ที่มีในไฟล์หัวข้อจริง — ข้าม id ที่ qaIds() เพิ่งคำนวณให้ details.qa (data-qaid) ซึ่งหน้าเว็บใส่ตอนเติมหัวข้อเท่านั้น
+  const anchorOf = el => { for (let x = el; x; x = x.parentElement) if (x.id && !(x.dataset && x.dataset.qaid !== undefined)) return x.id; return ""; };
   const nextTxt = r => r ? "ทวนครั้งหน้า " + new Date(r.due).toLocaleDateString("th-TH", { day: "numeric", month: "short" }) : "";
   function topicState(sid, t, dueKeys) {
     const why = [], r = quizOfTopic(t.id);
@@ -74086,6 +74282,18 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     const tpl = document.createElement("template");
     tpl.innerHTML = html;
     const root = tpl.content;
+    // id ของ details.qa ต้องตรงกับที่ S5 ใส่ใน DOM และ data/qa (qaText เดินโหนด + fix ของคำถามซ้ำข้ามหัวข้อ)
+    // — เดิมคิดจาก innerHTML ทำให้บางข้อมีคีย์ทวนสองชุด (q:…/qa-xxx จากหน้านี้ และอีกตัวจาก #/oral)
+    if (typeof qaIds === "function") qaIds(root, sid, t.id);
+    root.querySelectorAll("details.qa[data-qaid]").forEach(d => {     // คีย์รุ่นก่อน S9 ("qa-" + stableId(innerHTML)) → คีย์ของ S5 · เก็บตัวที่ทวนล่าสุด
+      const sm = d.querySelector(":scope > summary"), old = sm && "qa-" + stableId((sm.querySelector(".qa-q") || sm).innerHTML);
+      if (!old || old === d.id) return;
+      const ok = "q:" + sid + "/" + t.id + "/" + old, nk = "q:" + sid + "/" + t.id + "/" + d.id, db = rd(SRSKEY);
+      if (!db[ok]) return;
+      if (!db[nk] || (db[ok].last || 0) > (db[nk].last || 0)) db[nk] = db[ok];
+      delete db[ok];
+      wr(SRSKEY, db); SRS.reload();
+    });
     const top = root.children.length === 1 && root.firstElementChild.tagName === "DIV" ? root.firstElementChild.className : "";
     const picked = [...root.querySelectorAll(CR_SEL)].filter(el => !el.matches(".call") || trapCall(el));
     const items = picked.filter(el => !picked.some(p => p !== el && p.contains(el)));
@@ -74179,6 +74387,7 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
     let done = 0, qaN = 0, empty = 0;
     const one = async x => {
       const d = await dbGet("t", sid + "__" + x.t.id);
+      if (typeof qaIndex === "function") await qaIndex();   // id ของคำถามซ้ำข้ามหัวข้อ (fix) — ให้ cramExtract ได้ id เดียวกับ S5/data/qa
       if (job !== CRAM_JOB) return;
       const sec = list.querySelector('.cr-t[data-tid="' + x.t.id + '"]'), body = sec && sec.querySelector(".cr-body");
       if (!body) return;
@@ -74204,7 +74413,8 @@ function srsPlanCat(keys, get, now, days, final, unseen) {
       if (job !== CRAM_JOB) return;
       stat.textContent = rows.length + " หัวข้อ · คำถามปากเปล่า " + qaN + " ข้อ" + (empty ? " · " + empty + " หัวข้อไม่มีสรุป/คำถาม" : "");
       if (qaN) CRAM_OK.add(sid);
-      if (EXAMS[sid] && qaN && EXAMS[sid].qa !== qaN) { EXAMS[sid].qa = qaN; saveExams(); }   // แผนสอบรู้จำนวนคำถามปากเปล่าทั้งหมดแล้ว
+      const qaTot = (typeof QAIX !== "undefined" && QAIX && QAIX[sid] && QAIX[sid].n) || qaN;   // ชุดเดียวกับ #/oral (รวมบล็อกสรุป) — ไม่มีดัชนีค่อยใช้ที่หน้านี้นับ
+      if (EXAMS[sid] && qaTot && EXAMS[sid].qa !== qaTot) { EXAMS[sid].qa = qaTot; saveExams(); }   // แผนสอบรู้จำนวนคำถามปากเปล่าทั้งหมดแล้ว
       list.classList.add("ready");
     })();
   }
@@ -74695,6 +74905,12 @@ const keyBytes = k => { const v = lsGet(k); return v === null ? 0 : (k.length + 
 const fmtBytes = b => b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(1).replace(".", ",") + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB";
 const escS8 = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+/* นำเข้า/กู้คืนในแท็บอื่น (applyLearnerData เขียน atlas-backup-prev ก่อนเสมอ) — แท็บนี้ยังถือข้อมูลชุดเก่าในหน่วยความจำ
+   (DONE BM QUIZ …) แล้วจะเขียนทับชุดที่นำเข้าทั้งก้อนในการกดครั้งถัดไป → โหลดหน้าใหม่ให้ได้ชุดเดียวกัน */
+if (typeof window !== "undefined") window.addEventListener("storage", e => {
+  if (e.key === PREVKEY && e.newValue && e.newValue !== e.oldValue) location.reload();
+});
+
 /* แจ้งครั้งเดียวต่อการเปิดหน้า — แถบเล็กด้านล่าง ลิงก์ไปจัดการพื้นที่ที่ #/progress */
 let S8_WARNED = false;
 function storeFailed(err) {
@@ -74773,5 +74989,5 @@ window.addEventListener("hashchange", onRoute);
 (function () {                                      // เปิดครั้งแรกตามที่อยู่ในลิงก์ · รีเฟรชแล้วกลับที่เดิม (history.state เก็บระยะในหัวข้อไว้)
   const st = parseRoute(location.hash) || { v: "overview" };
   const hs = history.state && history.state.r ? history.state : {};
-  go(Object.assign(st, { off: hs.off }), { init: true, y: hs.y });
+  go(Object.assign(st, { off: hs.off, anc: hs.anc, aoff: hs.aoff }), { init: true, y: hs.y });
 })();
