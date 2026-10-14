@@ -95,7 +95,15 @@ function plainForIndex(html) {
     .replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
+// บล็อกเดโม ТАУ ย้ายจาก app.js ไป js/subj/tau.js ทั้งก้อน (ยกระดับ STD2 ทั้งวิชา · 10 ต.ค. 2026) — ไบต์ในบล็อกคงเดิม
+function tauBlockHost(buffer) {
+  if (buffer.indexOf(Buffer.from(TAU_START)) >= 0) return buffer;
+  const subj = path.join(ROOT, 'js', 'subj', 'tau.js');
+  return fs.existsSync(subj) ? fs.readFileSync(subj) : buffer;
+}
+
 function protectedBlock(buffer) {
+  buffer = tauBlockHost(buffer);
   const startBytes = Buffer.from(TAU_START);
   const endBytes = Buffer.from(TAU_END);
   const start = buffer.indexOf(startBytes);
@@ -264,7 +272,8 @@ test('Cache versions: index.html app.css?v= / app.js?v= and DATA_VERSION equal t
 test('In-content links (#/subject/topic[/id] and #id) point at existing pages and elements', () => {
   // Router format: see "router (v5)" in app.js. Plain #id links must target an id in the same topic.
   const ids = html => new Set(attrValues(html, 'id'));
-  const pages = new Set(['', 'glossary', 'flash', 'quiz', 'search']);
+  const pages = new Set(['', 'glossary', 'flash', 'quiz', 'search', 'subjects', 'progress']);
+  const subjectPages = new Set(['oral', 'practice', 'cram']);   // registerPage: #/<page>/<subject>[/<topic>…]
   const bad = [];
   for (const [file, topic] of topics) {
     for (const href of attrValues(topic.html, 'href').filter(h => h.startsWith('#'))) {
@@ -278,6 +287,10 @@ test('In-content links (#/subject/topic[/id] and #id) point at existing pages an
       }
       const [subject, seg, anchor] = href.slice(2).split('/').map(decodeURIComponent);
       if (pages.has(subject)) continue;
+      if (subjectPages.has(subject)) {
+        if (seg && !registry.subjects.some(s => s.id === seg)) bad.push(`${file}: ${href} (unknown subject for #/${subject})`);
+        continue;
+      }
       const deep = registry.deep[subject];
       if (!registry.subjects.some(s => s.id === subject)) { bad.push(`${file}: ${href} (unknown subject)`); continue; }
       if (!seg || seg === 'sum' || seg === 'full') continue;

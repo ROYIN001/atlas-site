@@ -33,14 +33,6 @@
    "build": "python _work/hist/integrate_hist.py",
    "sha1": "1457dc10252c"
   },
-  "tau-demos": {
-   "file": "app.js",
-   "start": "/* ===== ТАУ: демонстрации (window.TAUDEMOS) ===== */",
-   "end": "/* ===== /ТАУ: демонстрации ===== */",
-   "source": "_work/demos/tau-<theme>-<key>.js",
-   "build": "python _work/demos/assemble.py t6 t7 t8 t9 t10 t11",
-   "sha1": "46f1b62156d7"
-  },
   "vhist-demos": {
    "file": "app.js",
    "start": "/* ================= ВИ: движок карт и виджеты (VHDEMOS) BEGIN",

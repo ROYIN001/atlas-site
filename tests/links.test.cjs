@@ -48,9 +48,13 @@ test('«Т.N» means a course theme: ТАУ Т.6–Т.11 and СУ КА Тема 
   assert.deepEqual(links('tau', 'Т.7 — желаемая ЛАХ สามช่วง'), [['Т.7', ['tau-7']]]);
   assert.deepEqual(links('tau', 'สถานะของโมดูลนี้: Т.1–Т.5 (หัวข้อ 2–8 ของโปรแกรม)'), []);
   assert.deepEqual(links('suka', 'Т.2 Системы управления угловым движением КА'), [['Т.2', ['suka-t2']]]);
-  // lecture numbers are not theme numbers
-  assert.deepEqual(links('suka', 'ตามกฎตรรกะเก้าโซนของบรรยายที่ 6'), []);
+  // lecture numbers are not theme numbers — «บรรยายที่ 6» goes to the lecture topic suka-l6 (lec: 6 · STD2 9 ต.ค. 2026), never to a Тема
+  assert.deepEqual(links('suka', 'ตามกฎตรรกะเก้าโซนของบรรยายที่ 6'), [['บรรยายที่ 6', ['suka-l6']]]);
+  assert.deepEqual(links('suka', 'ตามกฎของบรรยายที่ 7'), []);
   assert.deepEqual(links('tau', 'Лекция 23 · сл. 6'), []);
+  // СУ РН: หัวข้อเรียงตามบรรยาย (lec ใน DEEP · STD2 14 ต.ค. 2026) — หัวข้อเดียวรวมหลายบรรยายได้
+  assert.deepEqual(links('surn', 'การบ้านของบรรยายที่ 5'), [['บรรยายที่ 5', ['surn-4']]]);
+  assert.deepEqual(links('surn', 'Лекция 23 · сл. 47'), [['Лекция 23', ['surn-15']]]);
 });
 
 test('ВИ «Лекция 1» has two topics: both linked, or the one the quoted title names', () => {
@@ -75,7 +79,7 @@ test('no false positives', () => {
     ['tau', 'т. е. 5 звеньев'], ['tau', 'Т. е. при 5 Гц'], ['nav', 'Л1 сл. 12, 26–34 · Л2 сл. 3'],
     ['nav', 'сл. 7 · абз. 14'], ['elob', 'К теме 8 л.2 СНЭС Т.39, 40'], ['ppo', 'บรรยายที่ 123'],
     ['nadezh', 'ГОСТ 27.002 · В11Л4 текст п. 1'], ['asu', 'Лекции'], ['hist', 'บรรยายที่ไม่มีเลข'],
-    ['toe', 'Лекция 3'], ['surn', 'การบ้านของบรรยายที่ 5'], ['nav', 'УЛ.5 и ГЛ. 3'],
+    ['toe', 'Лекция 3'], ['surn', 'บรรยายที่ 25'], ['nav', 'УЛ.5 и ГЛ. 3'],
   ]) assert.deepEqual(links(sid, text), [], `${sid}: ${text}`);
 });
 
@@ -127,7 +131,8 @@ test('auto-links across the site: ≈ 600 links, ТАУ сводка «Схем�
     }
   }
   assert.ok(per['tau-s3'] >= 10, `tau-s3 links ${per['tau-s3']}`);
-  assert.ok(total >= 500 && total <= 900, `site-wide lecture links ${total}`);
+  // เพดาน 900 → 1100 (14 ต.ค. 2026): СУ РН ใส่ lec ทุกหัวข้อบรรยาย → s2/s3/s4 ลิงก์บรรยายได้ +122
+  assert.ok(total >= 500 && total <= 1100, `site-wide lecture links ${total}`);
 });
 
 test('related-topic chips: same-subject top 2 + cross-subject ≥ 0.10; manual rel in DEEP wins', () => {
