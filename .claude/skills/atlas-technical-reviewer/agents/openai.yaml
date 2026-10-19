@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlas Technical Reviewer"
+  short_description: "Review Atlas engineering accuracy and integration"
+  default_prompt: "Use $atlas-technical-reviewer to review the current Atlas change and report evidence for every required check."
