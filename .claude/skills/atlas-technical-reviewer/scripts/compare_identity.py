@@ -311,7 +311,8 @@ def main(argv=None):
     text = json.dumps(report, ensure_ascii=False, indent=1)
     if a.out:
         try:
-            a.out.write_text((f"candidate_digest: {digest}\n" if digest else "") + text + "\n", encoding="utf-8")
+            # LF on every platform (text mode on Windows would write CRLF)
+            a.out.write_bytes(((f"candidate_digest: {digest}\n" if digest else "") + text + "\n").encode("utf-8"))
         except OSError as exc:
             return stop(f"cannot write {a.out}: {exc}")
     if report["ok"]:
@@ -328,8 +329,9 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    try:
-        sys.stdout.reconfigure(errors="backslashreplace")
-    except (AttributeError, ValueError):
-        pass
+    for stream in (sys.stdout, sys.stderr):
+        try:  # a cp1252 console must not turn a report into a traceback
+            stream.reconfigure(errors="backslashreplace")
+        except (AttributeError, ValueError):
+            pass
     sys.exit(main())

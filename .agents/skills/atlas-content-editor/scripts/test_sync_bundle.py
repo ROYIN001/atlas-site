@@ -59,9 +59,16 @@ class SyncBundleTests(unittest.TestCase):
         self.assertError("missing or external bundled reference references/no such.md")
 
     def test_line_endings_alone_are_not_drift(self):
-        ref = self.skill("atlas-learning-designer") / "references" / "workflow-contract.md"
-        ref.write_bytes(ref.read_bytes().replace(b"\n", b"\r\n"))
+        # One copy LF, one CRLF, whatever the checkout's own line endings are
+        # (a Windows runner checks these files out with CRLF already).
+        lf = self.skill("atlas-learning-designer") / "references" / "workflow-contract.md"
+        crlf = self.skill("atlas-technical-reviewer") / "references" / "workflow-contract.md"
+        text = lf.read_bytes().replace(b"\r\n", b"\n")
+        lf.write_bytes(text)
+        crlf.write_bytes(text.replace(b"\n", b"\r\n"))
         self.assertFalse(any("shared reference drift" in e for e in sync_bundle.run(self.root, write=True)))
+        crlf.write_bytes(text.replace(b"\n", b"\r\n").replace(b"version 1", b"version 2", 1))
+        self.assertTrue(any("shared reference drift" in e for e in sync_bundle.run(self.root, write=True)))
 
     def test_scratch_folders_are_never_mirrored(self):
         scratch = self.skill() / "scripts" / (sync_bundle.SCRATCH + "abc")
