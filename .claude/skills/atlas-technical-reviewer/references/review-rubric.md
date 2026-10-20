@@ -41,7 +41,7 @@ Do not infer source access from a bibliography. If a lesson names a book that wa
 | Browser behavior | Actual interaction on the corresponding build over HTTP | Screenshot alone or inferred behavior from code |
 | Visual correctness | Inspected screens and active demo states at relevant widths/themes | Canvas exists, screenshot created, or no console error |
 
-Record these areas in the handoff gates as follows: source fidelity → `provenance`; academic validity, numerical behavior and learning design → `technical`; language → `language`; identity/data → `identity` (attach the compare_identity report); structural/build → `build` and `tests`; browser behavior → `browser`; visual correctness → `visual`.
+Record these areas in the handoff gates as follows: source fidelity → `provenance`; academic validity, numerical behavior and learning design → `technical`; language → `language`; identity/data → `identity` (cite the compare_identity report run with `--candidate-digest`, recorded as `identity_baseline.report_artifact_id`); structural/build → `build` and `tests`; browser behavior → `browser`; visual correctness → `visual`.
 
 ## Academic and numerical review
 

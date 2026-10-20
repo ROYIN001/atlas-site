@@ -142,6 +142,8 @@ class PacketTests(unittest.TestCase):
             p = self.packet_for(repo)
             p["identity_compatibility"]["preserved_quiz_host_ids"] = ["tau-3/tau-3-q1", "tau-3/t3-quiz"]
             self.assertEqual([], self.errors(p, repo))
+            p["identity_compatibility"]["preserved_quiz_host_ids"] = ["tau-3-q1", "t3-quiz"]
+            self.assertEqual([], self.errors(p, repo))
             p["identity_compatibility"]["preserved_quiz_host_ids"] = ["tau-3/tau-3-q2"]
             self.assertInvalid(p, "is not a runtime id", repo)
 

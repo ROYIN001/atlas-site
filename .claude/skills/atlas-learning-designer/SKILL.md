@@ -32,7 +32,7 @@ Inventory existing oral questions, quizzes, glossary cards, and demonstrations b
 
 ### 2. Bind content to evidence
 
-Map each objective and answer-bearing activity to the editor's claim IDs and source locators. In a standalone request without an editor packet, cite the existing lesson file as an input_ref (path and sha256) and mark claims you could not trace as unverified. A page or slide number is verified only if it was actually checked. Classify every question as `official_exam`, `textbook_control`, `author_practice` or `unverified_existing` (learning-design.md); label new material visibly `ผู้เรียบเรียง`.
+Map each objective and answer-bearing activity to the editor's claim IDs and source locators. In a standalone request without an editor packet, cite the existing lesson file as an input_ref (repository-relative path and sha256 by the handoff rule; `check_handoff.py --hash <file>` computes it) and mark claims you could not trace as unverified. A page or slide number is verified only if it was actually checked. Classify every question as `official_exam`, `textbook_control`, `author_practice` or `unverified_existing` (learning-design.md); label new material visibly `ผู้เรียบเรียง`.
 
 If original sources are unavailable, produce a useful draft from explicitly identified available material, but flag affected academic claims and answer keys for verification. Do not claim an official examination list, source review, or release readiness. An unsupported answer remains blocked from integration as verified teaching content.
 

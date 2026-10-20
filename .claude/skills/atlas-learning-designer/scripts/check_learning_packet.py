@@ -265,14 +265,17 @@ def validate_packet(packet: Any, repo_root: Path | None = None, template: bool =
                                      "(copy ids from the repository, do not recompute them)")
             for qid in sorted(set(proposed) & known_ids):
                 fail("identity", f"proposed new id {qid!r} already exists in data/qa")
+            bare = {h.split("/", 1)[1] for h in hosts}
             for raw in listed(compat.get("preserved_quiz_host_ids"), "identity_compatibility.preserved_quiz_host_ids"):
-                if str(raw) not in hosts:
-                    fail("identity", f"quiz host {raw!r} is not a runtime id of a scoped topic (write it as <tid>/<id>)")
+                if str(raw) not in hosts and str(raw) not in bare:
+                    fail("identity", f"quiz host {raw!r} is not a runtime id of a scoped topic "
+                                     "(its id attribute, else <tid>-q<n>; optionally written <tid>/<id>)")
 
     blocking = listed(packet.get("blocking_issues"), "blocking_issues")
     if delivered and blocking:
         codes = sorted({str(i.get("code")) for i in blocking if isinstance(i, dict)})
-        fail("blocking_issues", f"a delivered packet cannot carry blocking issues {codes}; use status blocked")
+        fail("blocking_issues", f"a delivered packet cannot carry blocking issues {codes}: use status blocked, or "
+                                "move integration prerequisites to identity_compatibility.migration_requests or handoff.notes_th")
     return errors
 
 

@@ -43,7 +43,7 @@ Use four conceptual levels when the task warrants them:
 3. **Intermediate step:** show a setup or partial result that unlocks the next step.
 4. **Full solution:** disclose the complete reasoning, final result, units, and interpretation.
 
-Do not force four hints onto a simple definition. Avoid hints that merely repeat the prompt. Record dependency order and whether viewing a hint should qualify the self-assessment as assisted. Keep any mapping from assistance to SRS grades aligned with existing product semantics; proposing a change does not authorize one.
+Do not force four hints onto a simple definition. Avoid hints that merely repeat the prompt. Record dependency order and which hints a learner may open. Atlas does not record hint use; do not specify assisted grading unless an existing feature records it, and keep SRS grades aligned with existing product semantics (proposing a change does not authorize one).
 
 For numerical work record givens, unknowns, assumptions, domain restrictions, symbolic result, units, numerical result, precision/tolerance when justified, and at least one appropriate check. Good checks include a limiting case, substitution into the governing equation, or comparison to a separately calculated reference. Unit consistency alone is not proof of correctness.
 
@@ -71,7 +71,7 @@ An activity's design quality is not proof of a learning gain. If the user reques
 
 The editor maps the packet into existing STD2 components: a concise summary, topic map, explanatory layers, one coherent trap section, section practice, and end-of-topic oral review. Preserve the agreed visible-length budget; move elaboration into appropriate disclosure blocks instead of deleting essential content.
 
-Use current `quiz2`, `details.qa`, and existing practice routes where applicable. Preserve explicit oral IDs and host IDs; pin with the `id` attribute (the runtime sets `data-id` from it). A quiz2 block without an id is `<tid>-q<n>` by position, and links such as `#/<sid>/<tid>/<tid>-q1` point at that position, so insert, delete or move blocks only after pinning every block of the topic. Do not introduce parallel quiz or flashcard systems. Slide images never go inside `details.deep` (verify.py reports them as missing sources).
+Use current `quiz2`, `details.qa`, and existing practice routes where applicable. Preserve explicit oral IDs and host IDs; pin with the `id` attribute (the runtime sets `data-id` from it). A quiz2 block without an id is `<tid>-q<n>` by position, and links such as `#/<sid>/<tid>/<tid>-q1` point at that position, so insert, delete or move blocks only after pinning every block of the topic with `id` (`data-id` alone does not pin). Even then the v4 side-rail card reads `atlas-quiz-v1` by block order and will show another block's old result; report that as an accepted side effect. Do not introduce parallel quiz or flashcard systems. Slide images never go inside `details.deep` (verify.py reports them as missing sources).
 
 References in learner-facing text should identify a lecture, slide, or book page. Internal filenames and processing details belong in the packet metadata. Do not expose implementation instructions or JSON field names to learners.
 
@@ -88,6 +88,6 @@ State interaction requirements in the packet; implementation and browser checks 
 
 ## Versioning and handoff checklist
 
-Packet `status` is `draft`, `delivered` (ready for the coordinator; the handoff phase `learning_ready`) or `blocked`. Before handoff, verify the actual input revisions still match and run `scripts/check_learning_packet.py`. Include changed objective/item IDs and dependencies so a later source correction invalidates only the affected activities. Readiness is per the shared contract; do not add a parallel release flag.
+Packet `status` is `draft`, `delivered` (ready for the coordinator; the handoff phase `learning_ready`) or `blocked`. A delivered packet names at least one verified input, classifies every activity's provenance, and carries no blocking issue (otherwise use `blocked`). Before handoff, run `scripts/check_learning_packet.py <packet> --repo-root <repo>`; it rechecks input hashes, topic-bound question ids and preserved quiz host ids. Include changed objective/item IDs and dependencies so a later source correction invalidates only the affected activities. Readiness is per the shared contract; do not add a parallel release flag.
 
 The packet must contain no invented source records, fabricated reviewed hashes, or claims of completed tests. Empty or `null` source fields are acceptable in a clearly marked template or blocked draft; they are not acceptable evidence for a verified academic answer. Keep a human-readable list of exactly what remains to be supplied or checked.

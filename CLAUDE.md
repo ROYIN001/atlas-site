@@ -16,19 +16,19 @@
 
 ```
 index.html    3.5 KB  โครงหน้าเปล่า + <meta robots noindex> + เมนูล่างมือถือ #bbar + อ้าง fonts/fonts.css / app.css?v= / app.js?v= (หัวข้อ 12 · ?v= เขียนโดย build_data)
-app.css       308 KB  4 353 บรรทัด · ส่วนกลาง + บล็อกของแต่ละวิชา + v4/v5 → ВИ → STD2 → История → ช่อง SLOT S1–S8 + บล็อก v6 (S9) ท้ายไฟล์ (หัวข้อ 14)
-app.js        6.3 MB  74 993 บรรทัด (gzip 1.6 MB) · ตัวโปรแกรมทั้งหมด — ดูหัวข้อ 2 และ 14
-data/t/<วิชา>__<หัวข้อ>.json   288 ไฟล์ 12 วิชา (หัวข้อ 240 + บล็อกสรุป 48) · { "html": … } · ต้นฉบับเนื้อหาอยู่ที่นี่ · 32 MB
+app.css       297 KB  4 150 บรรทัด (20 ต.ค. 2026 · ปิดรุ่น v6 308 KB 4 353) · ส่วนกลาง + บล็อกของแต่ละวิชา + v4/v5 → ВИ → STD2 → История → ช่อง SLOT S1–S8 + บล็อก v6 (S9) ท้ายไฟล์ (หัวข้อ 14)
+app.js        5.8 MB  69 155 บรรทัด (gzip 1.5 MB · 20 ต.ค. 2026 · ปิดรุ่น v6 6.3 MB 74 993) · ตัวโปรแกรมทั้งหมด — ดูหัวข้อ 2 และ 14
+data/t/<วิชา>__<หัวข้อ>.json   289 ไฟล์ 12 วิชา (20 ต.ค. 2026 · ตอนปิดรุ่น v6 288 = หัวข้อ 240 + บล็อกสรุป 48) · { "html": … } · ต้นฉบับเนื้อหาอยู่ที่นี่ · 32 MB
 data/ix/<วิชา>.json             12 ไฟล์ · ข้อความสำหรับค้นหา (ใหญ่สุด hist 5.6 MB · รวม 24 MB) — สร้างโดย build_data ห้ามแก้มือ
 data/manifest.json              {subjects: {<วิชา>: {n, v, js?, css?}}} — สร้างโดย build_data (หัวข้อ 14)
-data/qa/<วิชา>.json + _index.json   13 ไฟล์ · คำถามปากเปล่า 2 666 ข้อ — สร้างโดย src/build_steps/qa.py
+data/qa/<วิชา>.json + _index.json   13 ไฟล์ · คำถามปากเปล่า 2 909 ข้อ (20 ต.ค. 2026 · จำนวนปัจจุบันดู data/qa/_index.json) — สร้างโดย src/build_steps/qa.py
 data/rel.json · data/figdim.json    หัวข้อเกี่ยวข้อง 231 หัวข้อ (rel.py) · ขนาดรูป 1 158 ใบ (figdim.py) — สร้างโดย build_data
 data/vh/*.json                  78 ไฟล์ · แผนที่ ВИ 39 + ควิซ/ข้อสอบ 38 + river (หัวข้อ 8 · สร้างจาก _work/ ไม่ใช่ build_data)
 data/ih/atlas.json · world.json แผนที่ของ История (หัวข้อ 10)
 figs/<รหัสรูป>.webp             1 158 ไฟล์ · 30 MB · รูปตัดจากสไลด์ภาควิชา
 fonts/                          33 ไฟล์: IBM Plex + Noto Sans Math (.woff2 30 ไฟล์ + fonts.css + LICENSE 2 ไฟล์) เก็บในเว็บเอง
 sw.js · manifest.webmanifest    อ่านแบบออฟไลน์ + ติดตั้งเป็นแอปบนมือถือ (หัวข้อ 13) · icons/ ไอคอนของเว็บ 6 ไฟล์
-js/subj/<วิชา>.js|.css          9 วิชาที่ยกระดับแล้ว (asu elob nadezh ppo suka surn tau teh_el toe) · แบบจำลอง/รูปแบบของวิชา — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13, 15)
+js/subj/<วิชา>.js|.css          9 วิชา (tau surn ยกระดับทั้งวิชา · asu elob nadezh ppo suka teh_el toe มีเฉพาะหัวข้อต้นแบบ · ยังไม่มีไฟล์ .css · 20 ต.ค. 2026) · แบบจำลอง/รูปแบบของวิชา — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13, 15)
 src/build_data.py               สร้าง data/ix + manifest จาก data/t · เขียน ?v= ใน index.html + DATA_VERSION · รัน src/build_steps/*.py
 src/build_steps/                figdim.py · qa.py · rel.py + README.md — ขั้นเพิ่มเติม run(ctx) (หัวข้อ 14)
 src/buildlib.py                 stable_id() (= stableId ใน app.js · qa.py ใช้ · tests/hooks ตรวจ) · plain() ยังไม่มีขั้นไหนใช้ (ไม่เท่ากับ plain ของ build_data)
@@ -39,7 +39,8 @@ src/registry.cjs                อ่าน DEEP / คีย์ DEMOS จาก
 src/ci_subjects.py              เลือกวิชาที่ CI ต้อง verify ตาม diff
 src/fetch_fonts.py              ดึงฟอนต์ชุดนั้นจาก Google Fonts ใหม่ เขียน fonts/ ทั้งโฟลเดอร์ — ห้ามแก้ fonts.css มือ
 tests/                          *.test.cjs 11 ไฟล์ (node --test · 100 เทสต์) · *.browser.cjs 8 ไฟล์ (Playwright รันมือ) · content-allow.json (หัวข้อ 4, 14)
-.github/workflows/check.yml     CI: tests + verify รายวิชาทุก PR/push เข้า main · กลางคืน --mobile ทั้งเว็บ (หัวข้อ 4)
+.github/workflows/check.yml     CI: tests + verify รายวิชาทุก PR/push เข้า main · กลางคืน --mobile ทั้งเว็บ (หัวข้อ 4) · PR: เตือนเมื่อตัวตนผู้เรียนต่างจาก merge base (หัวข้อ 16)
+.github/workflows/atlas-skills.yml  CI ของสกิล Atlas: mirror + unittest บน Linux/Windows (หัวข้อ 16)
 preview.bat + preview.ps1       เซิร์ฟเวอร์เล็ก ๆ ไว้ดูในเครื่อง (ไม่มี dependency)
 requirements.txt                playwright · python-pptx (pip install -r requirements.txt)
 robots.txt · .nojekyll          ห้ามเสิร์ชเอนจินทำดัชนี · ห้าม Jekyll แปลงไฟล์ — ห้ามลบ
@@ -52,7 +53,7 @@ _work/                          (อยู่ใน .gitignore — บนเค�
                                 run directory ของสกิล `atlas-workflow/<run-id>/` (handoff.json + หลักฐาน · หัวข้อ 16)
 ```
 
-ทั้ง repo ใน git 1 656 ไฟล์ ราว 102 MB (data 396 ไฟล์ · figs 1 158 · fonts 33) — GitHub Pages เผยแพร่ทั้งโฟลเดอร์ root
+ทั้ง repo ใน git ราว 1 900 ไฟล์ 126 MB (20 ต.ค. 2026: data 397 ไฟล์ · figs 1 341 · fonts 33 · สกิล .claude/.agents 60 · ตอนปิดรุ่น v6 1 656 ไฟล์ 102 MB) — GitHub Pages เผยแพร่ทั้งโฟลเดอร์ root
 
 ## 2. app.js ทำงานอย่างไร
 
@@ -186,8 +187,8 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 |---|---|---|
 | สกัดบันทึกจากสไลด์/PDF ทีละช่วง → `_work/notes/` | `notes` (หลายตัวขนาน คนละไฟล์) | sonnet |
 | ตัดรูปจาก pptx → `figs/` | สั่ง `builder` รันสคริปต์ หรือทำเองถ้าต้องดูรูปด้วยตา | haiku |
-| เขียน/เติมหัวข้อ → `data/t/` | `topic-writer` | sonnet |
-| แบบจำลองโต้ตอบ → `app.js` + `app.css` | `demo-writer` | sonnet |
+| เขียน/เติมหัวข้อ → `data/t/` หรือต้นฉบับใน `_work/` (หัวข้อ 15) | `topic-writer` | sonnet |
+| แบบจำลองโต้ตอบ → `js/subj/<วิชา>.js` หรือ `_work/<วิชา>std2/demos/` (หัวข้อ 13, 15) | `demo-writer` | sonnet |
 | ตรวจภาษา (4 กติกา) | `lang-reviewer` | **sonnet** (เดิม haiku — เปลี่ยน 10 ต.ค. 2026 ดูข้างล่าง) |
 | ตรวจสูตร/ตัวเลข/แบบจำลอง | `tech-reviewer` | opus |
 | build_data · Playwright · git | `builder` | haiku |
@@ -215,7 +216,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
   สั่ง «เขียนรายงาน/แก้ก่อนเทิร์นที่ 18» และให้รายการแก้แบบ old→new ชี้จุด ห้ามให้ agent ไป
   grep ค้นเองกว้าง ๆ (เคยหมด 40 เทิร์นไปกับ grep โดยไม่ได้แก้อะไร) · ถ้าล้ม retry ได้ 1 ครั้ง
 - ก่อน lang-review ให้ถอดแท็ก html เป็น `_work/review/<วิชา>__<หัวข้อ>.txt` ก่อน ประหยัดเทิร์นมาก
-- demo-writer หลายตัวเขียน `_work/demos/<key>.js` แยกไฟล์ แล้ว Fable ประกอบด้วย `assemble.py`
+- demo-writer หลายตัวเขียน `_work/demos/<key>.js` แยกไฟล์ แล้ว Fable ประกอบด้วย `assemble.py` (วิธีเดิมของ ТАУ — ปัจจุบันใช้ `_work/<วิชา>std2/demos/` + `_work/std2/tools/assemble.py` · หัวข้อ 2, 15)
   (ดูหัวข้อ 2) — ห้ามให้ agent แก้ app.js ตรง ๆ · เดโมทุกตัวห้ามมีข้อความบนจอที่อ้าง
   «ดูคอมเมนต์ในโค้ด/หัวไฟล์/ให้ reviewer ตรวจ» เพราะผู้อ่านไม่เห็น
 - ตรวจอักษรไทยติดซีริลลิกในคำเดียว (เช่น «สл.», «сูตร») ด้วย regex
@@ -251,7 +252,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - ทดสอบบนมือถือด้วย Playwright: `window.scrollBy` / `mouse.wheel` ไม่ปลุก IntersectionObserver ของหัวข้อ
   ในวิวพอร์ต 390 px — ใช้ `element.scrollIntoView()` แทน (เป็นกับทุกวิชา ไม่ใช่บั๊กของหน้าเว็บ)
 - ศัพท์ที่ตกลงแล้ว: Великая Отечественная война = «มหาสงครามของปิตุภูมิ» · коренной перелом = «จุดพลิกผันครั้งใหญ่» ·
-  корпус = กองทัพน้อย · дивизия = กองพล · бригада = กองพลน้อย
+  корпус = กองทัพน้อย · дивизия = กองพล · бригада = กองพลน้อย (คำตัดสินอยู่ในตาราง «Rulings ที่ย้ายมาจาก CLAUDE.md» ของ glossary.md แล้ว — แก้ที่นั่น)
 - **ยกระดับเป็นมาตรฐานกลาง v2 แล้ว (24 ก.ย. 2026)** — หัวข้อฉบับเต็ม 19 หัวข้อ (vhist-map, l1a … l17) เป็น `<div class="std2">`
   ส่วนหัวข้อสรุป s1–s4 ยังเป็น `.vhist` เดิม · แผนที่เคลื่อนไหวอยู่ใน `.k-exp` ของการ์ดหัวข้อย่อยที่เกี่ยวข้อง (ห้ามอยู่ในเจาะลึก)
   · ควิซ `vh-quiz-<tid>` / `vh-exam-<tid>` ในหัวข้อถูกแทนด้วย `quiz2` ต่อคำถามการเรียน + `details.qa` ปากเปล่าท้ายหัวข้อ
@@ -518,7 +519,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 | ไฟล์ | ผู้สร้าง | รูปแบบ |
 |---|---|---|
 | `data/ix/<วิชา>.json` · `data/manifest.json` · `?v=` ใน index.html + `DATA_VERSION` | `src/build_data.py` | ดัชนีค้นหา · `{subjects: {<วิชา>: {n, v, js?, css?}}}` · sha1[:10] ของ app.js+app.css+manifest (CRLF → LF) |
-| `data/qa/<วิชา>.json` · `data/qa/_index.json` | `src/build_steps/qa.py` | `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `{<วิชา>: {n, t, z, fix}}` · 2 666 ข้อ |
+| `data/qa/<วิชา>.json` · `data/qa/_index.json` | `src/build_steps/qa.py` | `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `{<วิชา>: {n, t, z, fix}}` · 2 666 ข้อตอนปิดรุ่น v6 (ปัจจุบันดู `_index.json`) |
 | `data/rel.json` · `data/figdim.json` | `rel.py` · `figdim.py` | หัวข้อเกี่ยวข้อง 231 หัวข้อ · ขนาดรูป 1 158 ใบ |
 | `src/counts-baseline.json` · `src/blocks.json` | `python src/counts.py --update` · `python src/blocks.py --update <บล็อก>` | หัวข้อ 4 |
 | `data/vh/*.json` · `data/ih/*.json` | สคริปต์ใน `_work/` / ต้นทาง История (หัวข้อ 8, 10) | — |
@@ -537,7 +538,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 1. **DEEP**: `chk: false` ตั้งแต่แรก → `chk: true` + `rev: "YYYY-MM-DD"` หลังผ่าน tech + lang · `src` ต้นทางสั้น · `lec: N`/`[N, M]` เมื่อชื่อหัวข้อไม่ขึ้นต้น «Лекция N»/«Тема N» · `rel: [...]` ทับหัวข้อเกี่ยวข้อง
 2. **คำถามปากเปล่า** `details.qa` > `summary` (STD2 `.qa-q`) + `.ans` (`.ans-ru` ได้ 🔊) · ไม่ต้องใส่ id · **แก้ข้อความคำถาม = id ใหม่** ผลซ้อม/SRS ข้อนั้นหาย (อยากคงที่ใส่ `id` เอง)
-3. **quiz2** ได้ id `<tid>-q<n>` ตามลำดับ — แทรกบล็อกก่อนบล็อกเดิม = ผลของบล็อกถัดไปเลื่อน (ต้องคงผลใส่ `id`/`data-id` เอง)
+3. **quiz2** ได้ id `<tid>-q<n>` ตามลำดับ — แทรกบล็อกก่อนบล็อกเดิม = ผลของบล็อกถัดไปเลื่อน (ต้องคงผล: ใส่ `id` = `<tid>-q<n>` เดิมให้ทุกบล็อกของหัวข้อก่อนแทรก/ลบ/ย้าย — ใส่แค่ `data-id` ไม่พอ เพราะ atlas-practice-v1 ใช้ `id` · ตรึงบางบล็อกทำให้ id ซ้ำ · การ์ดควิซในแถบข้าง `atlas-quiz-v1` ผูกกับลำดับเสมอ · หัวข้อ 16)
 4. id ขององค์ประกอบไม่ซ้ำทั้งวิชา ขึ้นต้นด้วยรหัสหัวข้อ · ลิงก์ `#/<วิชา>/<หัวข้อ>[/<id>]`
 5. **แบบจำลอง** ใน `js/subj/<วิชา>.js|.css` (`buildDemo`/`demoWatch` · หยุดลูปเมื่อ `document.hidden` · ไม่แตะ `document` ระดับบนสุด) แล้วลบบล็อกเดิมจาก app.js (+ `src/blocks.json`)
 6. **ไฟล์ข้อมูลใหม่**: อยู่ในเว็บเดียวกัน · คืน URL ใน `HOOKS.on("offline", …)` (ไม่แก้ `saveOffline`) · สร้างจากเนื้อหา → `src/build_steps/<ชื่อ>.py`
@@ -593,7 +594,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 - ทดสอบ: `tests/search.test.cjs` (vm) · `node tests/search.browser.cjs` (Playwright ตรวจรับ ไม่อยู่ในชุด `--test`) · `verify.py` พิมพ์คำค้นก่อนแล้วรอ `IX_READY` (แก้แล้ว 29 ก.ย. 2026 — เดิมโฟกัสแล้วรอจนหมดเวลา นับผลจากดัชนี 138/288 แถว) · ดัชนีไม่ครบ = FAIL
 
 #### 14.5 S5 — ฝึกทบทวน
-- **`data/qa/<sid>.json`** (จาก `src/build_steps/qa.py` · 2 666 ข้อ 12 วิชา) = `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `_index.json` = `{sid: {n, t:{tid:จำนวน}, z:{tid:จำนวน quiz2}, fix:{tid:{ลำดับ:id}}}}` · id = id เดิม หรือ `"qa-" + stable_id(ข้อความ .qa-q/<summary> ที่ขอบแท็กทุกอันเป็นช่องว่าง แปลง &…; แล้ว)` — ฝั่งหน้าเว็บคือ `qaText()` (เดินโหนด ไม่ใช่ textContent) · คำถามซ้ำข้ามหัวข้อต่อท้าย `-<tid>` (อยู่ใน `fix`) · `a_html` ไม่มี `[data-demo]`/figure/script (แทนด้วย `a.qa-see`)
+- **`data/qa/<sid>.json`** (จาก `src/build_steps/qa.py` · 2 666 ข้อ 12 วิชาตอนเขียน · ปัจจุบันดู `_index.json`) = `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `_index.json` = `{sid: {n, t:{tid:จำนวน}, z:{tid:จำนวน quiz2}, fix:{tid:{ลำดับ:id}}}}` · id = id เดิม หรือ `"qa-" + stable_id(ข้อความ .qa-q/<summary> ที่ขอบแท็กทุกอันเป็นช่องว่าง แปลง &…; แล้ว)` — ฝั่งหน้าเว็บคือ `qaText()` (เดินโหนด ไม่ใช่ textContent) · คำถามซ้ำข้ามหัวข้อต่อท้าย `-<tid>` (อยู่ใน `fix`) · `a_html` ไม่มี `[data-demo]`/figure/script (แทนด้วย `a.qa-see`)
 - hook `fill`: ใส่ id ให้ `details.qa` (+ `data-qaid`) และ host quiz2 (`id` = `data-id` = `<tid>-q<n>`) · 🔊 ในคำตอบภาษารัสเซีย (`qaRuText()` = กติกาเดียวกับ `ru_text()` ใน qa.py) · แถบสี `details.qa[data-oral]` · session อื่น **อ่าน id จาก DOM/`data/qa`** ไม่ต้องคำนวณเอง
 - **`window.SAY = { ok, speak(text, rate, onEnd) → false ถ้าไม่มีเสียง, stop(), voice(), hint() }`** ใช้เฉพาะเสียง ru ในเครื่อง (`localService`) · `sayButton(getText, label)` = ปุ่ม 🔊 ฟัง/ช้า พร้อมคำแนะนำติดตั้ง · หยุดเองใน hook go/clear
 - หน้า: `#/practice[/sid[/tid]]` · `#/oral/sid[/tid][/n<k>][/weak]` · `#/flash[/<กลุ่ม|วิชา>][/weak]` · `#/quiz[/<กลุ่ม|วิชา>][/n<k>][/weak]` (flash/quiz ถอดจาก `PAGES` เป็น `registerPage` ในช่อง S5 — **S2: `PAGE_DEFS.practice` มีแล้ว**) · ปุ่ม `#quizBtn` = «ฝึกทบทวน» → `#/practice/<วิชาที่อ่านอยู่>`
@@ -679,7 +680,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 ### 15.3 НАС (`nadezh`) — ต้นแบบ `nas-5`
 - งาน `_work/nadezhstd2/` · แปลงรูปแบบจาก data/t (วิชาหนา · เห็นทันที ~51 % ของเดิม) · prefix `ns5-` · แบบจำลอง `nas5-series` `nas5-reduce` ใน `js/subj/nadezh.js` + ของเดิม `nasSeries` `nasParallel` `nasKG` `nasGenSep` (ยังอยู่ใน app.js)
-- ต้นทาง: ข้อความบรรยาย Л5 (.docx) + สไลด์ (.pptx 49 หน้า) + «Контрольные варианты ответов» (คำตอบควบคุม В14–В23) — แปลงเป็นข้อความด้วย LibreOffice/pymupdf ในโฟลเดอร์ชั่วคราวให้ผู้ตรวจ · **ห้ามเขียน «docx» ในเนื้อหา** ใช้ «ข้อความบรรยาย» (เดิมมี 59 จุด) · билет = «ชุดข้อสอบ»
+- ต้นทาง: ข้อความบรรยาย Л5 (.docx) + สไลด์ (.pptx 49 หน้า) + «Контрольные варианты ответов» (คำตอบควบคุม В14–В23) — แปลงเป็นข้อความด้วย LibreOffice/pymupdf ในโฟลเดอร์ชั่วคราวให้ผู้ตรวจ · **ห้ามเขียน «docx» ในเนื้อหา** ใช้ «ข้อความบรรยาย» (เดิมมี 59 จุด) · билет = «ชุดข้อสอบ» (คำตัดสินอยู่ในตาราง «Rulings ที่ย้ายมาจาก CLAUDE.md» ของ glossary.md แล้ว — แก้ที่นั่น)
 - สไลด์ที่เป็น SmartArt (เช่น сл. 15) แปลงเป็น PDF แล้วกรอบหาย — ดูข้อความใน `ppt/diagrams/data*.xml` ก่อนสรุปว่าสไลด์ไม่ครบ
 - id ปากเปล่าเดิม 3 ข้อคงไว้ (`qa-xg3zrf` `qa-1awvhzb` `qa-zrqh3k`) · ข้อเดิมที่อ้างไฟล์ EXAM.md (`qa-1jg1rl6`) ตัดออกโดยตั้งใจ
 
@@ -691,7 +692,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 ### 15.5 ТОЭ (`toe`) — ต้นแบบ `toe-5`
 - งาน `_work/toestd2/` · ไม่มีเอกสารภาควิชานอกจากงานประจำวิชาของเจ้าของงาน (вариант 1489 · วิธีคลาสสิกอย่างเดียว) → หัวข้อเป็น «งานประจำวิชา: กระบวนการชั่วครู่» พร้อมหมายเหตุต้นฉบับ 11 กล่อง (ค่าที่ถูก: L = 0,1 Гн · R₁ = 50 Ом · R_кр = 26,12 Ом)
-- prefix `o5-` · แบบจำลอง `toe5-classic` `toe5-modes` · สัมประสิทธิ์หน่วงใช้ ξ ตามสัญกรณ์ ТАУ ของ ВКА · порядок цепи = «อันดับ»
+- prefix `o5-` · แบบจำลอง `toe5-classic` `toe5-modes` · สัมประสิทธิ์หน่วงใช้ ξ ตามสัญกรณ์ ТАУ ของ ВКА · порядок цепи = «อันดับ» (คำตัดสินอยู่ในตาราง «Rulings ที่ย้ายมาจาก CLAUDE.md» ของ glossary.md แล้ว — แก้ที่นั่น)
 
 ### 15.6 СУ РН (`surn`) — ทั้งวิชา (ประกอบ 14 ต.ค. 2026 · ต้นแบบ `surn-12` 8 ต.ค.)
 - งาน `_work/surnstd2/` · ต้นทาง = สไลด์ Л2–Л24 (pptx → PDF · บรรยาย 1 ไม่มีสไลด์) · บันทึก `notes/LNN.md` (+ `L22b` `L23b`) · เรนเดอร์หน้าสไลด์ `render_pages.py NN a-b` → `media/LNN/pages/` · ตำรา [1] [3] [7] ไม่ได้อ่านประกอบ (บอกไว้ในบรรทัดแหล่งอ้างอิง)
@@ -708,10 +709,10 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 ## 16. สกิล Atlas — เขียน ออกแบบการฝึก และตรวจ (เพิ่ม 20 ต.ค. 2026)
 
-สามสกิลใน `.claude/skills/` ใช้ขั้นตอนร่วมกัน (Claude Code โหลดเอง · Codex ใช้สำเนา `.agents/skills/` + `AGENTS.md`) — คู่มือภาษาไทย `claude/atlas-skills-workflow.md` · ผลตรวจ `claude/atlas-skills-validation-summary.md` · ผลประเมิน `claude/atlas-skills-evaluation.md`
+สามสกิลใน `.claude/skills/` ใช้ขั้นตอนร่วมกัน (Claude Code โหลดเอง · Codex ใช้สำเนา `.agents/skills/` + `AGENTS.md`) — คู่มือภาษาไทย `claude/atlas-skills-workflow.md` · ผลตรวจ `claude/atlas-skills-validation-summary.md` · ผลประเมิน `claude/atlas-skills-evaluation.md` · คำตัดสินศัพท์ที่เคยอยู่ในหัวข้อ 8 และ 15 ย้ายไปตาราง «Rulings ที่ย้ายมาจาก CLAUDE.md» ท้าย glossary.md แล้ว (แก้ที่นั่น)
 - `atlas-content-editor` — เขียน/ปรับบทเรียน แก้คำผิด ยกระดับ STD2 แบบจำลอง · **เป็นผู้ประสานงานของงานผสม** (มอบงานให้ agents ในหัวข้อ 7)
 - `atlas-learning-designer` — คำถามปากเปล่า แบบฝึก ควิซ คำใบ้ → learning packet แยก (`scripts/check_learning_packet.py`)
 - `atlas-technical-reviewer` — ตรวจสูตร ศัพท์ แหล่งอ้างอิง ตัวตนคำถาม และหลักฐาน (`scripts/check_handoff.py` · `scripts/compare_identity.py`)
-- กติกาที่ต้องรู้แม้ไม่ได้เรียกสกิล: **คำถามปากเปล่าที่ไม่มี id ได้ id จากข้อความ** — แก้คำผิดในคำถามก็ทำให้ประวัติซ้อมของผู้เรียนหาย → ตรึง id เดิมจาก `data/qa` ก่อนแก้ · บล็อก `quiz2` ที่ไม่มี id นับตามลำดับ (ตรึงทุกบล็อกหรือไม่ตรึงเลย) · หลัง build_data รัน `python .claude/skills/atlas-technical-reviewer/scripts/compare_identity.py --repo . --base-rev <commit ก่อนแก้> --cand .`
-- run directory `_work/atlas-workflow/<run-id>/` (ไม่ไปกับ git) · ผลผ่านทุกชิ้นต้องระบุ `candidate_digest` · ทำไม่ได้เพราะขาดเครื่องมือ = `not_run` + `blocked` ไม่ใช่ N/A · VALID ของตัวตรวจไม่ใช่สิทธิ์ commit/เผยแพร่
+- กติกาที่ต้องรู้แม้ไม่ได้เรียกสกิล: **คำถามปากเปล่าที่ไม่มี id ได้ id จากข้อความ** — แก้คำผิดในคำถามก็ทำให้ประวัติซ้อมของผู้เรียนหาย → ตรึง id เดิมจาก `data/qa` ด้วยแอตทริบิวต์ `id` ก่อนแก้ · บล็อก `quiz2` ที่ไม่มี id นับตามลำดับ (ตรึงทุกบล็อกด้วย `id` หรือไม่ตรึงเลย · `data-id` อย่างเดียวไม่ตรึง) · หลัง build_data รัน `python .claude/skills/atlas-technical-reviewer/scripts/compare_identity.py --repo . --base-rev <commit ก่อนแก้> --cand .` (ในงานที่มี handoff เพิ่ม `--candidate-digest <digest> --out <run-dir>/identity.json`) · CI เตือนทุก PR ที่ตัวตนต่างจาก merge base
+- run directory `_work/atlas-workflow/<run-id>/` (ไม่ไปกับ git) · หลักฐานผ่านทุกชิ้นขึ้นบรรทัดแรกด้วย `candidate_digest: <digest>` · ทำไม่ได้เพราะขาดเครื่องมือ = `not_run` + `blocked` ไม่ใช่ N/A · VALID ของตัวตรวจไม่ใช่สิทธิ์ commit/เผยแพร่
 - แก้สกิล: แก้ที่ `.claude/skills/atlas-*` เท่านั้น แล้ว `python .claude/skills/atlas-content-editor/scripts/sync_bundle.py --write` + unittest ทั้งสามโฟลเดอร์ `scripts/` (คำสั่งเต็มในคู่มือ) · CI «Atlas skills» รันบน Linux และ Windows
