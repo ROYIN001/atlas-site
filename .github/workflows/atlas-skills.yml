@@ -51,7 +51,7 @@ jobs:
       - name: Skill files are stored with LF in git
         if: runner.os == 'Linux'
         run: |
-          bad=$(git ls-files --eol -- '.claude/skills/atlas-*' '.agents/skills' 'claude/atlas-skills-*' AGENTS.md | awk '$1=="i/crlf"')
+          bad=$(git ls-files --eol -- '.claude/skills/atlas-*' '.agents/skills' 'claude/atlas-skills-*' AGENTS.md | awk '$1=="i/crlf" || $1=="i/mixed"')
           if [ -n "$bad" ]; then echo "$bad"; echo "Commit these files with LF (git add --renormalize .)"; exit 1; fi
       - name: Validate bundles and synchronized Codex mirrors
         run: python .claude/skills/atlas-content-editor/scripts/sync_bundle.py
@@ -61,11 +61,11 @@ jobs:
         run: python -B -m unittest discover -s .claude/skills/atlas-learning-designer/scripts -p "test_*.py"
       - name: Technical reviewer scripts (handoff and identity checks)
         run: python -B -m unittest discover -s .claude/skills/atlas-technical-reviewer/scripts -p "test_*.py"
-      # Smoke test on the real lesson data: fails only when the comparison cannot
-      # run. Identity differences are reported as a warning, because a content PR
-      # may retire IDs deliberately (that decision belongs to its identity gate).
+      # Tool smoke test on the real lesson data when the skills change: fails only
+      # when the comparison cannot run. The per-PR identity warning for lesson
+      # changes runs in check.yml (job tests), which runs on every pull request.
       - name: Identity comparison runs on real data
-        if: runner.os == 'Linux' && github.event_name == 'pull_request'
+        if: runner.os == 'Linux' && matrix.python == '3.12' && github.event_name == 'pull_request'
         run: |
           base=$(git merge-base HEAD "origin/${{ github.base_ref }}")
           set +e

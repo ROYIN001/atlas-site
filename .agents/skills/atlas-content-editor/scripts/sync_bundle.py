@@ -15,13 +15,19 @@ from pathlib import Path
 
 NAMES = ("atlas-content-editor", "atlas-learning-designer", "atlas-technical-reviewer")
 COMMON = ("workflow-contract.md", "repo-adapter.md")
-INLINE_LINK = re.compile(r"\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
-REFERENCE_LINK = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*<?([^>\s]+)>?", re.M)
+# [text](target "title") / [text](<target with spaces> 'title')
+INLINE_LINK = re.compile(r"""\]\(\s*(<[^>\n]*>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)""")
+# [label]: target "title" -- a definition line only (not a footnote [^1]: or prose).
+REFERENCE_LINK = re.compile(r"""^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*(<[^>\n]*>|\S+)[ \t]*(?:"[^"]*"|'[^']*'|\([^)]*\))?[ \t]*$""", re.M)
+# Fenced blocks and inline code spans are not links.
+CODE = re.compile(r"^ {0,3}(`{3,}|~{3,})[^\n]*\n.*?^ {0,3}\1[^\n]*$|(`+)[^`\n]*?\2", re.M | re.S)
+SCRATCH = ".handoff-test-"   # disposable test folders; never part of a bundle
 
 
 def files(folder):
     return {p.relative_to(folder).as_posix(): p for p in folder.rglob("*")
-            if (p.is_file() or p.is_symlink()) and "__pycache__" not in p.parts and p.suffix != ".pyc"}
+            if (p.is_file() or p.is_symlink()) and "__pycache__" not in p.parts and p.suffix != ".pyc"
+            and not any(part.startswith(SCRATCH) for part in p.relative_to(folder).parts)}
 
 
 def read_text(path, errors, label):
@@ -33,8 +39,10 @@ def read_text(path, errors, label):
 
 
 def link_targets(text):
-    for target in INLINE_LINK.findall(text) + REFERENCE_LINK.findall(text):
-        target = target.strip("<>")
+    text = CODE.sub(" ", text)
+    targets = INLINE_LINK.findall(text) + [target for _, target in REFERENCE_LINK.findall(text)]
+    for target in targets:
+        target = target.strip("<>").strip()
         if "://" in target or target.startswith(("#", "mailto:")):
             continue
         yield target
@@ -96,11 +104,13 @@ def validate_source(root):
         for n in NAMES:
             path = root / ".claude" / "skills" / n / "references" / common
             try:
-                blobs.append(path.read_bytes())
+                # git text=auto: a CRLF working tree and an LF clone hold the same file
+                blobs.append(path.read_bytes().replace(b"\r\n", b"\n"))
             except OSError as exc:
                 errors.append(f"{n}/references/{common}: missing shared reference ({exc.__class__.__name__})")
         if len(set(blobs)) > 1:
-            errors.append(f"shared reference drift: {common}")
+            errors.append(f"shared reference drift: {common} (copy the edited file to all three "
+                          "skills' references/ folders, then rerun)")
     return errors
 
 

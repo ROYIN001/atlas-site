@@ -17,7 +17,7 @@ class SyncBundleTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         for name in sync_bundle.NAMES:
             shutil.copytree(SKILLS / name, self.root / ".claude" / "skills" / name,
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", sync_bundle.SCRATCH + "*"))
         self.assertEqual([], sync_bundle.run(self.root, write=True))
 
     def skill(self, name="atlas-content-editor"):
@@ -44,6 +44,32 @@ class SyncBundleTests(unittest.TestCase):
         skill_md.write_text(skill_md.read_text(encoding="utf-8") + "\nSee [the guide][g].\n\n[g]: references/missing.md\n",
                             encoding="utf-8")
         self.assertError("missing or external bundled reference references/missing.md")
+
+    def test_code_and_footnotes_are_not_links(self):
+        skill_md = self.skill() / "SKILL.md"
+        skill_md.write_text(skill_md.read_text(encoding="utf-8") +
+                            "\nRun `x = a[i](b)` or\n\n```\n[k]: not/a/link.md\nf[0](y)\n```\n\n[^1]: a footnote\n"
+                            "Values: [1]: first value, see below\n", encoding="utf-8")
+        self.assertEqual([], sync_bundle.run(self.root, write=True))
+
+    def test_link_with_title_and_angle_brackets_is_checked(self):
+        skill_md = self.skill() / "SKILL.md"
+        skill_md.write_text(skill_md.read_text(encoding="utf-8") +
+                            "\nSee [a](<references/no such.md> 'title').\n", encoding="utf-8")
+        self.assertError("missing or external bundled reference references/no such.md")
+
+    def test_line_endings_alone_are_not_drift(self):
+        ref = self.skill("atlas-learning-designer") / "references" / "workflow-contract.md"
+        ref.write_bytes(ref.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertFalse(any("shared reference drift" in e for e in sync_bundle.run(self.root, write=True)))
+
+    def test_scratch_folders_are_never_mirrored(self):
+        scratch = self.skill() / "scripts" / (sync_bundle.SCRATCH + "abc")
+        scratch.mkdir()
+        (scratch / "junk.txt").write_text("x", encoding="utf-8")
+        self.assertEqual([], sync_bundle.run(self.root, write=True))
+        self.assertFalse((self.root / ".agents" / "skills" / "atlas-content-editor" / "scripts" /
+                          (sync_bundle.SCRATCH + "abc")).exists())
 
     def test_stale_mirror_folder_reported(self):
         (self.root / ".agents" / "skills" / "atlas-old-name").mkdir(parents=True)

@@ -7,4 +7,4 @@ _work/
 node_modules/
 
 # unit-test scratch folders of the Atlas skill scripts
-.handoff-test-*/
+.handoff-test-*
