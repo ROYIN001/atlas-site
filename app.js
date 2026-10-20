@@ -945,7 +945,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "73443e98df";
+const DATA_VERSION = "7386c6d7a2";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -67574,8 +67574,9 @@ function qaBaseId(d) { const s = d.querySelector(":scope > summary"); return "qa
 function qaIds(el, sid, tid, fixOnly) {
   const fix = (QAIX && QAIX[sid] && QAIX[sid].fix && QAIX[sid].fix[tid]) || {};
   qaList(el).forEach((d, i) => {
-    if (d.dataset.qaid === undefined) { if (d.id || fixOnly) return; d.id = qaBaseId(d); d.dataset.qaid = ""; }   // data-qaid = id นี้ใส่ตอนเติมหัวข้อ
-    if (fix[i]) d.id = fix[i];
+    // data-qaid = id นี้ใส่ตอนเติมหัวข้อ · ข้อที่มี id ในไฟล์อยู่แล้ว (ตรึงไว้) ไม่ได้ data-qaid แต่ยังต้องได้แถบสี data-oral
+    if (d.dataset.qaid === undefined && !d.id) { if (fixOnly) return; d.id = qaBaseId(d); d.dataset.qaid = ""; }
+    if (fix[i] && d.dataset.qaid !== undefined) d.id = fix[i];
     const r = ORAL[sid + "/" + tid + "/" + d.id];
     if (r) { d.dataset.oral = r.r; d.title = "ซ้อมปากเปล่าครั้งล่าสุด: " + RATE[r.r] + " · " + s5ago(r.t); }
   });
