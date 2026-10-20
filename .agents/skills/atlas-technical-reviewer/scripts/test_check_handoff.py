@@ -314,5 +314,53 @@ class HandoffTests(unittest.TestCase):
                                      "owner": "content-author", "evidence_artifact_ids": ["checks"]}]
         self.assertEqual([], self.errors())
 
+    def test_author_produced_evidence_cannot_pass_provenance(self):
+        art = next(a for a in self.manifest["artifacts"] if a["id"] == "checks")
+        art["producer"] = "content-author"
+        self.assertInvalid("a provenance pass needs evidence produced by someone other")
+
+    def test_declared_single_session_cannot_be_ready(self):
+        self.manifest["capabilities"] = {"independent_reviewers": False}
+        self.assertInvalid("declared no independent reviewers")
+        self.manifest["phase"] = "reviewed"
+        self.assertEqual([], self.errors())
+
+    def test_resume_phase_only_while_blocked(self):
+        self.manifest["resume_phase"] = "integrated"
+        self.assertInvalid("only meaningful while phase is blocked")
+        self.manifest["resume_phase"] = "ready"
+        self.assertInvalid("resume_phase: must be one of")
+
+    def test_path_case_must_match_disk(self):
+        self.assertTrue(validator.exact_case(self.repo, "data/t/tau__tau-1.json"))
+        self.assertFalse(validator.exact_case(self.repo, "data/t/TAU__tau-1.json"))
+
+    def test_changed_files_missing_from_candidate_are_warned(self):
+        def git(*args):
+            subprocess.run(["git", "-C", str(self.repo), *args], check=True, capture_output=True)
+        try:
+            git("init", "-q")
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+        base = subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        (self.repo / "data" / "t" / "tau__tau-2.json").write_text("{}", encoding="utf-8")
+        self.manifest["base_revision"] = base
+        warnings = validator.coverage_warnings(self.manifest, self.repo)
+        self.assertTrue(any("tau__tau-2.json" in w for w in warnings), warnings)
+        self.assertFalse(any("tau__tau-1.json" in w for w in warnings), warnings)
+
+    def test_cli_prints_limitations_after_valid(self):
+        self.manifest["limitations"] = ["Faculty slides were not available for this run."]
+        manifest_path = self.root / "handoff.json"
+        manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(Path(validator.__file__)), str(manifest_path),
+                                 "--root", str(self.root), "--repo-root", str(self.repo)],
+                                capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("LIMITATION: Faculty slides were not available", result.stdout)
+
 if __name__ == "__main__":
     unittest.main()

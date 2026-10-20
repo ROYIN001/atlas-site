@@ -17,7 +17,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
 import unicodedata
 from pathlib import Path, PureWindowsPath
@@ -41,6 +43,11 @@ CONTENT_GATES = frozenset({"provenance", "technical", "language", "identity"})
 # Pre-commit gates (CLAUDE.md §4) that cannot be N/A once site files change.
 SITE_GATES = frozenset({"build", "tests", "browser"})
 SITE_PREFIXES = ("data/", "js/", "figs/", "app.js", "app.css", "index.html", "sw.js")
+# A pass on these gates needs at least one evidence artifact produced by someone
+# who did not write the candidate (the author's own source register or self-check
+# is not provenance/technical/language evidence).
+INDEPENDENT_GATES = frozenset({"provenance", "technical", "language"})
+RESUMABLE = ("planned", "content_ready", "learning_ready", "integrated", "reviewed")
 
 
 def candidate_digest(files: list[dict[str, str]]) -> str:
@@ -56,6 +63,58 @@ def file_digest(path: Path) -> str:
     """SHA-256 of the bytes after CRLF -> LF, so a Windows autocrlf checkout and
     a Linux clone of the same commit agree (src/build_data.py does the same)."""
     return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def exact_case(base: Path, relative: str) -> bool:
+    """True when every path segment exists with exactly this spelling. A
+    case-insensitive file system (Windows, macOS) would otherwise accept
+    data/t/TAU__tau-1.json for data/t/tau__tau-1.json while Linux CI rejects it."""
+    current = base
+    for part in relative.split("/"):
+        try:
+            if part not in os.listdir(current):
+                return False
+        except OSError:
+            return False
+        current = current / part
+    return True
+
+
+def changed_since(repo_root: Path, base_revision: str) -> list[str] | None:
+    """Tracked files changed since base_revision plus untracked, non-ignored
+    files; None when git or the revision is unavailable."""
+    try:
+        def git(*args: str) -> list[str]:
+            out = subprocess.run(["git", "-C", str(repo_root), *args], capture_output=True,
+                                 text=True, timeout=60, check=True)
+            return [line for line in out.stdout.splitlines() if line]
+        return sorted(set(git("diff", "--name-only", base_revision, "--")) |
+                      set(git("ls-files", "--others", "--exclude-standard")))
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def coverage_warnings(manifest: Any, repo_root: Path | None) -> list[str]:
+    """Files changed since base_revision that the candidate does not list. A
+    warning, not an error: unrelated work may share the checkout, but a changed
+    lesson or generated file that is not in the candidate was never reviewed."""
+    if repo_root is None or not isinstance(manifest, dict):
+        return []
+    phase = manifest.get("phase")
+    base = manifest.get("base_revision")
+    files = (manifest.get("candidate") or {}).get("files") if isinstance(manifest.get("candidate"), dict) else None
+    if phase not in {"integrated", "reviewed", "ready"} or not isinstance(base, str) or not isinstance(files, list):
+        return []
+    changed = changed_since(Path(repo_root), base)
+    if changed is None:
+        return [f"cannot list files changed since {base} (git or revision unavailable); coverage not checked"]
+    listed = {str(item.get("path", "")).replace("\\", "/").casefold()
+              for item in files if isinstance(item, dict)}
+    missing = [path for path in changed if path.casefold() not in listed]
+    if not missing:
+        return []
+    shown = ", ".join(missing[:20]) + (f" … (+{len(missing) - 20} more)" if len(missing) > 20 else "")
+    return [f"{len(missing)} file(s) changed since {base} are not in candidate.files: {shown}"]
 
 
 def safe_relative(value: str) -> str:
@@ -150,6 +209,8 @@ def validate_manifest(manifest: Any, root: Path,
                 fail(location, "resolved path escapes its root (including symlinks)")
             elif not resolved.is_file():
                 fail(location, "must refer to a regular file")
+            elif not exact_case(resolved_base, relative):
+                fail(location, "path spelling/case differs from the file on disk")
             elif expected and file_digest(resolved) != expected.lower():
                 fail(location, "file SHA-256 does not match manifest")
             else:
@@ -180,6 +241,17 @@ def validate_manifest(manifest: Any, root: Path,
     task_type = enum(scope.get("task_type"), {"content", "learning", "review", "full"},
                      "scope.task_type")
     strings(data.get("limitations"), "limitations")
+    if "resume_phase" in data:
+        resume = enum(data.get("resume_phase"), set(RESUMABLE), "resume_phase")
+        if resume and phase != "blocked":
+            fail("resume_phase", "is only meaningful while phase is blocked")
+    capabilities = data.get("capabilities", {})
+    if not isinstance(capabilities, dict):
+        fail("capabilities", "must be an object")
+        capabilities = {}
+    independent_runtime = capabilities.get("independent_reviewers", True)
+    if not isinstance(independent_runtime, bool):
+        fail("capabilities.independent_reviewers", "must be true or false")
 
     root = Path(root)
     if not root.is_dir():
@@ -328,6 +400,11 @@ def validate_manifest(manifest: Any, root: Path,
                 fail(location + ".candidate_digest", "pass gate is stale for the candidate")
             elif gate_evidence and not any(names_digest(a) for a in gate_evidence):
                 fail(location + ".evidence_artifact_ids", "no evidence artifact states the current candidate digest (rerun the check for this candidate)")
+            if name in INDEPENDENT_GATES and gate_evidence and not any(
+                    a in artifacts and isinstance(artifacts[a].get("producer"), str) and
+                    identity_name(artifacts[a]["producer"]) not in author_names
+                    for a in gate_evidence):
+                fail(location + ".evidence_artifact_ids", f"a {name} pass needs evidence produced by someone other than the candidate's owners/contributors")
         reason = item.get("reason")
         if not isinstance(reason, str):
             fail(location + ".reason", "must be a string (empty allowed except N/A)")
@@ -386,6 +463,8 @@ def validate_manifest(manifest: Any, root: Path,
                 fail("reviews", f"ready requires an independent current {role} pass review")
         if reviews_by_role["technical"] & reviews_by_role["language"]:
             fail("reviews", "technical and language reviewers must be distinct identities")
+        if independent_runtime is False:
+            fail("capabilities.independent_reviewers", "this run declared no independent reviewers; finish as reviewed or blocked and disclose the limitation instead of ready")
     return errors
 
 
@@ -413,6 +492,9 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, RecursionError) as exc:
         print(f"ERROR: cannot load/validate manifest: {exc}", file=sys.stderr)
         return 2
+    warnings = coverage_warnings(manifest, args.repo_root)
+    for warning in warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
@@ -421,6 +503,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"VALID (phase {manifest.get('phase')}): manifest structure, ownership, file hashes and "
           "digest-bound evidence are consistent. Not verified: question/SRS identity, that "
           "claimed commands ran, reviewer independence, academic correctness, locks, publish permission.")
+    for limitation in manifest.get("limitations") or []:
+        print(f"LIMITATION: {limitation}")
     return 0
 
 

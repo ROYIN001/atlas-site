@@ -1,8 +1,8 @@
 {
   "template": true,
-  "template_note": "Non-deployable authoring template. Replace null values using observed inputs; remove unused example structures. Never treat this template as evidence or a completed review.",
+  "template_note": "Non-deployable authoring template. Replace null values using observed inputs; remove unused example structures and set template to false (or delete it). status: draft | delivered | blocked (delivered = ready for the coordinator; the handoff phase learning_ready). activities[].kind: oral | exercise | recall | misconception | demo_task. provenance.classification: official_exam | textbook_control | author_practice | unverified_existing. Validate with scripts/check_learning_packet.py. Never treat this template as evidence or a completed review.",
   "packet_schema_version": "1.0",
-  "workflow_contract_version": null,
+  "workflow_contract_version": 1,
   "task_id": null,
   "artifact_id": null,
   "revision": 0,
