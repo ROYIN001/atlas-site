@@ -3,10 +3,13 @@
 
 Usage: python check_handoff.py MANIFEST --root RUN_ROOT [--repo-root REPO_ROOT]
 
-This checks schema, identity, hashes, and declared review gates. It does NOT
-certify academic correctness, authenticate reviewer identities, or lock workers.
-The coordinator must freeze the candidate while reviewing and recheck immediately
-before publication. A valid manifest is not publication authorization.
+This checks schema, paths, ownership, file hashes and that declared review/gate
+evidence names the current candidate digest. It does NOT compare question,
+quiz-host or glossary identities (the identity gate's own evidence must do that),
+execute claimed tests, certify academic correctness, authenticate reviewer
+identities, or lock workers. The coordinator must freeze the candidate while
+reviewing and recheck immediately before publication. A valid manifest is not
+publication authorization.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
@@ -29,21 +33,29 @@ HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
 RESERVED = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", re.I)
 GENERIC_REASONS = {"n/a", "na", "none", "not applicable", "not relevant",
                    "not needed", "skip", "skipped", "todo", "tbd"}
+REVISION = re.compile(r"^[0-9a-f]{7,40}$")
+PLACEHOLDER = re.compile(r"replace-with|^(todo|tbd|xxx)$", re.I)
+# Gates that can never be N/A at ready for content/full work (contract: missing
+# tools or sources are not_run, never not_applicable).
+CONTENT_GATES = frozenset({"provenance", "technical", "language", "identity"})
+# Pre-commit gates (CLAUDE.md §4) that cannot be N/A once site files change.
+SITE_GATES = frozenset({"build", "tests", "browser"})
+SITE_PREFIXES = ("data/", "js/", "figs/", "app.js", "app.css", "index.html", "sw.js")
 
 
 def candidate_digest(files: list[dict[str, str]]) -> str:
-    """Hash exact supplied strings; sort by path; no trailing LF."""
-    value = "\n".join(f"{item['path']}:{item['sha256']}"
-                      for item in sorted(files, key=lambda item: item["path"]))
+    """Sort by normalized path; "path:sha256" lines with slash paths and
+    lowercase hex; UTF-8; no trailing LF."""
+    rows = sorted((item["path"].replace("\\", "/"), item["sha256"].lower())
+                  for item in files)
+    value = "\n".join(f"{path}:{sha}" for path, sha in rows)
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def file_digest(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+    """SHA-256 of the bytes after CRLF -> LF, so a Windows autocrlf checkout and
+    a Linux clone of the same commit agree (src/build_data.py does the same)."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def safe_relative(value: str) -> str:
@@ -130,7 +142,7 @@ def validate_manifest(manifest: Any, root: Path,
             return None
 
     def verify_file(base: Path, relative: str, expected: str | None,
-                    location: str) -> None:
+                    location: str) -> Path | None:
         try:
             resolved_base = base.resolve(strict=True)
             resolved = (resolved_base / Path(relative)).resolve(strict=True)
@@ -140,20 +152,33 @@ def validate_manifest(manifest: Any, root: Path,
                 fail(location, "must refer to a regular file")
             elif expected and file_digest(resolved) != expected.lower():
                 fail(location, "file SHA-256 does not match manifest")
+            else:
+                return resolved
         except (OSError, RuntimeError, ValueError) as exc:
             fail(location, f"cannot read evidence/candidate file: {exc}")
+        return None
+
+    def identity_name(value: str) -> str:
+        """Compare identities after NFKC, without format characters, casefolded."""
+        text = unicodedata.normalize("NFKC", value)
+        return "".join(ch for ch in text if unicodedata.category(ch) != "Cf").casefold()
 
     data = mapping(manifest, "manifest")
     if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
         fail("schema_version", "must be integer 1")
-    string(data.get("run_id"), "run_id")
-    string(data.get("base_revision"), "base_revision")
+    for key in ("run_id", "base_revision"):
+        value = string(data.get(key), key)
+        if value and PLACEHOLDER.search(value):
+            fail(key, "still contains a template placeholder")
+    base_revision = data.get("base_revision")
+    if isinstance(base_revision, str) and not REVISION.fullmatch(base_revision.strip()):
+        fail("base_revision", "must be the lowercase hex commit the run started from")
     phase = enum(data.get("phase"), PHASES, "phase")
     scope = mapping(data.get("scope"), "scope")
     strings(scope.get("subject_ids"), "scope.subject_ids", unique=True)
     strings(scope.get("topic_ids"), "scope.topic_ids", unique=True)
-    enum(scope.get("task_type"), {"content", "learning", "review", "full"},
-         "scope.task_type")
+    task_type = enum(scope.get("task_type"), {"content", "learning", "review", "full"},
+                     "scope.task_type")
     strings(data.get("limitations"), "limitations")
 
     root = Path(root)
@@ -163,8 +188,8 @@ def validate_manifest(manifest: Any, root: Path,
         repo_root = Path(repo_root)
         if not repo_root.is_dir():
             fail("--repo-root", "must be an existing directory")
-    if phase == "ready" and repo_root is None:
-        fail("--repo-root", "is required for phase ready")
+    if phase in {"integrated", "reviewed", "ready"} and repo_root is None:
+        fail("--repo-root", f"is required for phase {phase} (candidate bytes must be checked)")
 
     owners: dict[str, str] = {}
     author_names: set[str] = set()
@@ -174,7 +199,12 @@ def validate_manifest(manifest: Any, root: Path,
         relative = path(item.get("path"), location + ".path")
         owner = string(item.get("owner"), location + ".owner")
         if owner:
-            author_names.add(owner.casefold())
+            author_names.add(identity_name(owner))
+        # Everyone who edited the file in any round (helpers, former owners,
+        # a reviewer who applied a fix) stays an author for independence.
+        if "contributors" in item:
+            for name in strings(item.get("contributors"), location + ".contributors"):
+                author_names.add(identity_name(name))
         if relative:
             key = relative.casefold()
             if key in owners:
@@ -203,7 +233,7 @@ def validate_manifest(manifest: Any, root: Path,
             if repo_root is not None:
                 verify_file(repo_root, relative, expected, location + ".path")
         if relative and expected:
-            digest_inputs.append({"path": item["path"], "sha256": expected})
+            digest_inputs.append({"path": relative, "sha256": expected})
     computed_digest = None
     if len(digest_inputs) == len(files):
         computed_digest = candidate_digest(digest_inputs)
@@ -211,6 +241,7 @@ def validate_manifest(manifest: Any, root: Path,
             fail("candidate.digest", "does not match the sorted candidate file list")
 
     artifacts: dict[str, dict] = {}
+    artifact_files: dict[str, Path] = {}
     artifact_paths: set[str] = set()
     for index, raw in enumerate(sequence(data.get("artifacts"), "artifacts")):
         location = f"artifacts[{index}]"
@@ -227,7 +258,20 @@ def validate_manifest(manifest: Any, root: Path,
             if relative.casefold() in artifact_paths:
                 fail(location + ".path", "duplicate/casefold artifact path")
             artifact_paths.add(relative.casefold())
-            verify_file(root, relative, expected, location + ".path")
+            resolved = verify_file(root, relative, expected, location + ".path")
+            if resolved is not None and artifact_id:
+                artifact_files[artifact_id] = resolved
+
+    def names_digest(artifact_id: str) -> bool:
+        """A pass must be produced for this candidate: its evidence file has to
+        state the full current candidate digest (an old report or log does not)."""
+        resolved = artifact_files.get(artifact_id)
+        if resolved is None or computed_digest is None:
+            return False
+        try:
+            return computed_digest in resolved.read_bytes().decode("utf-8", "replace").lower()
+        except OSError:
+            return False
 
     def evidence(value: Any, location: str, required: bool = False) -> list[str]:
         ids = strings(value, location, unique=True)
@@ -239,6 +283,7 @@ def validate_manifest(manifest: Any, root: Path,
         return ids
 
     reviews_by_role: dict[str, set[str]] = {"technical": set(), "language": set()}
+    current_reviews = 0
     for index, raw in enumerate(sequence(data.get("reviews"), "reviews")):
         location = f"reviews[{index}]"
         item = mapping(raw, location)
@@ -254,13 +299,16 @@ def validate_manifest(manifest: Any, root: Path,
             fail(location + ".artifact_id", "review artifact producer must equal reviewer")
         current = bool(review_digest and computed_digest and
                        review_digest.lower() == computed_digest)
+        current_reviews += current
         if verdict == "pass":
             if not current:
                 fail(location + ".candidate_digest", "pass review is stale or candidate is invalid")
-            if reviewer and reviewer.casefold() in author_names:
-                fail(location + ".reviewer", "passing reviewer must be independent of every file owner")
+            elif artifact_id in artifacts and not names_digest(artifact_id):
+                fail(location + ".artifact_id", "pass review report must state the current candidate digest (re-review; do not restamp an old report)")
+            if reviewer and identity_name(reviewer) in author_names:
+                fail(location + ".reviewer", "passing reviewer must be independent of every file owner and contributor")
             if current and role and reviewer:
-                reviews_by_role[role].add(reviewer.casefold())
+                reviews_by_role[role].add(identity_name(reviewer))
         if phase == "ready" and (verdict != "pass" or not current):
             fail(location, "ready requires current pass reviews; archive obsolete reviews separately")
 
@@ -272,12 +320,14 @@ def validate_manifest(manifest: Any, root: Path,
         name = string(item.get("name"), location + ".name")
         status = enum(item.get("status"), {"pass", "fail", "not_run", "not_applicable"},
                       location + ".status")
-        evidence(item.get("evidence_artifact_ids"), location + ".evidence_artifact_ids",
-                 required=status == "pass")
+        gate_evidence = evidence(item.get("evidence_artifact_ids"),
+                                 location + ".evidence_artifact_ids", required=status == "pass")
         if status == "pass":
             gate_digest = sha(item.get("candidate_digest"), location + ".candidate_digest")
             if gate_digest and gate_digest.lower() != computed_digest:
                 fail(location + ".candidate_digest", "pass gate is stale for the candidate")
+            elif gate_evidence and not any(names_digest(a) for a in gate_evidence):
+                fail(location + ".evidence_artifact_ids", "no evidence artifact states the current candidate digest (rerun the check for this candidate)")
         reason = item.get("reason")
         if not isinstance(reason, str):
             fail(location + ".reason", "must be a string (empty allowed except N/A)")
@@ -298,7 +348,7 @@ def validate_manifest(manifest: Any, root: Path,
         finding_id = string(item.get("id"), location + ".id")
         severity = enum(item.get("severity"), {"blocker", "major", "minor"},
                         location + ".severity")
-        status = enum(item.get("status"), {"open", "resolved", "deferred"},
+        status = enum(item.get("status"), {"open", "resolved", "refuted", "deferred"},
                       location + ".status")
         string(item.get("owner"), location + ".owner")
         evidence(item.get("evidence_artifact_ids"), location + ".evidence_artifact_ids")
@@ -306,18 +356,31 @@ def validate_manifest(manifest: Any, root: Path,
             if finding_id in finding_ids:
                 fail(location + ".id", "duplicate finding id")
             finding_ids.add(finding_id)
-        if phase == "ready" and severity in {"blocker", "major"} and status != "resolved":
+        if phase == "ready" and severity in {"blocker", "major"} and status not in {"resolved", "refuted"}:
             fail(location, "ready cannot contain open or deferred blocker/major findings")
+
+    if phase == "reviewed" and not current_reviews:
+        fail("reviews", "reviewed requires at least one review report for the current candidate digest")
 
     if phase == "ready":
         missing = BASELINE_GATES - set(required_gates)
         if missing:
             fail("required_gates", "ready is missing baseline gates: " + ", ".join(sorted(missing)))
+        site_change = any(
+            isinstance(raw, dict) and isinstance(raw.get("path"), str) and
+            raw["path"].replace("\\", "/").startswith(SITE_PREFIXES) for raw in files)
+        no_na = set()
+        if task_type in {"content", "full"}:
+            no_na |= CONTENT_GATES
+        if site_change:
+            no_na |= SITE_GATES
         for name in required_gates:
             if name not in gates:
                 fail("gates", f"missing required gate {name!r}")
+            elif gates[name].get("status") == "not_applicable" and name in no_na:
+                fail("gates", f"required gate {name!r} cannot be N/A for this candidate; record missing tools/sources as not_run and use phase blocked")
             elif gates[name].get("status") not in {"pass", "not_applicable"}:
-                fail("gates", f"required gate {name!r} is not pass or justified N/A")
+                fail("gates", f"required gate {name!r} is not pass; record missing tools/sources as not_run and use phase blocked (N/A only for a genuinely irrelevant gate)")
         for role, reviewers in reviews_by_role.items():
             if not reviewers:
                 fail("reviews", f"ready requires an independent current {role} pass review")
@@ -332,9 +395,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", required=True, type=Path, help="run evidence directory")
     parser.add_argument("--repo-root", type=Path, help="candidate repository; required for ready")
     args = parser.parse_args(argv)
+    def unique_keys(pairs: list[tuple[str, Any]]) -> dict:
+        keys = [key for key, _ in pairs]
+        duplicates = sorted({key for key in keys if keys.count(key) > 1})
+        if duplicates:
+            raise ValueError("duplicate JSON keys: " + ", ".join(duplicates))
+        return dict(pairs)
+
+    def no_constant(value: str) -> None:
+        raise ValueError(f"non-standard JSON constant {value}")
+
     try:
         with args.manifest.open("r", encoding="utf-8-sig") as stream:
-            manifest = json.load(stream)
+            manifest = json.load(stream, object_pairs_hook=unique_keys,
+                                 parse_constant=no_constant)
         errors = validate_manifest(manifest, args.root, args.repo_root)
     except (OSError, ValueError, RecursionError) as exc:
         print(f"ERROR: cannot load/validate manifest: {exc}", file=sys.stderr)
@@ -344,7 +418,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"ERROR: {error}", file=sys.stderr)
         print(f"INVALID: {len(errors)} error(s)", file=sys.stderr)
         return 1
-    print("VALID: handoff structure and supplied evidence verified; academic correctness is not certified.")
+    print(f"VALID (phase {manifest.get('phase')}): manifest structure, ownership, file hashes and "
+          "digest-bound evidence are consistent. Not verified: question/SRS identity, that "
+          "claimed commands ran, reviewer independence, academic correctness, locks, publish permission.")
     return 0
 
 

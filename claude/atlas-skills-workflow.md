@@ -40,22 +40,22 @@ flowchart TD
 
 ## วิธีเรียกใช้
 
-ในโปรเจกต์ที่โหลดสกิลแล้ว:
+วิธีเรียกต่างกันตามโปรแกรม: Claude Code ใช้ `/atlas-content-editor` (หรือพิมพ์คำขอแล้วให้ระบบเลือกสกิล) · Codex ใช้ `$atlas-content-editor` · Claude.ai พิมพ์ว่า «ใช้ atlas-content-editor …» หลังเปิดใช้สกิล ตัวอย่างด้านล่างเขียนแบบ Claude Code:
 
 ```text
-ใช้ $atlas-content-editor ปรับบทเรียน [วิชา/หัวข้อ] จาก [เอกสาร]
+/atlas-content-editor ปรับบทเรียน [วิชา/หัวข้อ] จาก [เอกสาร]
 พร้อมประสาน atlas-learning-designer และ atlas-technical-reviewer
 ให้ทำจนได้งานที่ตรวจแล้ว พร้อมระบุหลักฐานและส่วนที่ยังติดขัด
 ```
 
 ```text
-ใช้ $atlas-learning-designer ออกแบบการฝึกจากบทเรียน [หัวข้อ]
+/atlas-learning-designer ออกแบบการฝึกจากบทเรียน [หัวข้อ]
 เน้นให้ลองตอบรัสเซียก่อนเปิดคำช่วยภาษาไทย
 แล้วส่ง packet พร้อม rubric ให้ผู้เขียนนำไปใช้
 ```
 
 ```text
-ใช้ $atlas-technical-reviewer ตรวจการเปลี่ยนแปลง [หัวข้อ/commit]
+/atlas-technical-reviewer ตรวจการเปลี่ยนแปลง [หัวข้อ/commit]
 แยกความถูกต้องเนื้อหา ตัวเลข ภาษา และหลักฐานการทำงานของเว็บ
 ```
 

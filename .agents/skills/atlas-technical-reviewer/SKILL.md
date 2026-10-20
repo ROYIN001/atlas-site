@@ -27,7 +27,7 @@ Honor repository agent roles when available. Use separate language and technical
 | Request | Review mode | Required result |
 |---|---|---|
 | Audit an existing lesson or inspect a reported defect | Standalone audit | Findings and evidence for the requested area; no prerequisite to rewrite the lesson or run the authoring pipeline |
-| Minor wording, label, or formatting correction | Lightweight | Diff and nearby context, terminology/meaning check, applicable syntax or rendering checks; widen scope only if the change affects formulas, identifiers, behavior, or layout |
+| Minor wording, label, or formatting correction | Lightweight | Diff and nearby context, terminology/meaning check, applicable syntax or rendering checks; widen scope only if the change affects formulas, identifiers (including the text of any oral question without an explicit id), behavior, or layout |
 | New lesson, substantial revision, exercise/demo change, or subject upgrade | Full | Applicable source, academic, language, identity, structural, numerical, and browser gates, with independent review |
 | Shared navigation, storage, rendering, or lifecycle change | Full plus affected integration checks | Repository-required browser suites and learner-data checks in addition to affected subjects |
 
@@ -37,9 +37,9 @@ Lightweight mode reduces unnecessary breadth; it does not waive the repository's
 
 ### 1. Freeze and identify the candidate
 
-Obtain the task boundary, changed-file list, subject/topic identifiers, source inventory, prior IDs, relevant authoring decisions, and supplied test evidence. Read the handoff and verify its snapshot using the shared contract and [check_handoff.py](scripts/check_handoff.py): run `python <skill-dir>/scripts/check_handoff.py <handoff.json> --root <run-dir> --repo-root <repo>`. Match the actual bytes, not just a branch name or timestamp. Include authoring sources, staged demos, and relevant built output in the review scope. This script validates evidence consistency, not truth or whether a claimed command really ran.
+Obtain the task boundary, changed-file list, subject/topic identifiers, source inventory, prior IDs, relevant authoring decisions, and supplied test evidence. For a standalone audit with no coordinator, either create a minimal review handoff (task_type review, phase reviewed, audited files assigned to their existing author) or state that no handoff check ran. Otherwise read the handoff and verify its snapshot using the shared contract and [check_handoff.py](scripts/check_handoff.py): run `python <skill-dir>/scripts/check_handoff.py <handoff.json> --root <run-dir> --repo-root <repo>`. Match the actual bytes, not just a branch name or timestamp. Include authoring sources, staged demos, and relevant built output in the review scope. This script validates evidence consistency, not truth or whether a claimed command really ran.
 
-If inputs changed after handoff, report a stale snapshot and return it to the coordinator before issuing an acceptance decision. Missing files, source pages, tests, or tools are `blocked` or `not_run` as the contract defines; they are never a passing check. Continue useful checks that do not depend on the missing input. Mark a check outside the declared scope with a reason rather than pretending it ran.
+If inputs changed after handoff, report a stale snapshot and return it to the coordinator before issuing an acceptance decision. Record a gate whose files, source pages, tests, or tools are missing as `not_run` with the reason (never `not_applicable`), and set your verdict or the handoff phase to `blocked`; `blocked` is not a gate status. Continue useful checks that do not depend on the missing input. Mark a check outside the declared scope with a reason rather than pretending it ran.
 
 ### 2. Review academic and language evidence independently
 
@@ -73,7 +73,7 @@ Preserve findings across rounds, including refuted findings and the reasons. Clo
 
 ### 6. Re-review and hand off
 
-After corrections, obtain a new candidate snapshot. Recheck each resolved item and affected dependencies; do not carry a pass from an earlier hash without explicitly establishing that its exact reviewed inputs remain unchanged under the shared contract. Language and technical decisions must ultimately refer to the same candidate revision. Rebuild and recheck affected artifacts when sources change.
+After corrections, obtain a new candidate snapshot. Recheck each resolved item and affected dependencies; a pass applies only to the digest its report states; after any change write a new report (a short delta review is enough) that states the new digest, never restamp an old one. Language and technical decisions must ultimately refer to the same candidate revision. Rebuild and recheck affected artifacts when sources change.
 
 Return the review record and validated handoff to the coordinator. Separate completed checks, unresolved findings, unavailable checks, and release readiness. Do not set `chk: true`, `rev`, or a release state yourself; the integrator applies review metadata only when the current repository's required reviews have passed for that candidate.
 

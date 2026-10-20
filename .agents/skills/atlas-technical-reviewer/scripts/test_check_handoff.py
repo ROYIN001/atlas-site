@@ -35,7 +35,8 @@ class HandoffTests(unittest.TestCase):
                                ("language-review", "reviewer-lang"),
                                ("checks", "coordinator")]:
             artifact = self.root / (name + ".txt")
-            artifact.write_text("Evidence for " + name, encoding="utf-8")
+            artifact.write_text("Evidence for " + name + "\ncandidate_digest: " + self.digest,
+                                encoding="utf-8")
             artifacts.append({"id": name, "path": artifact.name,
                               "sha256": validator.file_digest(artifact),
                               "producer": producer})
@@ -201,13 +202,14 @@ class HandoffTests(unittest.TestCase):
 
     def test_required_gate_missing_or_unrun_blocks_ready(self):
         self.manifest["gates"][0]["status"] = "not_run"
-        self.assertInvalid("is not pass or justified N/A")
+        self.assertInvalid("is not pass; record missing tools")
         self.manifest["gates"].pop()
         self.assertInvalid("missing required gate")
 
     def test_scoped_na_reason_allowed(self):
-        self.manifest["gates"][0].update(status="not_applicable", evidence_artifact_ids=[],
-                                        reason="This run changes reference prose only; no build outputs are affected.")
+        visual = next(g for g in self.manifest["gates"] if g["name"] == "visual")
+        visual.update(status="not_applicable", evidence_artifact_ids=[],
+                      reason="This run changes reference prose only; no layout or styling is affected.")
         self.assertEqual([], self.errors())
 
     def test_placeholder_na_reason_rejected(self):
@@ -223,12 +225,94 @@ class HandoffTests(unittest.TestCase):
                                 capture_output=True, text=True)
         after = {str(path): path.read_bytes() for path in self.base.rglob("*") if path.is_file()}
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("VALID:", result.stdout)
+        self.assertIn("VALID (phase ready)", result.stdout)
         self.assertEqual(before, after)
 
     def test_non_object_manifest_is_rejected(self):
         self.assertTrue(self.errors([]))
 
+
+    # ---- regression tests for the final-review findings ----
+    def rewrite_artifact(self, artifact_id, text):
+        art = next(a for a in self.manifest["artifacts"] if a["id"] == artifact_id)
+        path = self.root / art["path"]
+        path.write_text(text, encoding="utf-8")
+        art["sha256"] = validator.file_digest(path)
+
+    def test_restamped_old_review_rejected(self):
+        self.rewrite_artifact("technical-review", "Review of the previous candidate " + "0" * 64)
+        self.assertInvalid("must state the current candidate digest")
+
+    def test_old_gate_log_rejected(self):
+        self.rewrite_artifact("checks", "node --test: pass (log from an earlier candidate)")
+        self.assertInvalid("no evidence artifact states the current candidate digest")
+
+    def test_unmodified_template_rejected(self):
+        template = Path(validator.__file__).resolve().parents[2] / "atlas-content-editor" / "assets" / "handoff-template.json"
+        if not template.is_file():
+            self.skipTest("template not bundled next to this skill")
+        errors = validator.validate_manifest(json.loads(template.read_text(encoding="utf-8")), self.root)
+        self.assertTrue(any("template placeholder" in e for e in errors), errors)
+
+    def test_reviewed_without_current_review_rejected(self):
+        self.manifest.update(phase="reviewed", reviews=[])
+        self.assertInvalid("reviewed requires at least one review")
+
+    def test_integrated_requires_repo_root(self):
+        self.manifest["phase"] = "integrated"
+        self.assertTrue(any("required for phase integrated" in e for e in self.errors(repo=False)))
+
+    def test_crlf_checkout_matches_lf_hash(self):
+        lf = self.repo / "data" / "t" / "multi.json"
+        lf.write_bytes(b'{"html":"a"}\n{"x":1}\n')
+        expected = validator.file_digest(lf)
+        lf.write_bytes(b'{"html":"a"}\r\n{"x":1}\r\n')
+        self.assertEqual(expected, validator.file_digest(lf))
+
+    def test_digest_is_canonical_for_separators_and_hex_case(self):
+        a = [{"path": "data\\t\\x.json", "sha256": "AB" * 32}]
+        b = [{"path": "data/t/x.json", "sha256": "ab" * 32}]
+        self.assertEqual(validator.candidate_digest(a), validator.candidate_digest(b))
+
+    def test_contributor_cannot_pass_review(self):
+        self.manifest["assignments"][0]["contributors"] = ["reviewer-tech"]
+        self.assertInvalid("independent of every file owner and contributor")
+
+    def test_lookalike_reviewer_name_is_not_independent(self):
+        self.manifest["assignments"].append({"path": "other.json", "owner": "reviewer\u200b-tech"})
+        self.assertInvalid("independent of every file owner")
+
+    def test_missing_tool_cannot_be_na_for_content_gate(self):
+        gate = next(g for g in self.manifest["gates"] if g["name"] == "identity")
+        gate.update(status="not_applicable", evidence_artifact_ids=[],
+                    reason="identity comparison script is not installed in this clone")
+        self.assertInvalid("cannot be N/A for this candidate")
+
+    def test_browser_cannot_be_na_when_lesson_changes(self):
+        gate = next(g for g in self.manifest["gates"] if g["name"] == "browser")
+        gate.update(status="not_applicable", evidence_artifact_ids=[],
+                    reason="Wording repair inside an existing summary; no layout change.")
+        self.assertInvalid("cannot be N/A for this candidate")
+
+    def test_placeholder_base_revision_rejected(self):
+        self.manifest["base_revision"] = "replace-with-current-revision"
+        self.assertInvalid("template placeholder")
+
+    def test_duplicate_json_keys_rejected_by_cli(self):
+        manifest_path = self.root / "dup.json"
+        text = json.dumps(self.manifest)
+        manifest_path.write_text(text[:-1] + ', "findings": []}', encoding="utf-8")
+        result = subprocess.run([sys.executable, str(Path(validator.__file__)), str(manifest_path),
+                                 "--root", str(self.root), "--repo-root", str(self.repo)],
+                                capture_output=True, text=True)
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("duplicate JSON keys", result.stderr)
+
+
+    def test_refuted_major_kept_with_evidence_allows_ready(self):
+        self.manifest["findings"] = [{"id": "F2", "severity": "major", "status": "refuted",
+                                     "owner": "content-author", "evidence_artifact_ids": ["checks"]}]
+        self.assertEqual([], self.errors())
 
 if __name__ == "__main__":
     unittest.main()

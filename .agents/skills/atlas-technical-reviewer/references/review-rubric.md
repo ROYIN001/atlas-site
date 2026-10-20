@@ -84,7 +84,7 @@ Keep language and technical review separate until both initial reports are submi
 
 ## Identity and architecture
 
-Compare before/after topic, oral-question, quiz-host, and glossary identities. Existing QA keys come from canonical `data/qa`/DOM and the established helpers; do not independently recreate a competing hashing scheme. Newly inserted oral questions need explicit stable IDs so they cannot take the IDs of an existing summary question. Reordering quiz blocks needs stable host IDs to preserve records.
+Compare before/after topic, oral-question, quiz-host, and glossary identities. Existing QA keys come from canonical `data/qa`/DOM and the established helpers; do not independently recreate a competing hashing scheme. Newly inserted oral questions need explicit stable IDs so they cannot take the IDs of an existing summary question. Editing the text of an oral question without an explicit id changes its ID. Inserting, deleting or reordering quiz2 blocks shifts positional host IDs; pinning only some blocks makes two blocks share an ID. Require scripts/compare_identity.py output against the base revision.
 
 Changing the Russian text used by `termKey()` can change its identity. Require a deliberate, tested learner migration where necessary. Never clear real learner data during verification. Use an isolated browser context with representative fixture records.
 
