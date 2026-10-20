@@ -56,6 +56,7 @@ When a source appears wrong, record the source's statement and the candidate cor
 - Keep answers short enough to judge consistently. Long reasoning belongs in an exercise.
 - Reuse existing cards when they target the same knowledge. Distinct RU→TH and TH→RU directions are useful only if both are intentional learning goals.
 - Separate a card's internal design ID from the actual existing SRS key. A template `null` means unresolved, not a new key.
+- The site's Flashcards and term quizzes read the vocabulary in `MODULES` (app.js), keyed by `termKey()`; there is no separate card store. A recall card is therefore either a proposed `MODULES` term for the editor (never change the Russian text of an existing term: that changes its key) or practice content inside the topic.
 - Do not invent SRS intervals, mastery claims, or retention guarantees. The scheduler is a separate component already present in Atlas.
 
 ## Feedback and assessment quality
@@ -70,7 +71,7 @@ An activity's design quality is not proof of a learning gain. If the user reques
 
 The editor maps the packet into existing STD2 components: a concise summary, topic map, explanatory layers, one coherent trap section, section practice, and end-of-topic oral review. Preserve the agreed visible-length budget; move elaboration into appropriate disclosure blocks instead of deleting essential content.
 
-Use current `quiz2`, `details.qa`, and existing practice routes where applicable. Preserve explicit oral IDs and host IDs. Do not introduce parallel quiz or flashcard systems. Images from source slides must remain in the placement supported by the existing verification workflow, not arbitrarily moved into `details.deep`.
+Use current `quiz2`, `details.qa`, and existing practice routes where applicable. Preserve explicit oral IDs and host IDs; pin with the `id` attribute (the runtime sets `data-id` from it). A quiz2 block without an id is `<tid>-q<n>` by position, and links such as `#/<sid>/<tid>/<tid>-q1` point at that position, so insert, delete or move blocks only after pinning every block of the topic. Do not introduce parallel quiz or flashcard systems. Slide images never go inside `details.deep` (verify.py reports them as missing sources).
 
 References in learner-facing text should identify a lecture, slide, or book page. Internal filenames and processing details belong in the packet metadata. Do not expose implementation instructions or JSON field names to learners.
 
@@ -87,6 +88,6 @@ State interaction requirements in the packet; implementation and browser checks 
 
 ## Versioning and handoff checklist
 
-Before handoff, verify the actual input revisions still match. Include changed objective/item IDs and dependencies so a later source correction invalidates only the affected activities. Readiness is per the shared contract; do not add a parallel release flag.
+Packet `status` is `draft`, `delivered` (ready for the coordinator; the handoff phase `learning_ready`) or `blocked`. Before handoff, verify the actual input revisions still match and run `scripts/check_learning_packet.py`. Include changed objective/item IDs and dependencies so a later source correction invalidates only the affected activities. Readiness is per the shared contract; do not add a parallel release flag.
 
 The packet must contain no invented source records, fabricated reviewed hashes, or claims of completed tests. Empty or `null` source fields are acceptable in a clearly marked template or blocked draft; they are not acceptable evidence for a verified academic answer. Keep a human-readable list of exactly what remains to be supplied or checked.

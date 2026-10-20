@@ -1,6 +1,6 @@
 ---
 name: atlas-learning-designer
-description: "Design sourced learning activities for Royin's Study Program (ROYIN001/atlas-site): measurable objectives, Russian oral practice with Thai conceptual support, progressive hints, worked exercises, misconception feedback, and selective recall cards. Use for requests to improve how Atlas lessons teach or assess understanding, create Atlas exam practice, or prepare a learning packet for atlas-content-editor. Use atlas-content-editor for source ingestion and canonical lesson changes; use atlas-technical-reviewer for independent correctness and release review. Generic quizzes unrelated to Atlas do not require this skill."
+description: "Design sourced learning activities for Royin's Study Program (ROYIN001/atlas-site): measurable objectives, Russian oral practice with Thai conceptual support (คำถามปากเปล่า), progressive hints, worked exercises (แบบฝึก โจทย์), misconception feedback, quizzes (ควิซ) and selective recall cards. Use for requests to improve how Atlas lessons teach or assess understanding, create Atlas exam practice, or prepare a learning packet for atlas-content-editor. Use atlas-content-editor for source ingestion and canonical lesson changes; use atlas-technical-reviewer for independent correctness and release review. Generic quizzes unrelated to Atlas do not require this skill."
 ---
 
 # Atlas Learning Designer
@@ -32,7 +32,7 @@ Inventory existing oral questions, quizzes, glossary cards, and demonstrations b
 
 ### 2. Bind content to evidence
 
-Map each objective and answer-bearing activity to the editor's claim IDs and source locators. A page or slide number is verified only if it was actually checked. Distinguish departmental questions, textbook control questions, and author-created practice; label new material visibly `ผู้เรียบเรียง` where applicable.
+Map each objective and answer-bearing activity to the editor's claim IDs and source locators. In a standalone request without an editor packet, cite the existing lesson file as an input_ref (path and sha256) and mark claims you could not trace as unverified. A page or slide number is verified only if it was actually checked. Classify every question as `official_exam`, `textbook_control`, `author_practice` or `unverified_existing` (learning-design.md); label new material visibly `ผู้เรียบเรียง`.
 
 If original sources are unavailable, produce a useful draft from explicitly identified available material, but flag affected academic claims and answer keys for verification. Do not claim an official examination list, source review, or release readiness. An unsupported answer remains blocked from integration as verified teaching content.
 
@@ -58,7 +58,7 @@ Follow the detailed criteria in `learning-design.md` and record the objective �
 
 ### 5. Check and hand off
 
-Check that every required objective has a suitable activity; every answer/rubric agrees with its sources; all numerical solutions are independently checkable; hints progress meaningfully; distractors are plausible and have feedback; source and identity gaps are explicit. Remove template entries and placeholders from a completed packet.
+Check that every required objective has a suitable activity; every answer/rubric agrees with its sources; all numerical solutions are independently checkable; hints progress meaningfully; distractors are plausible and have feedback; source and identity gaps are explicit. Remove template entries and placeholders from a completed packet, set its status to `delivered` (or `blocked` with the reason), and run `python <skill-dir>/scripts/check_learning_packet.py <packet.json> --repo-root <repo>`; a VALID result means consistent and traceable, not academically correct.
 
 Report: packet revision and input revision, covered objectives, preserved IDs, new IDs, source limitations, unresolved findings, accessibility requirements, and requested technical/language checks. Use the shared contract's handoff states. Do not mark academic review as passed based only on this design check.
 

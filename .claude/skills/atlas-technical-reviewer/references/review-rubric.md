@@ -19,7 +19,7 @@ Unresolved blockers and majors prevent acceptance of the affected candidate. Rep
 For every new or materially changed claim, capture the following information in the shared contract's appropriate fields or linked evidence document:
 
 - Claim location: source file, topic/element, and short identifying excerpt.
-- Origin: department source, external primary reference, author derivation, illustrative assumption, or unresolved statement.
+- Origin and verification: the words of the contract's claims field (origin department_source, external_primary, author_derived, illustrative_assumption or unresolved; verification checked_against_source, independently_derived or unverified).
 - Source locator: document/version and printed page, PDF page, lecture/slide, equation, or stable URL section. Preserve page-number offsets when relevant.
 - What was inspected: original page image, extracted text, source code, executed result, or a combination.
 - Independent verification: derivation, comparison, or counterexample; record assumptions and confidence limits.
@@ -40,6 +40,8 @@ Do not infer source access from a bibliography. If a lesson names a book that wa
 | Numerical behavior | Independent reference cases and justified tolerances | A test that reproduces the implementation's formula |
 | Browser behavior | Actual interaction on the corresponding build over HTTP | Screenshot alone or inferred behavior from code |
 | Visual correctness | Inspected screens and active demo states at relevant widths/themes | Canvas exists, screenshot created, or no console error |
+
+Record these areas in the handoff gates as follows: source fidelity → `provenance`; academic validity, numerical behavior and learning design → `technical`; language → `language`; identity/data → `identity` (attach the compare_identity report); structural/build → `build` and `tests`; browser behavior → `browser`; visual correctness → `visual`.
 
 ## Academic and numerical review
 
@@ -70,7 +72,7 @@ Examples of domain-specific questions:
 - Label author-created derivations, examples, and interpretations visibly as `ผู้เรียบเรียง`; a code comment is not reader-facing attribution.
 - End each topic with a useful source statement. Source-error notes must show both the documented and corrected values and explain the difference after independent adjudication.
 
-Keep language and technical review separate until both initial reports are submitted. For long content, divide technical text into bounded chunks (the repository uses roughly 120–320 lines) and language text into at most 300-line segments, with overlap/context for cross-references. Record coverage and gaps; silence from a timed-out reviewer is not a clean review. Follow the repository's retry limit and write partial findings early.
+Keep language and technical review separate until both initial reports are submitted. The repository's lang-reviewer agent checks only its four rules (mixed language, needless transliteration, glossary decisions, source line and author label); when it is the language reviewer, add the remaining checks above to its prompt or record the uncovered ones as a limitation of the language gate. For long content, divide technical text into bounded chunks (the repository uses roughly 120–320 lines) and language text into at most 300-line segments, with overlap/context for cross-references. Record coverage and gaps; silence from a timed-out reviewer is not a clean review. Follow the repository's retry limit and write partial findings early.
 
 ## Learning artifacts
 

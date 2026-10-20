@@ -1,7 +1,7 @@
 # คู่มือสำหรับ Claude — โครงสร้างและวิธีทำงานกับ repo นี้
 
 อ่านไฟล์นี้ก่อนเริ่มงานทุกครั้ง จะได้ไม่ต้องรื้อดูโครงสร้างใหม่
-(เขียนไว้ 9 ก.ย. 2026 หลังย้ายจาก artifact มาเป็นเว็บสแตติก · ปรับ 10 ก.ย. 2026 ตอนเพิ่มวิชา ЭОЛА · ปรับใหญ่ 7 ต.ค. 2026 ตอนปิดรุ่นโครงเว็บ v6 — หัวข้อ 1–4, 11, 13, 14 · เพิ่มหัวข้อ 15 ยกระดับ STD2 รายวิชา 9 ต.ค. 2026)
+(เขียนไว้ 9 ก.ย. 2026 หลังย้ายจาก artifact มาเป็นเว็บสแตติก · ปรับ 10 ก.ย. 2026 ตอนเพิ่มวิชา ЭОЛА · ปรับใหญ่ 7 ต.ค. 2026 ตอนปิดรุ่นโครงเว็บ v6 — หัวข้อ 1–4, 11, 13, 14 · เพิ่มหัวข้อ 15 ยกระดับ STD2 รายวิชา 9 ต.ค. 2026 · เพิ่มหัวข้อ 16 สกิล Atlas 20 ต.ค. 2026)
 
 เจ้าของงานคือ Royin นักเรียนนายเรืออากาศไทยที่เรียนหลักสูตร «Системы
 управления ракет-носителей и космических аппаратов» ที่ ВКА им. А. Ф.
@@ -28,7 +28,7 @@ data/ih/atlas.json · world.json แผนที่ของ История (ห
 figs/<รหัสรูป>.webp             1 158 ไฟล์ · 30 MB · รูปตัดจากสไลด์ภาควิชา
 fonts/                          33 ไฟล์: IBM Plex + Noto Sans Math (.woff2 30 ไฟล์ + fonts.css + LICENSE 2 ไฟล์) เก็บในเว็บเอง
 sw.js · manifest.webmanifest    อ่านแบบออฟไลน์ + ติดตั้งเป็นแอปบนมือถือ (หัวข้อ 13) · icons/ ไอคอนของเว็บ 6 ไฟล์
-js/subj/<วิชา>.js|.css          (ยังไม่มีโฟลเดอร์นี้) แบบจำลอง/รูปแบบของวิชาที่ยกระดับ — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13)
+js/subj/<วิชา>.js|.css          9 วิชาที่ยกระดับแล้ว (asu elob nadezh ppo suka surn tau teh_el toe) · แบบจำลอง/รูปแบบของวิชา — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13, 15)
 src/build_data.py               สร้าง data/ix + manifest จาก data/t · เขียน ?v= ใน index.html + DATA_VERSION · รัน src/build_steps/*.py
 src/build_steps/                figdim.py · qa.py · rel.py + README.md — ขั้นเพิ่มเติม run(ctx) (หัวข้อ 14)
 src/buildlib.py                 stable_id() (= stableId ใน app.js · qa.py ใช้ · tests/hooks ตรวจ) · plain() ยังไม่มีขั้นไหนใช้ (ไม่เท่ากับ plain ของ build_data)
@@ -43,11 +43,13 @@ tests/                          *.test.cjs 11 ไฟล์ (node --test · 100 �
 preview.bat + preview.ps1       เซิร์ฟเวอร์เล็ก ๆ ไว้ดูในเครื่อง (ไม่มี dependency)
 requirements.txt                playwright · python-pptx (pip install -r requirements.txt)
 robots.txt · .nojekyll          ห้ามเสิร์ชเอนจินทำดัชนี · ห้าม Jekyll แปลงไฟล์ — ห้ามลบ
-claude/                         เอกสารกำกับ: มาตรฐาน · รายงานตรวจ 3 ฉบับ · คำสั่ง session S1–S8 (+ S9 ท้ายไฟล์) · README
-.claude/                        agents/ 6 ตัว (หัวข้อ 7) · skills/russian-thai-translate
+claude/                         เอกสารกำกับ: มาตรฐาน · รายงานตรวจ 3 ฉบับ · คำสั่ง session S1–S8 (+ S9 ท้ายไฟล์) · README · atlas-skills-*.md (หัวข้อ 16)
+.claude/                        agents/ 6 ตัว (หัวข้อ 7) · skills/russian-thai-translate · skills/atlas-content-editor, atlas-learning-designer, atlas-technical-reviewer (หัวข้อ 16)
+.agents/skills/ · AGENTS.md      สำเนาสกิล Atlas สำหรับ Codex (สร้างโดย sync_bundle.py ห้ามแก้มือ) · คำแนะนำสั้นสำหรับ Codex (หัวข้อ 16)
 _work/                          (อยู่ใน .gitignore — บนเครื่องเท่านั้น) บันทึกจากสไลด์ `notes/`,
                                 โครงหัวข้อ `plan/`, รายงานตรวจ+ภาพเดโม `review/`, ต้นฉบับเดโม `demos/` ·
-                                ต้นฉบับบล็อกประกอบ `std2/` `navpilot/` `vhpilot/` `vhist/` `hist/` `layout/` (หัวข้อ 2, 8–11)
+                                ต้นฉบับบล็อกประกอบ `std2/` `navpilot/` `vhpilot/` `vhist/` `hist/` `layout/` (หัวข้อ 2, 8–11) ·
+                                run directory ของสกิล `atlas-workflow/<run-id>/` (handoff.json + หลักฐาน · หัวข้อ 16)
 ```
 
 ทั้ง repo ใน git 1 656 ไฟล์ ราว 102 MB (data 396 ไฟล์ · figs 1 158 · fonts 33) — GitHub Pages เผยแพร่ทั้งโฟลเดอร์ root
@@ -220,7 +222,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
   `[฀-๿][А-яЁё]|[А-яЁё][฀-๿]` ทั้งใน data/t และ _work/demos ก่อนประกอบทุกครั้ง
 - `_work/review/shots.py tau <topic>` ถ่ายภาพ canvas ทุกเดโมลง `_work/review/shots/` — Fable ดูภาพเอง
 - OneDrive ล็อกไฟล์ชั่วคราว: เขียน app.js แล้วได้ `OSError: Invalid argument` ให้รอ 2–3 วินาทีแล้วรันซ้ำ
-- `.claude/agents/builder.md` และ `lang-reviewer.md` ไม่มี `Write` ในรายการ tools — เจ้าของงานเพิ่มเองได้
+- `.claude/agents/builder.md` ไม่มี `Write` ในรายการ tools — เจ้าของงานเพิ่มเองได้ (`lang-reviewer.md` มี Edit/Write แล้ว แต่ใช้แก้ไฟล์เฉพาะโหมด «apply»)
   (ระบบไม่ให้ Fable แก้ไฟล์ใน `.claude/agents/`) ระหว่างนี้ให้ builder เขียนไฟล์ผ่าน Bash
 - คำตัดสินทุกรายการ «เอกสารภาควิชาน่าจะผิด» และคำถามถามอาจารย์อยู่ใน `_work/review/tau__*.fable.md`
 - เครื่องเจ้าของงานเป็น Windows: ใช้ `python` ไม่ใช่ `python3`; ครั้งแรกให้ติดตั้ง
@@ -355,7 +357,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - app.js โหลดไฟล์ของวิชาเมื่อเปิดวิชานั้นครั้งแรก (`subjAssets()`) ก่อนติดตั้งแบบจำลองในหัวข้อ · ผู้อ่านไม่ต้องโหลดแบบจำลองของวิชาที่ไม่ได้เปิด (ตอนปิดรุ่น v6 app.js 6.3 MB · gzip 1.6 MB ยังโหลดทุกวิชาทีเดียว — ส่วนใหญ่เป็นแบบจำลองรายวิชา)
 - ในไฟล์: `Object.assign(DEMOS, { "<key>": host => { … } })` · เรียกของกลางได้ (`buildDemo`, `Plot`, `fitCanvas`, `CV`, `window.STEPS2` ฯลฯ) · **ห้ามแตะ `document` ที่ระดับบนสุด** (tests รันไฟล์นี้ใน vm ต่อจาก app.js) · CSS อยู่ใต้ namespace ของวิชา · ใช้ `buildDemo` หรือ `demoWatch` และหยุดลูปเมื่อ `document.hidden` (หัวข้อ 14.3)
 - `python src/build_data.py` ใส่ hash ของไฟล์ลง `data/manifest.json` (`subjects.<วิชา>.js/.css`) ใช้เป็น `?v=` — **ต้องรันทุกครั้งที่แก้ไฟล์** (tests ฟ้อง «stale manifest» ถ้าลืม)
-- ยังไม่มีวิชาไหนใช้ — ตอนยกระดับแต่ละวิชา ให้สคริปต์ประกอบของวิชา (แบบ `_work/navpilot/build.py`) เขียนไฟล์นี้แทนการแทนที่บล็อกใน app.js แล้วลบบล็อกเดิมออก
+- ใช้แล้ว 9 วิชา (หัวข้อ 15) — ตอนยกระดับแต่ละวิชา ให้สคริปต์ประกอบของวิชา (`_work/std2/tools/assemble.py` หรือแบบ `_work/navpilot/build.py`) เขียนไฟล์นี้แทนการแทนที่บล็อกใน app.js แล้วลบบล็อกเดิมออก
 
 **อ่านแบบออฟไลน์ (`sw.js` · `manifest.webmanifest` · `icons/`)**
 - service worker ลงทะเบียนเฉพาะบนเว็บจริง (https ที่ไม่ใช่ localhost) — preview.bat / verify.py ไม่ใช้ จึงไม่มีไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย `?sw=1`
@@ -547,7 +549,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 - **`_work/layout/layout.js` (บนเครื่องเจ้าของงาน)** ยังเป็นแบบเดิม **สองบรรทัด**: `saveQuiz` และ `localStorage.setItem("atlas-mode-v1", MODE)` ในปุ่ม «เปิดฉบับเต็ม» ของ `margWeak` — แก้ให้ตรง app.js ตามคำเตือนในหัวข้อ 11 ก่อนรัน `patch_layout.py` · ครั้งเดียวกันย้ายตัวทับท้าย router (`margWeak` `quizOfSubject` `jumpTopic` …) เข้า layout.js
 - **`tests/content-allow.json`**: ไม่มีบรรทัดอ้างอิง 37 หัวข้อ · ไทยติดซีริลลิก 7 หัวข้อ + 6 สตริงในเดโม · พูดกับเจ้าของงาน 9 หัวข้อ — แก้ตอนยกระดับวิชานั้น
-- `js/subj/` ยังไม่มีวิชาไหนใช้ (แบบจำลองทั้ง 12 วิชาอยู่ใน app.js 6.3 MB · gzip 1.6 MB) · ฟิลด์ DEEP `rev` `chk` `src` `lec` `rel` ยังไม่มีวิชาไหนใส่ (ไม่มีป้ายสถานะ) · `data/feedback.json` ยังไม่มี
+- (สถานะตอนปิดรุ่น v6 · 7 ต.ค.) `js/subj/` ยังไม่มีวิชาไหนใช้ และฟิลด์ DEEP `rev` `chk` `src` `lec` `rel` ยังไม่มีวิชาไหนใส่ — **ตั้งแต่หัวข้อ 15 ใช้แล้ว:** `js/subj/` 9 วิชา และ `chk: true` + `rev` 39 หัวข้อ (20 ต.ค. 2026) · `data/feedback.json` ยังไม่มี
 - ลูปของ VHMAP / STD2 ยังไม่ผ่าน `demoWatch` · axe-core: heading-order ในเนื้อหาบางวิชา · `tests/hooks.test.cjs` ยังไม่ตรวจจุดเกี่ยว `HOOKS.render("progress")` · ปุ่มออกจากโหมดอ่านบนจอคอมบางความกว้าง (901–1399 px) ยังอยู่ในขอบซ้ายติดคอลัมน์ข้อความ (มือถือย้ายไปกองขวาแล้ว)
 
 ### รายละเอียดราย session (บันทึกตอนพัฒนา)
@@ -702,3 +704,14 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 - รอตัดสิน: ศัพท์ใน `review/surn-234.decisions.md` (ส่วน «ศัพท์ส่งเจ้าของงาน») · рассогласование ใช้ «ค่าคลาด» ไปก่อน
 
 (15.7–15.9 = วิชาของเซสชัน B: АСУ · ППО · ТЭ — B เขียนเอง)
+
+
+## 16. สกิล Atlas — เขียน ออกแบบการฝึก และตรวจ (เพิ่ม 20 ต.ค. 2026)
+
+สามสกิลใน `.claude/skills/` ใช้ขั้นตอนร่วมกัน (Claude Code โหลดเอง · Codex ใช้สำเนา `.agents/skills/` + `AGENTS.md`) — คู่มือภาษาไทย `claude/atlas-skills-workflow.md` · ผลตรวจ `claude/atlas-skills-validation-summary.md` · ผลประเมิน `claude/atlas-skills-evaluation.md`
+- `atlas-content-editor` — เขียน/ปรับบทเรียน แก้คำผิด ยกระดับ STD2 แบบจำลอง · **เป็นผู้ประสานงานของงานผสม** (มอบงานให้ agents ในหัวข้อ 7)
+- `atlas-learning-designer` — คำถามปากเปล่า แบบฝึก ควิซ คำใบ้ → learning packet แยก (`scripts/check_learning_packet.py`)
+- `atlas-technical-reviewer` — ตรวจสูตร ศัพท์ แหล่งอ้างอิง ตัวตนคำถาม และหลักฐาน (`scripts/check_handoff.py` · `scripts/compare_identity.py`)
+- กติกาที่ต้องรู้แม้ไม่ได้เรียกสกิล: **คำถามปากเปล่าที่ไม่มี id ได้ id จากข้อความ** — แก้คำผิดในคำถามก็ทำให้ประวัติซ้อมของผู้เรียนหาย → ตรึง id เดิมจาก `data/qa` ก่อนแก้ · บล็อก `quiz2` ที่ไม่มี id นับตามลำดับ (ตรึงทุกบล็อกหรือไม่ตรึงเลย) · หลัง build_data รัน `python .claude/skills/atlas-technical-reviewer/scripts/compare_identity.py --repo . --base-rev <commit ก่อนแก้> --cand .`
+- run directory `_work/atlas-workflow/<run-id>/` (ไม่ไปกับ git) · ผลผ่านทุกชิ้นต้องระบุ `candidate_digest` · ทำไม่ได้เพราะขาดเครื่องมือ = `not_run` + `blocked` ไม่ใช่ N/A · VALID ของตัวตรวจไม่ใช่สิทธิ์ commit/เผยแพร่
+- แก้สกิล: แก้ที่ `.claude/skills/atlas-*` เท่านั้น แล้ว `python .claude/skills/atlas-content-editor/scripts/sync_bundle.py --write` + unittest ทั้งสามโฟลเดอร์ `scripts/` (คำสั่งเต็มในคู่มือ) · CI «Atlas skills» รันบน Linux และ Windows

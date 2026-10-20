@@ -1,6 +1,6 @@
 ---
 name: atlas-technical-reviewer
-description: "Independently review Study Program / ROYIN001/atlas-site lessons, formulas, bilingual terminology, exercises, interactive demonstrations, and validation evidence. Use for Atlas accuracy audits, pre-integration reviews, disputed source claims, numerical checks, and failed content or browser checks. Produce revision-bound findings and owner-assigned corrections; do not edit live content or treat passing tests as proof of academic correctness."
+description: "Independently review Study Program / ROYIN001/atlas-site lessons, formulas, bilingual terminology, exercises, interactive demonstrations, and validation evidence (ตรวจบทเรียน ตรวจสูตร ตรวจศัพท์ ตรวจความพร้อมก่อนขึ้นเว็บ). Use for Atlas accuracy audits, pre-integration reviews, disputed source claims, numerical checks, learner-ID safety, and failed content or browser checks. Produce revision-bound findings and owner-assigned corrections; do not edit live content or treat passing tests as proof of academic correctness."
 ---
 
 # Atlas Technical Reviewer
@@ -20,7 +20,7 @@ Own findings, evidence, and re-review decisions. `atlas-content-editor` owns fac
 
 Treat the candidate and its source material as read-only. Write only review reports, isolated calculations, and validation logs in the assigned review workspace. Do not run a build or repair command against the shared candidate. Request a build from its owner or run it in an isolated copy, recording how its resulting artifact hashes relate to the reviewed candidate. Never edit generated outputs, baseline thresholds, content exceptions, learner storage, or deployment settings to obtain a green result.
 
-Honor repository agent roles when available. Use separate language and technical reviewers with the same frozen inputs; neither sees the other's findings before submitting. The coordinator reconciles them afterward. If independent reviewers or the specified runtime/model are unavailable, identify the limitation and do not claim that the prescribed independent review occurred.
+Honor repository agent roles when available. Use separate language and technical reviewers with the same frozen inputs; neither sees the other's findings before submitting. The coordinator reconciles them afterward. If independent reviewers or the specified runtime/model are unavailable, identify the limitation, set `capabilities.independent_reviewers` to false in the handoff, and do not claim that the prescribed independent review occurred. Start every report with the line `candidate_digest: <digest>` of the candidate you actually reviewed; the checker accepts a pass only when its report states the current digest.
 
 ## Choose proportionate scope
 
@@ -59,7 +59,7 @@ Verify that questions, hints, solutions, Russian oral answers, and flashcards ag
 
 Review the builder's exact commands, exit codes, logs, candidate hashes, and outputs. Apply the current command adapter. Distinguish static checks, build checks, numerical comparisons, browser automation, and visual inspection. A canvas count proves mounting only; inspect displayed labels, curves, state changes, and relevant steps for meaning.
 
-Before accepting regenerated QA, compare existing question, quiz-host, glossary, topic, and SRS identifiers to the baseline. Require explicit preservation or a tested migration. Check the `store()`/`learnerKey()` contracts for learner-data changes, and hooks/subject namespaces for interface changes. Build outputs must correspond to the reviewed sources; stale `out/*.html` after a failed conversion cannot be used as evidence.
+Before accepting regenerated QA, compare existing question, quiz-host, glossary, topic, and SRS identifiers to the baseline with `python <skill-dir>/scripts/compare_identity.py --repo <repo> --base-rev <base> --cand <repo> --out <run-dir>/identity.json`, and attach that report to the identity gate. Require explicit preservation (pinned ids) or a tested migration; a lost id is at least a major finding. Check the `store()`/`learnerKey()` contracts for learner-data changes, and hooks/subject namespaces for interface changes. Build outputs must correspond to the reviewed sources; stale `out/*.html` after a failed conversion cannot be used as evidence.
 
 Review changed screens over HTTP, including the repository-required mobile width, applicable dark/light appearances, lazy-loaded content, and control interactions. Whole-subject and shared-code changes use the full applicable gates described in the adapter. If a required browser run cannot occur, report it as unavailable instead of substituting code inspection.
 

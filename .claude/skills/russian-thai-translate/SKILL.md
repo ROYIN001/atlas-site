@@ -26,6 +26,8 @@ Russian and Thai are typologically very different (Cyrillic vs. Thai script, gra
 
 5. **Update the glossary as you go.** When you land on a good translation for a recurring technical/institutional term (e.g. a course name, a specific system name, a rank), add it to `references/glossary.md` so future translations stay consistent instead of re-deriving it each time.
 
+   **Exception — Atlas lesson work (ROYIN001/atlas-site, including the atlas-* skills and the repo's subagents):** the "Rulings" sections of the glossary are the owner's decisions. Do not edit `references/glossary.md` during a lesson, review or design task; report the proposed term to the coordinator, who queues it in TERMS-PENDING for the owner. Bracketed uncertainty notes like the one in step 4 belong in your report, never in lesson HTML, and Atlas tasks need no .docx/.pdf output.
+
 ## Output format
 
 Default to this structure:
