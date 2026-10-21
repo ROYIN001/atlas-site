@@ -1,6 +1,6 @@
 ---
 name: atlas-learning-designer
-description: "Design sourced learning activities for Royin's Study Program (ROYIN001/atlas-site): measurable objectives, Russian oral practice with Thai conceptual support, progressive hints, worked exercises, misconception feedback, and selective recall cards. Use for requests to improve how Atlas lessons teach or assess understanding, create Atlas exam practice, or prepare a learning packet for atlas-content-editor. Use atlas-content-editor for source ingestion and canonical lesson changes; use atlas-technical-reviewer for independent correctness and release review. Generic quizzes unrelated to Atlas do not require this skill."
+description: "Design sourced learning activities for Royin's Study Program (ROYIN001/atlas-site): measurable objectives, Russian oral practice with Thai conceptual support (คำถามปากเปล่า), progressive hints, worked exercises (แบบฝึก โจทย์), misconception feedback, quizzes (ควิซ) and selective recall cards. Use for requests to improve how Atlas lessons teach or assess understanding, create Atlas exam practice, or prepare a learning packet for atlas-content-editor. Use atlas-content-editor for source ingestion and canonical lesson changes; use atlas-technical-reviewer for independent correctness and release review. Generic quizzes unrelated to Atlas do not require this skill."
 ---
 
 # Atlas Learning Designer
@@ -32,7 +32,7 @@ Inventory existing oral questions, quizzes, glossary cards, and demonstrations b
 
 ### 2. Bind content to evidence
 
-Map each objective and answer-bearing activity to the editor's claim IDs and source locators. A page or slide number is verified only if it was actually checked. Distinguish departmental questions, textbook control questions, and author-created practice; label new material visibly `ผู้เรียบเรียง` where applicable.
+Map each objective and answer-bearing activity to the editor's claim IDs and source locators. In a standalone request without an editor packet, cite the existing lesson file as an input_ref (repository-relative path and sha256 by the handoff rule; `check_handoff.py --hash <file>` computes it) and mark claims you could not trace as unverified. A page or slide number is verified only if it was actually checked. Classify every question as `official_exam`, `textbook_control`, `author_practice` or `unverified_existing` (learning-design.md); label new material visibly `ผู้เรียบเรียง`.
 
 If original sources are unavailable, produce a useful draft from explicitly identified available material, but flag affected academic claims and answer keys for verification. Do not claim an official examination list, source review, or release readiness. An unsupported answer remains blocked from integration as verified teaching content.
 
@@ -41,7 +41,7 @@ If original sources are unavailable, produce a useful draft from explicitly iden
 For each objective, choose the activity type that supplies the needed evidence. Do not mechanically turn every paragraph into a flashcard or create a quota of near-duplicates.
 
 - **Russian oral practice:** show the Russian prompt first; allow an unaided attempt; reveal optional Thai conceptual guidance; then reveal a Russian model answer and a criterion-based rubric. Keep Thai explanations and Russian answer blocks separate. A model answer is one defensible response, not the only permitted wording.
-- **Progressive problem solving:** start with a problem and given quantities; reveal a concept cue, an approach cue, then an intermediate relation before the full worked answer. Track which hints were used. Give assumptions, units, and checks alongside calculations.
+- **Progressive problem solving:** start with a problem and given quantities; reveal a concept cue, an approach cue, then an intermediate relation before the full worked answer. Specify which hints a learner may open; do not require hint-usage tracking or assisted grading unless an existing feature already records it. Give assumptions, units, and checks alongside calculations.
 - **Recall cards:** use one retrieval target per card, clear context, and a short answer. Prioritize definitions, meaning of symbols, applicability conditions, and discriminations between easily confused concepts. Preserve long derivations and multi-step problems as exercises.
 - **Misconception feedback:** state the mistaken reasoning, why it fails, and a corrective question or counterexample supported by the same source map. Label predicted misconceptions as design hypotheses unless evidence identifies them.
 - **Demonstration tasks:** use predict → manipulate → explain, with a precise observable outcome and a textual alternative. Specify the task for an existing demo or request a scoped new demo; do not build or redesign the frontend here.
@@ -51,18 +51,18 @@ Follow the detailed criteria in `learning-design.md` and record the objective �
 ### 4. Protect continuity and accessibility
 
 - Retain existing topic IDs, oral question IDs, quiz host IDs, and SRS keys. Copy identities from the checked repository snapshot; do not recompute hashed IDs. Give genuinely new questions explicit IDs in the project's approved namespace after checking collisions.
-- Changing Russian glossary text can change `termKey()`; reordering positional quiz hosts can change their keys. Report these as compatibility issues before integration. Do not delete history or fabricate a migration. Request a separate, scoped migration if identity changes are unavoidable.
+- Changing Russian glossary text can change `termKey()`; editing an unpinned oral question's text changes its ID; inserting, deleting or reordering quiz2 blocks shifts positional host IDs, and pinning only some blocks creates duplicate IDs. Report these as compatibility issues before integration. Do not delete history or fabricate a migration. Request a separate, scoped migration if identity changes are unavoidable.
 - Continue using the current SRS mechanism. Do not migrate SM-2 to FSRS, introduce another scheduler, or change scoring/storage semantics as part of learning design.
 - Make reveals available by keyboard and touch, retain visible focus and meaningful labels, keep hidden answers out of the initial attempt, provide text for diagrams, and avoid color-only or audio-only instructions. Russian speech must remain optional and have visible text.
 - Specify formulas for the current STD2/MathML path, with accessible spoken meaning where helpful. Preserve academy notation, including Laplace variable `p` and the established leading-coefficient convention. Do not switch rendering libraries.
 
 ### 5. Check and hand off
 
-Check that every required objective has a suitable activity; every answer/rubric agrees with its sources; all numerical solutions are independently checkable; hints progress meaningfully; distractors are plausible and have feedback; source and identity gaps are explicit. Remove template entries and placeholders from a completed packet.
+Check that every required objective has a suitable activity; every answer/rubric agrees with its sources; all numerical solutions are independently checkable; hints progress meaningfully; distractors are plausible and have feedback; source and identity gaps are explicit. Remove template entries and placeholders from a completed packet, set its status to `delivered` (or `blocked` with the reason), and run `python <skill-dir>/scripts/check_learning_packet.py <packet.json> --repo-root <repo>`; a VALID result means consistent and traceable, not academically correct.
 
 Report: packet revision and input revision, covered objectives, preserved IDs, new IDs, source limitations, unresolved findings, accessibility requirements, and requested technical/language checks. Use the shared contract's handoff states. Do not mark academic review as passed based only on this design check.
 
-Send the packet to the editor for integration and the technical reviewer for independent review. If source content changes, identify affected items and issue a new packet revision before reuse. If the reviewer reports an academic error, route the claim correction to the editor; revise only the dependent activity design after the corrected input arrives.
+In a coordinated job return the packet to the coordinator (atlas-content-editor), which integrates it and sends the frozen candidate to review; send it directly to atlas-technical-reviewer only when the user asked for a design-only review. If source content changes, identify affected items and issue a new packet revision before reuse. If the reviewer reports an academic error, route the claim correction to the editor; revise only the dependent activity design after the corrected input arrives.
 
 ## Completion boundary
 

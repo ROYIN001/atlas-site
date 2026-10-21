@@ -1,6 +1,6 @@
 ---
 name: atlas-technical-reviewer
-description: "Independently review Study Program / ROYIN001/atlas-site lessons, formulas, bilingual terminology, exercises, interactive demonstrations, and validation evidence. Use for Atlas accuracy audits, pre-integration reviews, disputed source claims, numerical checks, and failed content or browser checks. Produce revision-bound findings and owner-assigned corrections; do not edit live content or treat passing tests as proof of academic correctness."
+description: "Independently review Study Program / ROYIN001/atlas-site lessons, formulas, bilingual terminology, exercises, interactive demonstrations, and validation evidence (ตรวจบทเรียน ตรวจสูตร ตรวจศัพท์ ตรวจความพร้อมก่อนขึ้นเว็บ). Use for Atlas accuracy audits, pre-integration reviews, disputed source claims, numerical checks, learner-ID safety, and failed content or browser checks. Produce revision-bound findings and owner-assigned corrections; do not edit live content or treat passing tests as proof of academic correctness."
 ---
 
 # Atlas Technical Reviewer
@@ -20,14 +20,14 @@ Own findings, evidence, and re-review decisions. `atlas-content-editor` owns fac
 
 Treat the candidate and its source material as read-only. Write only review reports, isolated calculations, and validation logs in the assigned review workspace. Do not run a build or repair command against the shared candidate. Request a build from its owner or run it in an isolated copy, recording how its resulting artifact hashes relate to the reviewed candidate. Never edit generated outputs, baseline thresholds, content exceptions, learner storage, or deployment settings to obtain a green result.
 
-Honor repository agent roles when available. Use separate language and technical reviewers with the same frozen inputs; neither sees the other's findings before submitting. The coordinator reconciles them afterward. If independent reviewers or the specified runtime/model are unavailable, identify the limitation and do not claim that the prescribed independent review occurred.
+Honor repository agent roles when available. Use separate language and technical reviewers with the same frozen inputs; neither sees the other's findings before submitting. The coordinator reconciles them afterward. If independent reviewers or the specified runtime/model are unavailable, identify the limitation, set `capabilities.independent_reviewers` to false in the handoff, and do not claim that the prescribed independent review occurred. Start every report with the line `candidate_digest: <digest>` of the candidate you actually reviewed; the checker accepts a pass only when that first line states the current digest. If you also wrote or edited the candidate, record your verdict as `needs_changes` or `blocked`, never `pass`.
 
 ## Choose proportionate scope
 
 | Request | Review mode | Required result |
 |---|---|---|
 | Audit an existing lesson or inspect a reported defect | Standalone audit | Findings and evidence for the requested area; no prerequisite to rewrite the lesson or run the authoring pipeline |
-| Minor wording, label, or formatting correction | Lightweight | Diff and nearby context, terminology/meaning check, applicable syntax or rendering checks; widen scope only if the change affects formulas, identifiers, behavior, or layout |
+| Minor wording, label, or formatting correction | Lightweight | Diff and nearby context, terminology/meaning check, applicable syntax or rendering checks; widen scope only if the change affects formulas, identifiers (including the text of any oral question without an explicit id), behavior, or layout |
 | New lesson, substantial revision, exercise/demo change, or subject upgrade | Full | Applicable source, academic, language, identity, structural, numerical, and browser gates, with independent review |
 | Shared navigation, storage, rendering, or lifecycle change | Full plus affected integration checks | Repository-required browser suites and learner-data checks in addition to affected subjects |
 
@@ -37,9 +37,9 @@ Lightweight mode reduces unnecessary breadth; it does not waive the repository's
 
 ### 1. Freeze and identify the candidate
 
-Obtain the task boundary, changed-file list, subject/topic identifiers, source inventory, prior IDs, relevant authoring decisions, and supplied test evidence. Read the handoff and verify its snapshot using the shared contract and [check_handoff.py](scripts/check_handoff.py): run `python <skill-dir>/scripts/check_handoff.py <handoff.json> --root <run-dir> --repo-root <repo>`. Match the actual bytes, not just a branch name or timestamp. Include authoring sources, staged demos, and relevant built output in the review scope. This script validates evidence consistency, not truth or whether a claimed command really ran.
+Obtain the task boundary, changed-file list, subject/topic identifiers, source inventory, prior IDs, relevant authoring decisions, and supplied test evidence. For a standalone audit with no coordinator, either create a minimal review handoff (task_type review, phase reviewed, audited files assigned to their existing author) or state that no handoff check ran. Otherwise read the handoff and verify its snapshot using the shared contract and [check_handoff.py](scripts/check_handoff.py): run `python <skill-dir>/scripts/check_handoff.py <handoff.json> --root <run-dir> --repo-root <repo>` (on Windows set `PYTHONIOENCODING=utf-8`). Match the actual bytes, not just a branch name or timestamp. Include authoring sources, staged demos, and relevant built output in the review scope. This script validates evidence consistency, not truth or whether a claimed command really ran.
 
-If inputs changed after handoff, report a stale snapshot and return it to the coordinator before issuing an acceptance decision. Missing files, source pages, tests, or tools are `blocked` or `not_run` as the contract defines; they are never a passing check. Continue useful checks that do not depend on the missing input. Mark a check outside the declared scope with a reason rather than pretending it ran.
+If inputs changed after handoff, report a stale snapshot and return it to the coordinator before issuing an acceptance decision. Record a gate whose files, source pages, tests, or tools are missing as `not_run` with the reason (never `not_applicable`), and set your verdict or the handoff phase to `blocked`; `blocked` is not a gate status. Continue useful checks that do not depend on the missing input. Mark a check outside the declared scope with a reason rather than pretending it ran.
 
 ### 2. Review academic and language evidence independently
 
@@ -59,7 +59,7 @@ Verify that questions, hints, solutions, Russian oral answers, and flashcards ag
 
 Review the builder's exact commands, exit codes, logs, candidate hashes, and outputs. Apply the current command adapter. Distinguish static checks, build checks, numerical comparisons, browser automation, and visual inspection. A canvas count proves mounting only; inspect displayed labels, curves, state changes, and relevant steps for meaning.
 
-Before accepting regenerated QA, compare existing question, quiz-host, glossary, topic, and SRS identifiers to the baseline. Require explicit preservation or a tested migration. Check the `store()`/`learnerKey()` contracts for learner-data changes, and hooks/subject namespaces for interface changes. Build outputs must correspond to the reviewed sources; stale `out/*.html` after a failed conversion cannot be used as evidence.
+Before accepting regenerated QA, compare existing question, quiz-host, glossary, topic, and SRS identifiers to the baseline with `python <skill-dir>/scripts/compare_identity.py --repo <repo> --base-rev <base> --cand <repo> --candidate-digest <digest> --out <run-dir>/identity.json`, record it as `identity_baseline.report_artifact_id` and cite it on the identity gate. Require explicit preservation (pinned `id` attributes; `data-id` alone does not pin) or a tested migration; a lost id is a blocker (contract, Evidence and corrections). Check the `store()`/`learnerKey()` contracts for learner-data changes, and hooks/subject namespaces for interface changes. Build outputs must correspond to the reviewed sources; stale `out/*.html` after a failed conversion cannot be used as evidence.
 
 Review changed screens over HTTP, including the repository-required mobile width, applicable dark/light appearances, lazy-loaded content, and control interactions. Whole-subject and shared-code changes use the full applicable gates described in the adapter. If a required browser run cannot occur, report it as unavailable instead of substituting code inspection.
 
@@ -73,7 +73,7 @@ Preserve findings across rounds, including refuted findings and the reasons. Clo
 
 ### 6. Re-review and hand off
 
-After corrections, obtain a new candidate snapshot. Recheck each resolved item and affected dependencies; do not carry a pass from an earlier hash without explicitly establishing that its exact reviewed inputs remain unchanged under the shared contract. Language and technical decisions must ultimately refer to the same candidate revision. Rebuild and recheck affected artifacts when sources change.
+After corrections, obtain a new candidate snapshot. Recheck each resolved item and affected dependencies; a pass applies only to the digest its report states; after any change write a new report (a short delta review is enough) that states the new digest, never restamp an old one. Language and technical decisions must ultimately refer to the same candidate revision. Rebuild and recheck affected artifacts when sources change.
 
 Return the review record and validated handoff to the coordinator. Separate completed checks, unresolved findings, unavailable checks, and release readiness. Do not set `chk: true`, `rev`, or a release state yourself; the integrator applies review metadata only when the current repository's required reviews have passed for that candidate.
 
