@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlas Learning Designer"
+  short_description: "Design recall practice and Russian oral exam tasks"
+  default_prompt: "Use $atlas-learning-designer to improve Atlas practice tasks using the approved lesson and source evidence."

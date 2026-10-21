@@ -1,0 +1,184 @@
+{
+  "template": true,
+  "template_note": "Non-deployable authoring template. Replace null values using observed inputs; remove unused example structures. Never treat this template as evidence or a completed review.",
+  "packet_schema_version": "1.0",
+  "workflow_contract_version": null,
+  "task_id": null,
+  "artifact_id": null,
+  "revision": 0,
+  "status": "draft",
+  "owner": "atlas-learning-designer",
+  "language": "th",
+  "scope": {
+    "subject_id": null,
+    "topic_ids": [],
+    "output_path": null,
+    "design_only": true
+  },
+  "input_refs": [
+    {
+      "artifact_id": null,
+      "revision": null,
+      "path": null,
+      "sha256": null,
+      "kind": "editor_content",
+      "verified_available": false
+    }
+  ],
+  "objectives": [
+    {
+      "objective_id": null,
+      "topic_id": null,
+      "observable_action_th": null,
+      "conditions_th": null,
+      "success_criteria_th": [],
+      "prerequisite_topic_ids": [],
+      "claim_refs": [],
+      "activity_ids": []
+    }
+  ],
+  "activities": [
+    {
+      "activity_id": null,
+      "kind": "oral",
+      "objective_ids": [],
+      "topic_id": null,
+      "provenance": {
+        "classification": null,
+        "visible_label_th": null,
+        "source_refs": [],
+        "claim_refs": [],
+        "official_question_number": null,
+        "verification_needed": true
+      },
+      "existing_identity": {
+        "question_id": null,
+        "srs_key": null,
+        "observed_at_input_ref": null,
+        "proposed_new_id": null
+      },
+      "prompt_ru": null,
+      "attempt_instruction_th": null,
+      "concept_help_th": [],
+      "hints": [
+        {
+          "level": 1,
+          "purpose": "concept",
+          "text_th": null,
+          "claim_refs": []
+        }
+      ],
+      "model_answer_ru": null,
+      "rubric": [
+        {
+          "criterion_id": null,
+          "dimension": "technical_content",
+          "observable_requirement_th": null,
+          "acceptable_alternatives_th": [],
+          "max_points": null,
+          "claim_refs": []
+        }
+      ],
+      "misconceptions": [
+        {
+          "misconception_id": null,
+          "status": "design_hypothesis",
+          "mistaken_reasoning_th": null,
+          "feedback_th": null,
+          "retry_prompt_th": null,
+          "claim_refs": []
+        }
+      ],
+      "accessibility": {
+        "reveal_order": ["prompt_ru", "concept_help_th", "hints", "model_answer_ru", "rubric"],
+        "keyboard_and_touch": true,
+        "audio_optional": true,
+        "language_blocks": ["ru", "th"],
+        "text_alternative_th": null
+      }
+    }
+  ],
+  "recall_cards": [
+    {
+      "activity_id": null,
+      "objective_ids": [],
+      "retrieval_target_th": null,
+      "prompt": {"language": "th", "text": null},
+      "answer": {"language": "th", "text": null},
+      "applicability_conditions_th": [],
+      "claim_refs": [],
+      "source_refs": [],
+      "existing_srs_key": null,
+      "identity_observed_at": null,
+      "proposed_new_id": null,
+      "duplicate_check_result": null
+    }
+  ],
+  "exercises": [
+    {
+      "activity_id": null,
+      "objective_ids": [],
+      "problem_th": null,
+      "givens": [],
+      "unknowns": [],
+      "assumptions_th": [],
+      "domain_restrictions_th": [],
+      "hints": [],
+      "worked_steps": [],
+      "symbolic_result": null,
+      "numeric_result": null,
+      "units": null,
+      "justified_tolerance": null,
+      "independent_check": {
+        "method": null,
+        "reference": null,
+        "result": null,
+        "performed": false
+      },
+      "claim_refs": [],
+      "source_refs": [],
+      "visible_provenance_label_th": null
+    }
+  ],
+  "demo_tasks": [],
+  "reference_mapping": [
+    {
+      "activity_id": null,
+      "claim_id": null,
+      "source_id": null,
+      "locator": null,
+      "checked_against_available_source": false
+    }
+  ],
+  "identity_compatibility": {
+    "preserved_question_ids": [],
+    "preserved_quiz_host_ids": [],
+    "preserved_srs_keys": [],
+    "new_ids": [],
+    "collisions_checked": false,
+    "migration_requests": [],
+    "scheduler_change": false
+  },
+  "coverage": {
+    "objective_to_activity": [],
+    "uncovered_objective_ids": [],
+    "duplicate_activity_ids": [],
+    "reviewed": false
+  },
+  "findings": [],
+  "blocking_issues": [
+    {
+      "code": "UNFILLED_TEMPLATE",
+      "affected_ids": [],
+      "owner": "atlas-learning-designer",
+      "reason_th": "ยังเป็นแม่แบบ ต้องระบุขอบเขต อ่านข้อมูลต้นทาง และตรวจการเชื่อมโยงก่อนใช้เป็นชุดกิจกรรมจริง"
+    }
+  ],
+  "handoff": {
+    "to": "atlas-content-editor",
+    "review_requests": ["academic_correctness", "ru_th_language", "identity_compatibility"],
+    "changed_activity_ids": [],
+    "invalidated_by_input_changes": [],
+    "notes_th": null
+  }
+}

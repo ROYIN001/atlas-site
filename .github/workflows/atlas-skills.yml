@@ -1,0 +1,29 @@
+name: Atlas skills
+on:
+  pull_request:
+    paths:
+      - ".claude/skills/atlas-*/**"
+      - ".agents/skills/atlas-*/**"
+      - ".github/workflows/atlas-skills.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".claude/skills/atlas-*/**"
+      - ".agents/skills/atlas-*/**"
+      - ".github/workflows/atlas-skills.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate bundles and synchronized Codex mirrors
+        run: python .claude/skills/atlas-content-editor/scripts/sync_bundle.py
+      - name: Exercise handoff evidence and conflict checks
+        run: python -B -m unittest discover -s .claude/skills/atlas-technical-reviewer/scripts -p test_check_handoff.py

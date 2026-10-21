@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlas Content Editor"
+  short_description: "Build sourced Atlas lessons and coordinate handoffs"
+  default_prompt: "Use $atlas-content-editor to prepare an Atlas lesson and coordinate learning design and technical review."
