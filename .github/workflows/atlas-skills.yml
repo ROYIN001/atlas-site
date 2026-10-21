@@ -3,27 +3,73 @@ on:
   pull_request:
     paths:
       - ".claude/skills/atlas-*/**"
-      - ".agents/skills/atlas-*/**"
+      - ".agents/skills/**"
+      - ".claude/agents/**"
+      - ".claude/skills/russian-thai-translate/**"
+      - "claude/atlas-skills-*"
+      - "AGENTS.md"
+      - ".gitattributes"
       - ".github/workflows/atlas-skills.yml"
   push:
     branches: [main]
     paths:
       - ".claude/skills/atlas-*/**"
-      - ".agents/skills/atlas-*/**"
+      - ".agents/skills/**"
+      - ".claude/agents/**"
+      - ".claude/skills/russian-thai-translate/**"
+      - "claude/atlas-skills-*"
+      - "AGENTS.md"
+      - ".gitattributes"
       - ".github/workflows/atlas-skills.yml"
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    name: validate (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.12"
+          # The owner works on Windows with a CRLF working tree (core.autocrlf);
+          # hashes and mirrors must agree there too.
+          - os: windows-latest
+            python: "3.12"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
+      - name: Skill files are stored with LF in git
+        if: runner.os == 'Linux'
+        run: |
+          bad=$(git ls-files --eol -- '.claude/skills/atlas-*' '.agents/skills' 'claude/atlas-skills-*' AGENTS.md | awk '$1=="i/crlf" || $1=="i/mixed"')
+          if [ -n "$bad" ]; then echo "$bad"; echo "Commit these files with LF (git add --renormalize .)"; exit 1; fi
       - name: Validate bundles and synchronized Codex mirrors
         run: python .claude/skills/atlas-content-editor/scripts/sync_bundle.py
-      - name: Exercise handoff evidence and conflict checks
-        run: python -B -m unittest discover -s .claude/skills/atlas-technical-reviewer/scripts -p test_check_handoff.py
+      - name: Content editor scripts
+        run: python -B -m unittest discover -s .claude/skills/atlas-content-editor/scripts -p "test_*.py"
+      - name: Learning designer scripts
+        run: python -B -m unittest discover -s .claude/skills/atlas-learning-designer/scripts -p "test_*.py"
+      - name: Technical reviewer scripts (handoff and identity checks)
+        run: python -B -m unittest discover -s .claude/skills/atlas-technical-reviewer/scripts -p "test_*.py"
+      # Tool smoke test on the real lesson data when the skills change: fails only
+      # when the comparison cannot run. The per-PR identity warning for lesson
+      # changes runs in check.yml (job tests), which runs on every pull request.
+      - name: Identity comparison runs on real data
+        if: runner.os == 'Linux' && matrix.python == '3.12' && github.event_name == 'pull_request'
+        run: |
+          base=$(git merge-base HEAD "origin/${{ github.base_ref }}")
+          set +e
+          python .claude/skills/atlas-technical-reviewer/scripts/compare_identity.py --repo . --base-rev "$base" --cand .
+          code=$?
+          if [ "$code" -eq 2 ]; then exit 1; fi
+          if [ "$code" -eq 1 ]; then echo "::warning::learner identities differ from the merge base (see the report above)"; fi

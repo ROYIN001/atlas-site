@@ -32,6 +32,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # merge base for the learner-identity comparison below
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -47,6 +49,19 @@ jobs:
         if: always()
         shell: bash
         run: python src/counts.py | tee counts.log
+      # ตัวตนผู้เรียน (CLAUDE.md หัวข้อ 16): id คำถามปากเปล่า · ลำดับ quiz2 · termKey เทียบ merge base
+      # ต่างกัน = คำเตือน (PR อาจปลดตัวตนโดยตั้งใจ — ตัดสินที่ด่าน identity ของงานนั้น) · เครื่องมือรันไม่ได้หรือ data/qa ไม่ได้ build = ตก
+      - name: ตัวตนผู้เรียนเทียบ merge base (compare_identity)
+        if: always() && github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          base=$(git merge-base HEAD "origin/${{ github.base_ref }}")
+          set +e
+          python .claude/skills/atlas-technical-reviewer/scripts/compare_identity.py --repo . --base-rev "$base" --cand . | tee identity.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -eq 2 ]; then exit 1; fi
+          if [ "$code" -eq 1 ]; then echo "::warning::ตัวตนผู้เรียนต่างจาก merge base (ดูรายงานในขั้นนี้) — ตรึง id ก่อนแก้ หรือบันทึกการปลดใน handoff"; fi
+          exit 0
       - name: สรุปผล
         if: always()
         shell: bash

@@ -1,27 +1,66 @@
 #!/usr/bin/env python3
-"""Check or regenerate Codex mirrors of the three canonical Claude project skills."""
+"""Check or regenerate Codex mirrors of the three canonical Claude project skills.
+
+Checkout maintenance only: run it from an Atlas checkout (it locates the repo
+four levels above this file). It validates the bundle files and that
+.agents/skills/atlas-* mirrors equal .claude/skills/atlas-* byte for byte. It
+does not test how the skills behave and is not meant for an uploaded Claude.ai
+skill folder.
+"""
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 NAMES = ("atlas-content-editor", "atlas-learning-designer", "atlas-technical-reviewer")
 COMMON = ("workflow-contract.md", "repo-adapter.md")
+# [text](target "title") / [text](<target with spaces> 'title')
+INLINE_LINK = re.compile(r"""\]\(\s*(<[^>\n]*>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)""")
+# [label]: target "title" -- a definition line only (not a footnote [^1]: or prose).
+REFERENCE_LINK = re.compile(r"""^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*(<[^>\n]*>|\S+)[ \t]*(?:"[^"]*"|'[^']*'|\([^)]*\))?[ \t]*$""", re.M)
+# Fenced blocks and inline code spans are not links.
+CODE = re.compile(r"^ {0,3}(`{3,}|~{3,})[^\n]*\n.*?^ {0,3}\1[^\n]*$|(`+)[^`\n]*?\2", re.M | re.S)
+SCRATCH = ".handoff-test-"   # disposable test folders; never part of a bundle
+
 
 def files(folder):
     return {p.relative_to(folder).as_posix(): p for p in folder.rglob("*")
-            if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc"}
+            if (p.is_file() or p.is_symlink()) and "__pycache__" not in p.parts and p.suffix != ".pyc"
+            and not any(part.startswith(SCRATCH) for part in p.relative_to(folder).parts)}
+
+
+def read_text(path, errors, label):
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        errors.append(f"{label}: cannot read as UTF-8 ({exc.__class__.__name__}: {exc})")
+        return None
+
+
+def link_targets(text):
+    text = CODE.sub(" ", text)
+    targets = INLINE_LINK.findall(text) + [target for _, target in REFERENCE_LINK.findall(text)]
+    for target in targets:
+        target = target.strip("<>").strip()
+        if "://" in target or target.startswith(("#", "mailto:")):
+            continue
+        yield target
+
 
 def validate_source(root):
     errors = []
     for name in NAMES:
         folder = root / ".claude" / "skills" / name
+        if not folder.is_dir():
+            errors.append(f"{name}: missing skill folder {folder}")
+            continue
         src = files(folder)
         entry = folder / "SKILL.md"
-        if not entry.is_file():
-            errors.append(f"{name}: missing SKILL.md")
+        text = read_text(entry, errors, f"{name}/SKILL.md") if entry.is_file() else None
+        if text is None:
+            errors.append(f"{name}: missing or unreadable SKILL.md")
             continue
-        text = entry.read_text(encoding="utf-8")
         match = re.match(r"^---\nname: ([a-z0-9-]+)\ndescription: (.+)\n---\n", text)
         if not match or match.group(1) != name:
             errors.append(f"{name}: unexpected frontmatter format/name")
@@ -30,13 +69,20 @@ def validate_source(root):
                 description = json.loads(match.group(2))
                 if not isinstance(description, str) or not description.strip():
                     raise ValueError("empty description")
-            except ValueError:
-                errors.append(f"{name}: description must be a JSON-quoted YAML string")
+                if len(description) > 1024 or "<" in description or ">" in description:
+                    raise ValueError("description over 1024 characters or contains < >")
+            except ValueError as exc:
+                errors.append(f"{name}: description must be a JSON-quoted YAML string ({exc})")
         if "[TODO:" in text:
             errors.append(f"{name}: unfinished scaffold")
         for relative, path in src.items():
+            if path.is_symlink():
+                errors.append(f"{name}/{relative}: symlinks are not allowed in a skill bundle")
+                continue
             if path.suffix in (".md", ".json", ".py", ".yaml"):
-                value = path.read_text(encoding="utf-8")
+                value = read_text(path, errors, f"{name}/{relative}")
+                if value is None:
+                    continue
                 if any(ord(c) < 32 and c not in "\n\r\t" for c in value):
                     errors.append(f"{name}/{relative}: unexpected control character")
                 if path.suffix == ".json":
@@ -44,30 +90,42 @@ def validate_source(root):
                         json.loads(value)
                     except ValueError as exc:
                         errors.append(f"{name}/{relative}: invalid JSON: {exc}")
-            if path.suffix == ".md":
-                for target in re.findall(r"\]\(([^)]+)\)", path.read_text(encoding="utf-8")):
-                    if "://" in target or target.startswith("#"):
-                        continue
-                    resolved = (path.parent / target.split("#")[0]).resolve()
-                    if not resolved.is_relative_to(folder.resolve()) or not resolved.is_file():
-                        errors.append(f"{name}/{relative}: missing or external bundled reference {target}")
+                if path.suffix == ".md":
+                    for target in link_targets(value):
+                        resolved = (path.parent / target.split("#")[0]).resolve()
+                        if not resolved.is_relative_to(folder.resolve()) or not resolved.is_file():
+                            errors.append(f"{name}/{relative}: missing or external bundled reference {target}")
         metadata = folder / "agents" / "openai.yaml"
-        if not metadata.is_file() or ("$" + name) not in metadata.read_text(encoding="utf-8"):
+        meta_text = read_text(metadata, errors, f"{name}/agents/openai.yaml") if metadata.is_file() else None
+        if not meta_text or ("$" + name) not in meta_text:
             errors.append(f"{name}: missing matching invocation metadata")
     for common in COMMON:
-        blobs = [(root / ".claude" / "skills" / n / "references" / common).read_bytes()
-                 for n in NAMES]
-        if len(set(blobs)) != 1:
-            errors.append(f"shared reference drift: {common}")
+        blobs = []
+        for n in NAMES:
+            path = root / ".claude" / "skills" / n / "references" / common
+            try:
+                # git text=auto: a CRLF working tree and an LF clone hold the same file
+                blobs.append(path.read_bytes().replace(b"\r\n", b"\n"))
+            except OSError as exc:
+                errors.append(f"{n}/references/{common}: missing shared reference ({exc.__class__.__name__})")
+        if len(set(blobs)) > 1:
+            errors.append(f"shared reference drift: {common} (copy the edited file to all three "
+                          "skills' references/ folders, then rerun)")
     return errors
+
 
 def run(root, write=False):
     errors = validate_source(root)
     if errors:
         return errors
+    mirrors = root / ".agents" / "skills"
+    if mirrors.is_dir():
+        for stale in sorted(p.name for p in mirrors.iterdir()
+                            if p.is_dir() and p.name.startswith("atlas-") and p.name not in NAMES):
+            errors.append(f"{stale}: mirror folder has no canonical skill; inspect and remove it by hand")
     for name in NAMES:
         source = root / ".claude" / "skills" / name
-        target = root / ".agents" / "skills" / name
+        target = mirrors / name
         # Never overwrite a link redirecting a project mirror outside this checkout.
         if not target.resolve().is_relative_to(root.resolve()) or target.is_symlink():
             errors.append(f"{name}: mirror escapes checkout or is a symlink")
@@ -89,13 +147,22 @@ def run(root, write=False):
                 errors.append(f"{name}/{relative}: mirror missing or different")
     return errors
 
-if __name__ == "__main__":
+
+def main():
+    if sys.version_info < (3, 9):
+        sys.exit("sync_bundle.py needs Python 3.9 or newer")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="regenerate only named project mirrors")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[4]
+    if not (repo / ".claude" / "skills").is_dir() or not (repo / "CLAUDE.md").is_file():
+        sys.exit(f"not an Atlas checkout: {repo} (run this script from .claude/skills/atlas-content-editor/scripts in the repository)")
     failures = run(repo, args.write)
     if failures:
         print("\n".join(failures))
         raise SystemExit(1)
-    print("PASS: 3 skill bundles, shared references, JSON, local links and Codex mirrors")
+    print("PASS: 3 skill bundles (frontmatter, UTF-8, JSON, inline and reference links) and byte-identical Codex mirrors")
+
+
+if __name__ == "__main__":
+    main()

@@ -74,7 +74,7 @@
 - app.js โหลดไฟล์ของวิชาเมื่อเปิดวิชานั้นครั้งแรก (`subjAssets()`) ก่อนติดตั้งแบบจำลองในหัวข้อ · ผู้อ่านไม่ต้องโหลดแบบจำลองของวิชาที่ไม่ได้เปิด (ตอนปิดรุ่น v6 app.js 6.3 MB · gzip 1.6 MB ยังโหลดทุกวิชาทีเดียว — ส่วนใหญ่เป็นแบบจำลองรายวิชา)
 - ในไฟล์: `Object.assign(DEMOS, { "<key>": host => { … } })` · เรียกของกลางได้ (`buildDemo`, `Plot`, `fitCanvas`, `CV`, `window.STEPS2` ฯลฯ) · **ห้ามแตะ `document` ที่ระดับบนสุด** (tests รันไฟล์นี้ใน vm ต่อจาก app.js) · CSS อยู่ใต้ namespace ของวิชา · ใช้ `buildDemo` หรือ `demoWatch` และหยุดลูปเมื่อ `document.hidden` (หัวข้อ 14.3)
 - `python src/build_data.py` ใส่ hash ของไฟล์ลง `data/manifest.json` (`subjects.<วิชา>.js/.css`) ใช้เป็น `?v=` — **ต้องรันทุกครั้งที่แก้ไฟล์** (tests ฟ้อง «stale manifest» ถ้าลืม)
-- ยังไม่มีวิชาไหนใช้ — ตอนยกระดับแต่ละวิชา ให้สคริปต์ประกอบของวิชา (แบบ `_work/navpilot/build.py`) เขียนไฟล์นี้แทนการแทนที่บล็อกใน app.js แล้วลบบล็อกเดิมออก
+- ใช้แล้ว 9 วิชา (หัวข้อ 15) — ตอนยกระดับแต่ละวิชา ให้สคริปต์ประกอบของวิชา (`_work/std2/tools/assemble.py` หรือแบบ `_work/navpilot/build.py`) เขียนไฟล์นี้แทนการแทนที่บล็อกใน app.js แล้วลบบล็อกเดิมออก
 
 **อ่านแบบออฟไลน์ (`sw.js` · `manifest.webmanifest` · `icons/`)**
 - service worker ลงทะเบียนเฉพาะบนเว็บจริง (https ที่ไม่ใช่ localhost) — preview.bat / verify.py ไม่ใช้ จึงไม่มีไฟล์เก่าค้างตอนแก้เนื้อหา · ทดสอบในเครื่องด้วย `?sw=1`
@@ -236,7 +236,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 | ไฟล์ | ผู้สร้าง | รูปแบบ |
 |---|---|---|
 | `data/ix/<วิชา>.json` · `data/manifest.json` · `?v=` ใน index.html + `DATA_VERSION` | `src/build_data.py` | ดัชนีค้นหา · `{subjects: {<วิชา>: {n, v, js?, css?}}}` · sha1[:10] ของ app.js+app.css+manifest (CRLF → LF) |
-| `data/qa/<วิชา>.json` · `data/qa/_index.json` | `src/build_steps/qa.py` | `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `{<วิชา>: {n, t, z, fix}}` · 2 666 ข้อ |
+| `data/qa/<วิชา>.json` · `data/qa/_index.json` | `src/build_steps/qa.py` | `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `{<วิชา>: {n, t, z, fix}}` · 2 666 ข้อตอนปิดรุ่น v6 (ปัจจุบันดู `_index.json`) |
 | `data/rel.json` · `data/figdim.json` | `rel.py` · `figdim.py` | หัวข้อเกี่ยวข้อง 231 หัวข้อ · ขนาดรูป 1 158 ใบ |
 | `src/counts-baseline.json` · `src/blocks.json` | `python src/counts.py --update` · `python src/blocks.py --update <บล็อก>` | หัวข้อ 4 |
 | `data/vh/*.json` · `data/ih/*.json` | สคริปต์ใน `_work/` / ต้นทาง История (หัวข้อ 8, 10) | — |
@@ -256,7 +256,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 1. **DEEP**: `chk: false` ตั้งแต่แรก → `chk: true` + `rev: "YYYY-MM-DD"` หลังผ่าน tech + lang · `src` ต้นทางสั้น · `lec: N`/`[N, M]` เมื่อชื่อหัวข้อไม่ขึ้นต้น «Лекция N»/«Тема N» · `rel: [...]` ทับหัวข้อเกี่ยวข้อง
 2. **คำถามปากเปล่า** `details.qa` > `summary` (STD2 `.qa-q`) + `.ans` (`.ans-ru` ได้ 🔊) · ไม่ต้องใส่ id · **แก้ข้อความคำถาม = id ใหม่** ผลซ้อม/SRS ข้อนั้นหาย (อยากคงที่ใส่ `id` เอง)
-3. **quiz2** ได้ id `<tid>-q<n>` ตามลำดับ — แทรกบล็อกก่อนบล็อกเดิม = ผลของบล็อกถัดไปเลื่อน (ต้องคงผลใส่ `id`/`data-id` เอง)
+3. **quiz2** ได้ id `<tid>-q<n>` ตามลำดับ — แทรกบล็อกก่อนบล็อกเดิม = ผลของบล็อกถัดไปเลื่อน (ต้องคงผล: ใส่ `id` = `<tid>-q<n>` เดิมให้ทุกบล็อกของหัวข้อก่อนแทรก/ลบ/ย้าย — ใส่แค่ `data-id` ไม่พอ เพราะ atlas-practice-v1 ใช้ `id` · ตรึงบางบล็อกทำให้ id ซ้ำ · การ์ดควิซในแถบข้าง `atlas-quiz-v1` ผูกกับลำดับเสมอ · หัวข้อ 16)
 4. id ขององค์ประกอบไม่ซ้ำทั้งวิชา ขึ้นต้นด้วยรหัสหัวข้อ · ลิงก์ `#/<วิชา>/<หัวข้อ>[/<id>]`
 5. **แบบจำลอง** ใน `js/subj/<วิชา>.js|.css` (`buildDemo`/`demoWatch` · หยุดลูปเมื่อ `document.hidden` · ไม่แตะ `document` ระดับบนสุด) แล้วลบบล็อกเดิมจาก app.js (+ `src/blocks.json`)
 6. **ไฟล์ข้อมูลใหม่**: อยู่ในเว็บเดียวกัน · คืน URL ใน `HOOKS.on("offline", …)` (ไม่แก้ `saveOffline`) · สร้างจากเนื้อหา → `src/build_steps/<ชื่อ>.py`
@@ -268,7 +268,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 
 - **`_work/layout/layout.js` (บนเครื่องเจ้าของงาน)** ยังเป็นแบบเดิม **สองบรรทัด**: `saveQuiz` และ `localStorage.setItem("atlas-mode-v1", MODE)` ในปุ่ม «เปิดฉบับเต็ม» ของ `margWeak` — แก้ให้ตรง app.js ตามคำเตือนในหัวข้อ 11 ก่อนรัน `patch_layout.py` · ครั้งเดียวกันย้ายตัวทับท้าย router (`margWeak` `quizOfSubject` `jumpTopic` …) เข้า layout.js
 - **`tests/content-allow.json`**: ไม่มีบรรทัดอ้างอิง 37 หัวข้อ · ไทยติดซีริลลิก 7 หัวข้อ + 6 สตริงในเดโม · พูดกับเจ้าของงาน 9 หัวข้อ — แก้ตอนยกระดับวิชานั้น
-- `js/subj/` ยังไม่มีวิชาไหนใช้ (แบบจำลองทั้ง 12 วิชาอยู่ใน app.js 6.3 MB · gzip 1.6 MB) · ฟิลด์ DEEP `rev` `chk` `src` `lec` `rel` ยังไม่มีวิชาไหนใส่ (ไม่มีป้ายสถานะ) · `data/feedback.json` ยังไม่มี
+- (สถานะตอนปิดรุ่น v6 · 7 ต.ค.) `js/subj/` ยังไม่มีวิชาไหนใช้ และฟิลด์ DEEP `rev` `chk` `src` `lec` `rel` ยังไม่มีวิชาไหนใส่ — **ตั้งแต่หัวข้อ 15 ใช้แล้ว:** `js/subj/` 9 วิชา และ `chk: true` + `rev` 39 หัวข้อ (20 ต.ค. 2026) · `data/feedback.json` ยังไม่มี
 - ลูปของ VHMAP / STD2 ยังไม่ผ่าน `demoWatch` · axe-core: heading-order ในเนื้อหาบางวิชา · `tests/hooks.test.cjs` ยังไม่ตรวจจุดเกี่ยว `HOOKS.render("progress")` · ปุ่มออกจากโหมดอ่านบนจอคอมบางความกว้าง (901–1399 px) ยังอยู่ในขอบซ้ายติดคอลัมน์ข้อความ (มือถือย้ายไปกองขวาแล้ว)
 
 ### รายละเอียดราย session (บันทึกตอนพัฒนา)
@@ -312,7 +312,7 @@ Cache API ของ service worker: `CACHE = "atlas-v1"` ใน `sw.js` — **�
 - ทดสอบ: `tests/search.test.cjs` (vm) · `node tests/search.browser.cjs` (Playwright ตรวจรับ ไม่อยู่ในชุด `--test`) · `verify.py` พิมพ์คำค้นก่อนแล้วรอ `IX_READY` (แก้แล้ว 29 ก.ย. 2026 — เดิมโฟกัสแล้วรอจนหมดเวลา นับผลจากดัชนี 138/288 แถว) · ดัชนีไม่ครบ = FAIL
 
 #### 14.5 S5 — ฝึกทบทวน
-- **`data/qa/<sid>.json`** (จาก `src/build_steps/qa.py` · 2 666 ข้อ 12 วิชา) = `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `_index.json` = `{sid: {n, t:{tid:จำนวน}, z:{tid:จำนวน quiz2}, fix:{tid:{ลำดับ:id}}}}` · id = id เดิม หรือ `"qa-" + stable_id(ข้อความ .qa-q/<summary> ที่ขอบแท็กทุกอันเป็นช่องว่าง แปลง &…; แล้ว)` — ฝั่งหน้าเว็บคือ `qaText()` (เดินโหนด ไม่ใช่ textContent) · คำถามซ้ำข้ามหัวข้อต่อท้าย `-<tid>` (อยู่ใน `fix`) · `a_html` ไม่มี `[data-demo]`/figure/script (แทนด้วย `a.qa-see`)
+- **`data/qa/<sid>.json`** (จาก `src/build_steps/qa.py` · 2 666 ข้อ 12 วิชาตอนเขียน · ปัจจุบันดู `_index.json`) = `[{tid, id, q, n?, qh?, a_html, hasRu}]` · `_index.json` = `{sid: {n, t:{tid:จำนวน}, z:{tid:จำนวน quiz2}, fix:{tid:{ลำดับ:id}}}}` · id = id เดิม หรือ `"qa-" + stable_id(ข้อความ .qa-q/<summary> ที่ขอบแท็กทุกอันเป็นช่องว่าง แปลง &…; แล้ว)` — ฝั่งหน้าเว็บคือ `qaText()` (เดินโหนด ไม่ใช่ textContent) · คำถามซ้ำข้ามหัวข้อต่อท้าย `-<tid>` (อยู่ใน `fix`) · `a_html` ไม่มี `[data-demo]`/figure/script (แทนด้วย `a.qa-see`)
 - hook `fill`: ใส่ id ให้ `details.qa` (+ `data-qaid`) และ host quiz2 (`id` = `data-id` = `<tid>-q<n>`) · 🔊 ในคำตอบภาษารัสเซีย (`qaRuText()` = กติกาเดียวกับ `ru_text()` ใน qa.py) · แถบสี `details.qa[data-oral]` · session อื่น **อ่าน id จาก DOM/`data/qa`** ไม่ต้องคำนวณเอง
 - **`window.SAY = { ok, speak(text, rate, onEnd) → false ถ้าไม่มีเสียง, stop(), voice(), hint() }`** ใช้เฉพาะเสียง ru ในเครื่อง (`localService`) · `sayButton(getText, label)` = ปุ่ม 🔊 ฟัง/ช้า พร้อมคำแนะนำติดตั้ง · หยุดเองใน hook go/clear
 - หน้า: `#/practice[/sid[/tid]]` · `#/oral/sid[/tid][/n<k>][/weak]` · `#/flash[/<กลุ่ม|วิชา>][/weak]` · `#/quiz[/<กลุ่ม|วิชา>][/n<k>][/weak]` (flash/quiz ถอดจาก `PAGES` เป็น `registerPage` ในช่อง S5 — **S2: `PAGE_DEFS.practice` มีแล้ว**) · ปุ่ม `#quizBtn` = «ฝึกทบทวน» → `#/practice/<วิชาที่อ่านอยู่>`

@@ -29,6 +29,7 @@ maxTurns: 40
   1. `node --check js/subj/<วิชา>.js`
   2. `python src/build_data.py` (ใส่ hash ของไฟล์ลง manifest — ลืมแล้ว tests ฟ้อง «stale manifest»)
   3. `node --test tests/*.test.cjs`
+- **ทำงานใต้ผู้ประสาน (สกิล atlas-content-editor หรือคำสั่งที่ระบุว่าไฟล์ปลายทางอยู่ใน `_work/` และมีผู้รวมงานถือล็อก):** คำสั่งนั้นมาก่อนหัวข้อ «เขียนที่ไหน» และข้อ «หลังแก้ รันตามลำดับ» ข้างบน — เขียนเฉพาะไฟล์ที่ได้รับมอบ (วิชาใน CLAUDE.md §15 คือ `_work/<วิชา>std2/demos/<คีย์>.js` ซึ่ง assemble.py ประกอบเข้า js/subj ให้) · รันแค่ `node --check` ของไฟล์ตัวเอง · **ไม่รัน build_data และ tests** เพราะเป็นงานของผู้รวมงานใต้ล็อก
 
 ## รายงานกลับ (สั้น)
-คีย์แบบจำลองที่เพิ่ม · ไฟล์และจำนวนบรรทัดที่เพิ่มใน js/subj/ · ผล `node --check` / build_data / tests · สมมติฐานทางฟิสิกส์ที่ใช้ (ให้ tech-reviewer ตรวจ)
+คีย์แบบจำลองที่เพิ่ม · ไฟล์และจำนวนบรรทัดที่เพิ่มใน js/subj/ · ผล `node --check` / build_data / tests (ใต้ผู้ประสาน: บอกว่าไม่ได้รัน build_data/tests) · สมมติฐานทางฟิสิกส์ที่ใช้ (ให้ tech-reviewer ตรวจ)
