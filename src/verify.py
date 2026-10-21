@@ -58,12 +58,17 @@ def start_server(port):
 
 # ---------- ช่วยเลื่อนหน้าและรอ ----------
 # เลื่อนทั้งรอบภายในหน้าเดียว (ไม่ต้องยิง CDP ทีละก้าว ซึ่งช้ามากตอน CPU ถูกถ่วง)
+# ทุกก้าวรอทั้ง 50 ms และเฟรมถัดไป (rAF → setTimeout 0 = หลังเฟรมนั้นคำนวณ IntersectionObserver แล้ว · สำรอง 3 s)
+# observer ของกล่อง (900 px) รูป (800 px) แบบจำลอง (600 px) คำนวณครั้งละเฟรม — เดิมรอแค่ 50 ms ถ้าเครื่องยุ่งเฟรมหยุดไป
+# แต่ timer ยังเลื่อนต่อ (hist 15 ต.ค. 2026: เฟรมห่าง 624 ms หน้ากระโดด 8 000 px ระหว่างสองเฟรม > จอ + 2×600 px)
+# กล่อง/รูป/แบบจำลองในช่วงนั้นไม่เคยถูกเห็น → canvas < data-demo · รูป nosrc · images หมดเวลา · เฟรมปกติ (~16 ms) ไม่ช้าลง
 SCROLL_ALL = """async (maxSteps) => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const frame = () => new Promise(r => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 3000); });
   for (let i = 0; i < maxSteps; i++) {
     const h = document.documentElement.scrollHeight;
     window.scrollBy(0, Math.max(300, window.innerHeight - 100));
-    await sleep(50);
+    await Promise.all([sleep(50), frame()]);
     if (window.scrollY + window.innerHeight >= h - 4) return i + 1;
   }
   return maxSteps;
@@ -92,11 +97,37 @@ COUNTS = """() => {
 IMGS_DONE = """() => [...document.querySelectorAll('#view figure.ifig[data-fig] img')]
   .every(i => i.getAttribute('src') && i.complete)"""
 
+# กลับขึ้นบนสุดแล้วรอให้ IntersectionObserver ของกล่องหัวข้อ (LAZY_IO ใน renderSubject · rootMargin 900 px) ส่งรอบแรก
+# ก่อนเริ่มเลื่อน — รอบแรกมาหลังเบราว์เซอร์วาดเฟรม ถ้าเครื่องยุ่ง (เช่น Playwright ของเซสชันอื่น) เฟรมแรกช้ากว่า
+# 100 ms ที่เคยรอ หน้าก็ถูกเลื่อนผ่านกล่องบนสุดไปก่อน observer ไม่เคยเห็นกล่องเหล่านั้น → ค้าง data-lazy ทั้งรอบ
+# wait_boxes หมดเวลาสองครั้ง (hist 15 ต.ค. 2026: map l1–l14 · ~600 s · บางรอบเดโม 2 ตัวไม่ทันติดตั้ง)
+# fillBody ลบ data-lazy ทันทีที่ถูกเรียก → กล่องแรกไม่มี data-lazy = callback รอบแรกทำงานแล้ว (ทุกกล่องที่เห็นในรอบนั้นด้วย)
+# รอบเลื่อนที่ 3 (กล่องเติมครบแล้ว) ผ่านทันทีหลังสองเฟรม — ให้ observer ของรูป/แบบจำลองเห็นหน้าบนสุดก่อนเช่นกัน
+TOP_WAIT_MS = 15000   # เพดาน — ปกติจบในหนึ่งถึงสองเฟรม · เผื่อเฟรมแรกของหน้ายาวที่ CPU ช้า 6 เท่า
+TO_TOP = """async (maxMs) => {
+  window.scrollTo(0, 0);
+  const frame = () => new Promise(r => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 3000); });
+  await frame(); await frame();
+  const t0 = performance.now();
+  for (;;) {
+    const b = document.querySelector('#view section.topic .tbody');
+    if (!b || b.dataset.lazy === undefined) return true;
+    if (performance.now() - t0 > maxMs) return false;
+    await new Promise(r => setTimeout(r, 50));
+  }
+}"""
+
 
 def scroll_to_bottom(page, max_steps=1600):
     """เลื่อนทีละหน้าจอจนสุด — IntersectionObserver (900 px) จะสั่งโหลดกล่องระหว่างทาง
     ความสูงหน้าเพิ่มขึ้นเรื่อย ๆ เมื่อกล่องเติมเนื้อหา จึงเช็กจุดสุดใหม่ทุกก้าว"""
     page.evaluate(SCROLL_ALL, max_steps)
+
+
+def to_top(page):
+    """ขึ้นบนสุด แล้วรอ observer ของกล่องหัวข้อรอบแรก (ดู TO_TOP) — หมดเพดานก็เลื่อนต่อตามเดิม"""
+    if not page.evaluate(TO_TOP, TOP_WAIT_MS):
+        print(f"      ! กล่องแรกยังไม่เริ่มโหลดหลังรอ {TOP_WAIT_MS // 1000} s — เลื่อนต่อ")
 
 
 def wait_boxes(page, timeout_ms):
@@ -131,15 +162,13 @@ def load_pass(page, timeout_ms):
     t = time.perf_counter()
     # เริ่มจากบนสุดเสมอ — หลังสลับโหมด หน้าอาจค้างอยู่กลางหน้า หัวข้อที่อยู่เหนือจุดนั้นจะไม่ผ่านจอระหว่างเลื่อนลง
     # (IntersectionObserver ไม่เห็น → ค้าง «กำลังโหลด» ถึงหมดเวลา) เจอกับโหมดสรุปของ hist 26 ก.ย. 2026
-    page.evaluate("window.scrollTo(0, 0)")
-    page.wait_for_timeout(100)
+    to_top(page);                      t = lap("top1", t)
     scroll_to_bottom(page);            t = lap("scroll1", t)
     wait_boxes(page, timeout_ms);      t = lap("boxes1", t)
     # กล่องที่เพิ่งเติมอาจดันเนื้อหาลงไปอีก เลื่อนซ้ำจนสุดจริง ๆ แล้วรออีกครั้ง
     scroll_to_bottom(page);            t = lap("scroll2", t)
     wait_boxes(page, timeout_ms);      t = lap("boxes2", t)
-    page.evaluate("window.scrollTo(0, 0)")
-    page.wait_for_timeout(100)
+    to_top(page);                      t = lap("top3", t)
     scroll_to_bottom(page);            t = lap("scroll3", t)
     wait_images(page, timeout_ms);     t = lap("images", t)
 

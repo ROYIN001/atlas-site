@@ -1,8 +1,8 @@
 {
  "_about": "สร้างโดย python src/counts.py --update — ห้ามแก้มือ · จำนวนใดต่ำกว่านี้ tests/verify ตก",
  "_site": {
-  "demo_functions": 589,
-  "fig_files": 1341
+  "demo_functions": 657,
+  "fig_files": 1457
  },
  "subjects": {
   "asu": {
@@ -32,7 +32,7 @@
    "demo_slots": 796,
    "fig_files": 337,
    "fig_slots": 337,
-   "html_kb": 6920,
+   "html_kb": 6941,
    "ids": 1204,
    "meta_demos": 0,
    "summary": 4,
@@ -72,15 +72,15 @@
    "topics": 34
   },
   "suka": {
-   "demo_keys": 23,
-   "demo_slots": 29,
-   "fig_files": 87,
-   "fig_slots": 95,
-   "html_kb": 758,
-   "ids": 52,
+   "demo_keys": 91,
+   "demo_slots": 167,
+   "fig_files": 196,
+   "fig_slots": 206,
+   "html_kb": 5952,
+   "ids": 1125,
    "meta_demos": 0,
    "summary": 4,
-   "topics": 18
+   "topics": 40
   },
   "surn": {
    "demo_keys": 110,
@@ -131,8 +131,8 @@
    "demo_slots": 113,
    "fig_files": 90,
    "fig_slots": 90,
-   "html_kb": 3064,
-   "ids": 782,
+   "html_kb": 3092,
+   "ids": 783,
    "meta_demos": 0,
    "summary": 4,
    "topics": 23

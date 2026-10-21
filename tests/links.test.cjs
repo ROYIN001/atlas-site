@@ -50,7 +50,8 @@ test('«Т.N» means a course theme: ТАУ Т.6–Т.11 and СУ КА Тема 
   assert.deepEqual(links('suka', 'Т.2 Системы управления угловым движением КА'), [['Т.2', ['suka-t2']]]);
   // lecture numbers are not theme numbers — «บรรยายที่ 6» goes to the lecture topic suka-l6 (lec: 6 · STD2 9 ต.ค. 2026), never to a Тема
   assert.deepEqual(links('suka', 'ตามกฎตรรกะเก้าโซนของบรรยายที่ 6'), [['บรรยายที่ 6', ['suka-l6']]]);
-  assert.deepEqual(links('suka', 'ตามกฎของบรรยายที่ 7'), []);
+  // СУ КА ทั้งวิชา (16 ต.ค. 2026): ทุกบรรยายเป็นหัวข้อของตัวเอง (lec: N) → «บรรยายที่ 7» ลิงก์ไป suka-l7
+  assert.deepEqual(links('suka', 'ตามกฎของบรรยายที่ 7'), [['บรรยายที่ 7', ['suka-l7']]]);
   assert.deepEqual(links('tau', 'Лекция 23 · сл. 6'), []);
   // СУ РН: หัวข้อเรียงตามบรรยาย (lec ใน DEEP · STD2 14 ต.ค. 2026) — หัวข้อเดียวรวมหลายบรรยายได้
   assert.deepEqual(links('surn', 'การบ้านของบรรยายที่ 5'), [['บรรยายที่ 5', ['surn-4']]]);

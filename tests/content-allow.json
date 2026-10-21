@@ -1,17 +1,6 @@
 {
  "_about": "รายการยกเว้นชั่วคราวของเนื้อหาเดิม (tests/content-rules.test.cjs) — ratchet: ลดได้เท่านั้น · แก้หัวข้อแล้วลบออก · ห้ามเพิ่ม (เพดานอยู่ใน CAP ของเทสต์)",
  "source-line": [
-  "suka__suka-abbr",
-  "suka__suka-exam",
-  "suka__suka-glos",
-  "suka__suka-isu",
-  "suka__suka-links",
-  "suka__suka-qa",
-  "suka__suka-sim",
-  "suka__suka-t1",
-  "suka__suka-t2",
-  "suka__suka-t3",
-  "suka__suka-tasks",
   "toe__toe-2",
   "toe__toe-3",
   "toe__toe-4",
@@ -20,9 +9,6 @@
  ],
  "thai-cyrillic": {
   "app.js «\">โฮโดกราф D(jω)</»": 1,
-  "suka__suka-s2.json": 1,
-  "suka__suka-t2.json": 3,
-  "suka__suka-t3.json": 1,
   "teh_el__te-15.json": 1,
   "teh_el__te-7.json": 1,
   "teh_el__te-s1.json": 1,

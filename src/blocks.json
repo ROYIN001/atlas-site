@@ -7,7 +7,7 @@
    "end": "/* ВИ: словарь END */",
    "source": "_work/vhist/ (คลังศัพท์ ВИ)",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "ec24e775d829"
+   "sha1": "a8e88b571837"
   },
   "hist-vocab": {
    "file": "app.js",
@@ -15,7 +15,7 @@
    "end": "/* История: словарь END */",
    "source": "ต้นทาง История (zip) → _work/hist/",
    "build": "python _work/hist/integrate_hist.py",
-   "sha1": "8d8c184a9bd2"
+   "sha1": "799ce5c49c0a"
   },
   "vhist-deep": {
    "file": "app.js",
@@ -23,7 +23,7 @@
    "end": "/* ВИ: DEEP END */",
    "source": "_work/vhist/",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "59adec17a26d"
+   "sha1": "ef07f052af15"
   },
   "hist-deep": {
    "file": "app.js",
@@ -31,7 +31,7 @@
    "end": "/* История: DEEP END */",
    "source": "ต้นทาง История (zip) → _work/hist/",
    "build": "python _work/hist/integrate_hist.py",
-   "sha1": "1457dc10252c"
+   "sha1": "b591918506be"
   },
   "vhist-demos": {
    "file": "app.js",
@@ -47,7 +47,7 @@
    "end": "/* История: IHDEMOS END */",
    "source": "ต้นทาง История shared/hist.js + hist-data.js",
    "build": "tools/pack.py แล้ว python _work/hist/integrate_hist.py",
-   "sha1": "6b365531fe97"
+   "sha1": "e3fb0ad646d7"
   },
   "std2-js": {
    "file": "app.js",

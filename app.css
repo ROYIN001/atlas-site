@@ -4147,4 +4147,7 @@ html.read-mode #netbar { bottom: calc(76px + env(safe-area-inset-bottom)); }    
 @media (max-width: 600px) {
   details.ex > summary .extag, details.qa > summary .extag { flex: 0 0.01 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+/* หน้าวิชาคุมตำแหน่งที่อ่านเอง (router: pinKeep) — ปิด scroll anchoring ของเบราว์เซอร์ ไม่งั้นชดเชยซ้ำ
+   (Chromium ไม่ปรับเมื่อเนื้อหาที่เติมด้านบนมี <details> ปิดอยู่ใน .std2 ซึ่งเป็น container · และงดปรับตอนเปลี่ยนขนาดจอ) */
+html.pin-read { overflow-anchor: none; }
 /* ===== v6 (S9) END ===== */
