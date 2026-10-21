@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "run_id": "replace-with-run-id",
+  "base_revision": "replace-with-current-revision",
+  "scope": {
+    "subject_ids": [],
+    "topic_ids": [],
+    "task_type": "full"
+  },
+  "phase": "planned",
+  "assignments": [],
+  "candidate": {
+    "files": [],
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "artifacts": [],
+  "reviews": [],
+  "gates": [],
+  "required_gates": [
+    "provenance",
+    "technical",
+    "language",
+    "identity",
+    "build",
+    "tests",
+    "browser",
+    "visual"
+  ],
+  "findings": [],
+  "limitations": [
+    "Template only: collect actual source and validation evidence before advancing."
+  ],
+  "source_register": [],
+  "authoring_mode": "unresolved",
+  "identity_baseline": {},
+  "prototype_authorization": null
+}
+
