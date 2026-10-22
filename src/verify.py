@@ -3,7 +3,7 @@
     python src/verify.py                 # ทุกวิชาใน data/manifest.json · CPU ช้า 6 เท่า
     python src/verify.py --subject tau   # เฉพาะวิชาเดียว
     python src/verify.py --no-throttle   # ไม่จำลองมือถือ (เร็วกว่ามาก)
-    python src/verify.py --mobile        # เพิ่มการตรวจจอมือถือ 360 px: ไม่มีอะไรล้นจอ (ใช้ทุกครั้งที่ยกระดับวิชา)
+    python src/verify.py --mobile        # เพิ่มการตรวจจอ 360 px แล้วขยายเป็น 601 / 820 / 1024 px: ไม่มีอะไรล้นจอ (ใช้ทุกครั้งที่ยกระดับวิชา)
 
 ต้องผ่านทุกข้อ: ทุกวิชาเปิดได้ · ไม่มี .tfail · canvas = [data-demo] · รูปทุกใบ
 naturalWidth > 0 · ค้นหาคำรัสเซียเจอ · ไม่มี page error
@@ -233,15 +233,23 @@ def check_subject(page, base, sid, errors, timeout_ms):
     return res
 
 
-# ---------- จอมือถือ: ไม่มีอะไรล้นจอ (ตาราง สูตร ป้าย ชื่อหัวข้อยาว) ----------
+# ---------- จอมือถือ/แท็บเล็ต: ไม่มีอะไรล้นจอ (ตาราง สูตร ป้าย ชื่อหัวข้อยาว) ----------
 # เติมทุกกล่อง เปิดเจาะลึกทุกกล่อง แล้วหาองค์ประกอบที่ «เริ่ม» ล้นขอบขวา (พ่อของมันยังไม่ล้น และไม่มีกล่องเลื่อนครอบ)
 # ล้นแม้จุดเดียว เบราว์เซอร์มือถือจะย่อทั้งหน้าจนตัวหนังสือเล็ก หรือส่วนที่ล้นถูกตัดหายไป
-MOBILE_W = 360
-MOBILE_SCAN = """async (W) => {
-  await fillAllBodies();
-  await new Promise(r => setTimeout(r, 1500));
-  document.querySelectorAll('#view details').forEach(d => { d.open = true; });
-  await new Promise(r => setTimeout(r, 1500));
+# เปิดหน้าที่ 360 px (มือถือแนวตั้ง) แล้วขยายหน้าต่างหน้าเดิมเป็น 601 (จอแรกที่กฎ ≤ 600 px ไม่ช่วยแล้ว = เนื้อหาแคบสุดของช่วงแท็บเล็ต)
+# · 820 (แท็บเล็ตแนวตั้ง) · 1024 (แท็บเล็ตแนวนอน = เลย์เอาต์จอใหญ่ที่มีเมนูซ้าย) — เหมือนหมุนจอ · fitWideMath() วัดสูตรใหม่หลัง resize 250 ms
+# (22 ต.ค. 2026: ป้าย .ed ที่ตัดบรรทัดเฉพาะ ≤ 600 px ดันหน้า suka-l9 กว้าง 1 237 px บน Chrome มือถือ 820 px ทั้งที่ 360 px ผ่าน)
+MOBILE_WIDTHS = (360, 601, 820, 1024)
+MOBILE_W = MOBILE_WIDTHS[0]
+MOBILE_SCAN = """async ([W, prep]) => {
+  if (prep) {
+    await fillAllBodies();
+    await new Promise(r => setTimeout(r, 1500));
+    document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+    await new Promise(r => setTimeout(r, 1500));
+  } else {
+    await new Promise(r => setTimeout(r, 700));
+  }
   const clipped = el => {
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const cs = getComputedStyle(p);
@@ -263,7 +271,8 @@ MOBILE_SCAN = """async (W) => {
 
 
 def check_mobile(browser, base, sid, timeout_ms, errors):
-    """เปิดวิชาบนจอ 360 px ทั้งสองโหมดผ่านที่อยู่ #/<วิชา>/full|sum แล้วสแกนหาสิ่งที่ล้นจอ"""
+    """เปิดวิชาบนจอ 360 px ทั้งสองโหมดผ่านที่อยู่ #/<วิชา>/full|sum แล้วสแกนหาสิ่งที่ล้นจอที่ทุกขนาดใน MOBILE_WIDTHS
+    คืน {โหมด: {ความกว้าง: ผลสแกน}}"""
     res = {}
     for mode in ("full", "sum"):
         ctx = browser.new_context(viewport={"width": MOBILE_W, "height": 780}, is_mobile=True, has_touch=True)
@@ -277,7 +286,11 @@ def check_mobile(browser, base, sid, timeout_ms, errors):
         if mode == "sum" and not pg.query_selector("#view .modebar"):
             ctx.close()
             break                                  # วิชาไม่มีโหมดสรุป
-        res[mode] = pg.evaluate(MOBILE_SCAN, MOBILE_W)
+        res[mode] = {}
+        for i, w in enumerate(MOBILE_WIDTHS):
+            if i:
+                pg.set_viewport_size({"width": w, "height": 780})
+            res[mode][w] = pg.evaluate(MOBILE_SCAN, [w, i == 0])
         ctx.close()
     return res
 
@@ -332,7 +345,7 @@ def main():
     ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--timeout", type=int, default=90, help="วินาทีต่อการรอแต่ละขั้น")
     ap.add_argument("--mobile", action="store_true",
-                    help="ตรวจจอมือถือ 360 px เพิ่ม: ไม่มีตาราง/สูตร/ป้ายไหนล้นจอ (ทั้งสองโหมด เปิดเจาะลึกทุกกล่อง)")
+                    help="ตรวจจอ 360 px แล้วขยายเป็น 601 / 820 / 1024 px เพิ่ม: ไม่มีตาราง/สูตร/ป้ายไหนล้นจอ (ทั้งสองโหมด เปิดเจาะลึกทุกกล่อง)")
     ap.add_argument("--verbose", action="store_true", help="พิมพ์เวลาแต่ละช่วงของทุกวิชา")
     args = ap.parse_args()
     global VERBOSE
@@ -428,7 +441,7 @@ def main():
 
             # 2b) จอมือถือ
             if args.mobile:
-                print(f"mobile {MOBILE_W}px — ล้นจอ (full / sum)")
+                print(f"mobile {' / '.join(map(str, MOBILE_WIDTHS))} px — ล้นจอ (full / sum ต่อความกว้าง)")
                 for sid in subjects:
                     try:
                         m = check_mobile(browser, base, sid, timeout_ms, errors)
@@ -436,13 +449,14 @@ def main():
                         errors.append(f"script: mobile {sid}: {e}")
                         mobile_bad += 1
                         continue
-                    bad = {k: v for k, v in m.items() if v["n"] or v["layout"] > MOBILE_W}
+                    bad = [(k, w, v) for k in m for w, v in m[k].items() if v["n"] or v["layout"] > w]
                     mobile_bad += len(bad)
-                    cols = " / ".join(f"{m[k]['n']}" for k in m)
-                    print(f"{sid:8} {cols:>9}  {'ok' if not bad else 'FAIL'}")
-                    for k, v in bad.items():
+                    cols = " · ".join(f"{w}: " + " / ".join(str(m[k][w]["n"]) for k in m) for w in MOBILE_WIDTHS)
+                    print(f"{sid:8} {cols}  {'ok' if not bad else 'FAIL'}")
+                    for k, w, v in bad:
+                        print(f"           {k}: {w}px หน้ากว้าง {v['layout']} px · ล้น {v['n']} จุด")
                         for line in v["first"]:
-                            print(f"           {k}: {line}")
+                            print(f"           {k}: {w}px {line}")
 
             # 3) ค้นหา
             hits, ix_ready, ix_keys, ix_missing = check_search(page, base, timeout_ms)

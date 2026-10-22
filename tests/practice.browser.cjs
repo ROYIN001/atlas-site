@@ -129,7 +129,7 @@ const ok = (name) => { passed++; console.log('  ✓ ' + name); };
       await page.waitForSelector('#s5Ans:not([hidden]) .s5-rate');
       answered.push(await page.$eval('.s5-card', e => e.dataset.qid));
       const see = await page.$eval('.s5-see a', a => a.getAttribute('href'));
-      assert.match(see, /^#\/tau\/tau-[\w-]+\/qa-/, 'ลิงก์ดูในเนื้อหา');
+      assert.match(see, new RegExp('^#/tau/tau-[\\w-]+/' + answered[answered.length - 1] + '$'), 'ลิงก์ดูในเนื้อหา → ข้อนี้ในหัวข้อ');   // id ตั้งเอง t<N>-oral<k> หรือ qa-<stableId> (เดิมรับแค่ qa-)
       await page.click('.s5-rate [data-r="' + r + '"]');
     }
     await page.waitForSelector('.s5-sum');
@@ -141,7 +141,7 @@ const ok = (name) => { passed++; console.log('  ✓ ' + name); };
     assert.equal(keys.length, 3, 'บันทึก 3 ข้อ');
     assert.deepEqual(keys.map(k => store[k].r).sort(), [1, 3, 5]);
     keys.forEach(k => assert.ok(answered.includes(k.split('/')[2]), 'คีย์ sid/tid/id: ' + k));
-    await page.waitForFunction(() => /ตอบแล้ว 3\/51/.test(document.getElementById('s5Stat').textContent));
+    await page.waitForFunction(n => new RegExp('ตอบแล้ว 3/' + n + ' ').test(document.getElementById('s5Stat').textContent), INDEX.tau.n);   // จำนวนข้อจาก data/qa (เดิมเขียนตาย 51)
     await open('#/practice/tau');
     await page.waitForFunction(() => /ตอบแล้ว 3\//.test(document.getElementById('s5Modes').textContent));
     const k0 = keys[0].split('/');

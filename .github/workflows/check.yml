@@ -1,7 +1,7 @@
 # ด่านอัตโนมัติ (CLAUDE.md หัวข้อ 4 และ 14 — ของ S1)
 # · ทุก PR และทุก push เข้า main: node --test tests/*.test.cjs + src/verify.py รายวิชาแบบ matrix
 #   PR = เฉพาะวิชาที่ไฟล์ใน diff แตะ + toe เป็นตัวแทนโครงเว็บส่วนกลาง (src/ci_subjects.py) · main = ครบทุกวิชา
-# · กลางคืน: verify --mobile (จอ 360 px ไม่มีอะไรล้นจอ) ทั้งเว็บ
+# · กลางคืน: verify --mobile (จอ 360 / 601 / 820 / 1024 px ไม่มีอะไรล้นจอ) ทั้งเว็บ
 # repo เป็น public จึงไม่มีโควตานาทีของ Actions
 name: check
 
@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       mobile:
-        description: "ตรวจจอมือถือ 360 px ด้วย (--mobile)"
+        description: "ตรวจจอมือถือ/แท็บเล็ต 360 / 601 / 820 / 1024 px ด้วย (--mobile)"
         type: boolean
         default: false
 

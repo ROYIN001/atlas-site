@@ -2,7 +2,7 @@
 //   node tests/s9.browser.cjs             (ต้องมีแพ็กเกจ playwright ของ Node · ในคลาวด์ใช้ NODE_PATH=$(npm root -g))
 // ข้อที่ต้องผ่าน: คืนตำแหน่งหลังรีเฟรชตรงข้อความเดิม (ทั้งอ่านต่อเนื่องและกระโดดเข้ากลางหัวข้อ) · «เปิดฉบับเต็ม» จากจุดที่ยังอ่อนแล้ว Back กลับโหมดสรุป ·
 // ซ้อมปากเปล่า: Back จาก «ดูในเนื้อหา» ทำชุดเดิมต่อ / กดเริ่มใหม่ได้ชุดใหม่ · ติ๊ก ✓ ซ้ำในวันเดียวไม่ดันช่วงทวน · quiz2 ให้คะแนนครั้งเดียวตอนเพิ่งครบ ·
-// ปุ่ม «ตั้งวันสอบ» บนมือถือ · Back กลับ #/cram ตรงที่เดิม · ลิงก์ #<id> ในหน้าเพิ่มประวัติ · ไม่มี page error / เซิร์ฟเวอร์ภายนอก
+// ปุ่ม «ตั้งวันสอบ» บนมือถือ · Back กลับ #/cram ตรงที่เดิม · ลิงก์ในหัวข้อเดียวกัน (#<id> · #/…/<id>) แล้ว Back/Forward คืนตำแหน่ง · ไม่มี page error / เซิร์ฟเวอร์ภายนอก
 'use strict';
 const http = require('node:http');
 const fs = require('node:fs');
@@ -178,19 +178,63 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok }); console.lo
     await pg.close();
   }
 
-  // 7) ลิงก์ #<id> ในเนื้อหาเพิ่มประวัติ — Back กลับหัวข้อเดิม
+  // 7) ลิงก์ในหัวข้อที่ชี้ที่อื่นในหัวข้อเดียวกัน — เพิ่มประวัติ · Back กลับที่ลิงก์เดิม · Forward กลับเป้าหมาย (1280 + 390 px · ±20 px)
+  //    เดิม (ก่อน 21 ต.ค. 2026): navEnd เขียนที่อยู่ของรายการใหม่กลับเป็นหัวข้อ สองรายการจึงที่อยู่เดียวกัน onRoute ข้าม → Back ค้างที่เป้าหมาย
+  //    และลิงก์ #/…/<id> ไม่เพิ่มประวัติเลย (Back ออกจากหัวข้อ) · หาลิงก์ไม่เจอ = ตก (เดิมข้ามเงียบ ๆ เมื่อ suka-map ฉบับ STD2 ไม่มีลิงก์ #<id>)
+  //    a) #<id> — hist-l9 «หัวข้อย่อย 1.5» อยู่ใน details.deep ที่ปิด (ผู้อ่านกดเปิดก่อน)   b) #/<วิชา>/<หัวข้อ>/<id> — suka-l22 → ปากเปล่า k22-oral48 ใน details.qa
   {
-    const pg = await page({ width: 1280, height: 900 });
-    await pg.goto(base + '#/suka/suka-map'); await subj(pg, 'suka'); await idle(pg);
-    const link = await pg.evaluate(() => { const a = document.querySelector('#suka-map a[href^="#"]:not([href^="#/"])'); return a && a.getAttribute('href'); });
-    if (link) {
-      await pg.click('#suka-map a[href="' + link + '"]'); await idle(pg);
-      const mid = await pg.evaluate(() => state.topic);
-      await pg.goBack(); await pg.waitForTimeout(300); await idle(pg);
-      const r = await pg.evaluate(() => ({ topic: state.topic, hash: location.hash }));
-      check('ลิงก์ ' + link + ' ในหัวข้อ → Back กลับ suka-map', r.topic === 'suka-map', { mid, r });
-    } else check('ลิงก์ #<id> ใน suka-map (ไม่พบลิงก์ — ข้าม)', true);
-    await pg.close();
+    const settle = async pg => {                     // งานกระโดดจบ + scrollY/ความสูงนิ่ง 1.5 วินาที
+      const t0 = Date.now(); let prev = '', since = Date.now();
+      while (Date.now() - t0 < 30000) {
+        const s = await pg.evaluate(() => (NAVBUSY ? 'busy' + Date.now() : Math.round(scrollY) + '/' + document.documentElement.scrollHeight));
+        if (s !== prev) { prev = s; since = Date.now(); } else if (Date.now() - since >= 1500) return;
+        await pg.waitForTimeout(100);
+      }
+    };
+    const center = (pg, sel) => pg.evaluate(sel => { const r = document.querySelector(sel).getBoundingClientRect(); window.scrollTo(0, scrollY + r.top - innerHeight / 2); }, sel);
+    const cases = [
+      { k: '7a', sid: 'hist', tid: 'hist-l9', link: '#hist-l9 a[href="#i9-s1-5"]', tgt: 'i9-s1-5' },
+      { k: '7b', sid: 'suka', tid: 'suka-l22', link: '#suka-l22 a[href="#/suka/suka-l22/k22-oral48"]', tgt: 'k22-oral48' },
+    ];
+    for (const c of cases) for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      const pg = await page(vp), W = c.k + ' [' + vp.width + '] ' + c.tid + ' ' + c.link.split('"')[1];
+      await pg.goto(base + '#/' + c.sid + '/' + c.tid); await subj(pg, c.sid); await idle(pg);
+      const found = await pg.waitForSelector(c.link, { state: 'attached', timeout: 30000 }).then(() => true, () => false);
+      if (!found) { check(W + ': ไม่พบลิงก์ในหัวข้อ (เนื้อหาเปลี่ยน — ชี้ลิงก์ใหม่)', false); await pg.close(); continue; }
+      await settle(pg);
+      for (let k = 0; k < 4; k++) {                  // กดเปิด <details> ที่ครอบลิงก์ (ชั้นนอกก่อน)
+        const has = await pg.evaluate(sel => {
+          const ds = []; for (let d = document.querySelector(sel).closest('details'); d; d = d.parentElement.closest('details')) ds.push(d);
+          const d = ds.reverse().find(x => !x.open); if (!d) return false;
+          d.querySelector(':scope > summary').setAttribute('data-s9sum', ''); return true; }, c.link);
+        if (!has) break;
+        await center(pg, '[data-s9sum]'); await settle(pg);
+        await pg.click('[data-s9sum]'); await settle(pg);
+        await pg.evaluate(() => document.querySelector('[data-s9sum]').removeAttribute('data-s9sum'));
+      }
+      for (let k = 0; k < 4; k++) {                  // ลิงก์กลางจอจนนิ่ง (เนื้อหาระหว่างเส้นอ่านกับลิงก์ขยายได้ — หลุดจอแล้ว Playwright เลื่อนเองก่อนกด)
+        await center(pg, c.link); await settle(pg);
+        if (await pg.evaluate(sel => { const r = document.querySelector(sel).getBoundingClientRect(); return r.top > navOffset() && r.bottom < innerHeight - 60; }, c.link)) break;
+      }
+      if (vp.width <= 900) {                         // แถบหลบของ S2 กลับหลังหยุด 1.5 วินาที (+ transition 0.22) — settle นิ่ง 1.5 วินาทีเท่ากันพอดี
+        await pg.waitForFunction(() => !document.documentElement.classList.contains('reading'), null, { timeout: 10000 }).catch(() => {});
+        await pg.waitForTimeout(500);                // กดระหว่างแถบกำลังกลับ จุดเริ่มถูกจดกับเส้นที่ขยับอยู่ → Back คลาด 34–71 px (ผู้ตรวจทาน 22 ต.ค.)
+      }
+      // null = ออกจากหน้าแล้ว (Back ที่ไม่มีรายการในหัวข้อพาออกจากเว็บ) — ให้ตกแทนการล้มกลางชุด
+      const linkAt = () => pg.evaluate(sel => ({ top: Math.round(document.querySelector(sel).getBoundingClientRect().top), topic: state.topic, n: history.length }), c.link).catch(() => null);
+      const tgtAt = () => pg.evaluate(id => ({ top: Math.round(document.getElementById(id).getBoundingClientRect().top), line: Math.round(navOffset()), topic: state.topic, n: history.length }), c.tgt).catch(() => null);
+      const a = await linkAt();
+      await pg.click(c.link); await settle(pg);
+      const t = await tgtAt();
+      check(W + ' → เป้าหมายใต้แถบบน + เพิ่มประวัติ', a && t && t.top >= t.line - 4 && t.top < t.line + 120 && t.n === a.n + 1, { a, t });
+      await pg.goBack(); await pg.waitForTimeout(300); await settle(pg).catch(() => {});
+      const b = await linkAt();
+      check(W + ' → Back กลับที่ลิงก์เดิม (±20 px)', a && b && b.topic === c.tid && Math.abs(b.top - a.top) <= 20, { a, b });
+      await pg.goForward(); await pg.waitForTimeout(300); await settle(pg).catch(() => {});
+      const f = await tgtAt();
+      check(W + ' → Forward กลับเป้าหมาย (±20 px)', t && f && f.topic === c.tid && Math.abs(f.top - t.top) <= 20, { t, f });
+      await pg.close();
+    }
   }
 
   check('ไม่มี page error / console error', errors.length === 0, errors.slice(0, 5));

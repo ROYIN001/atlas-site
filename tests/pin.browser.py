@@ -4,6 +4,8 @@
 #   (เนื้อหาที่เติมมี <details> ปิดอยู่ใน .std2 ซึ่งเป็น container · ตอนเปลี่ยนขนาดจอ Chromium งดปรับ) → ผู้อ่านตกไปหัวข้อก่อนหน้า 2 000–230 000 px
 # ข้อที่ต้องผ่าน: ลิงก์ตรงแล้วเปลี่ยนขนาดจอ (1000 · 390 px) ยังอยู่หัวข้อเดิม ข้อความที่อ่านห่างเส้นใต้แถบเท่าเดิม ·
 #   เติมหัวข้อด้านบน (fillBody) ตำแหน่งไม่ขยับ · เลื่อนขึ้น/ลงด้วยล้อเมาส์ ข้อความที่เส้นอ่านเลื่อนเท่าระยะที่เลื่อนพอดี ·
+#   จอ 390 px: หยุดอ่านจนแถบหลบของ S2 กลับมา แล้วเลื่อนลงต่อ/กดเปิดเจาะลึก ไม่มีการชดเชยค้าง (Chrome มือถือ 820 px ที่หน้าล้นแนวนอนด้วย) ·
+#   ออกจากโหมดอ่านขณะแถบหลบ ข้อความไม่จมใต้ชิป · อ่านช่วงท้ายวิชาที่จอแคบแล้วขยายจอ/หมุนจอ ยังอยู่หัวข้อเดิม ·
 #   เปิด <details> ที่ปิดอยู่เหนือเส้นแล้วเลื่อนไปหา (แบบ Ctrl+F) ไม่ถูกชดเชยหนี · ปุ่ม ↑ ถึงบนสุด · ย่อเมนู [ / โหมดอ่าน ] คงตำแหน่ง (railKeep ไม่ถูกชดเชยซ้ำ) · html.pin-read เฉพาะหน้าวิชา · ไม่มี page error / เซิร์ฟเวอร์ภายนอก
 import http.server, os, socketserver, sys, threading, time
 from functools import partial
@@ -39,8 +41,8 @@ TOP = "(id) => Math.round(document.getElementById(id).getBoundingClientRect().to
 CUR = "() => { const c = currentTopicEl(); return c ? c.id : null; }"
 
 
-def new_page(b, w, h, errors, external):
-    ctx = b.new_context(viewport={"width": w, "height": h})
+def new_page(b, w, h, errors, external, mobile=False):
+    ctx = b.new_context(viewport={"width": w, "height": h}, **({"is_mobile": True, "has_touch": True, "device_scale_factor": 2} if mobile else {}))
     pg = ctx.new_page()
     pg.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
     pg.on("console", lambda m: errors.append("console: " + m.text) if m.type == "error" else None)
@@ -51,6 +53,23 @@ def new_page(b, w, h, errors, external):
 def idle(pg, ms=3500):
     pg.wait_for_function("() => typeof NAVBUSY !== 'undefined' && NAVBUSY === 0 && state.v === 'subject' && performance.now() > %d" % ms, timeout=60000)
     time.sleep(0.6)
+
+
+def bars_back(pg):                       # จอ ≤ 900 px: เลื่อนลง 600 px ทีละ 40 (แถบหลบ) แล้วหยุดจน S2 คืนแถบ — True = หลบแล้วกลับจริง
+    for _ in range(15):
+        pg.evaluate("window.scrollBy(0, 40)"); time.sleep(0.06)
+    hid = pg.evaluate("document.documentElement.classList.contains('reading')")
+    time.sleep(2.2)
+    return hid and not pg.evaluate("document.documentElement.classList.contains('reading')")
+
+
+def steps40(pg, n=6):                    # เลื่อนลงทีละ 40 px — แต่ละก้าวเลื่อนจริงเท่าไร (หลังสองเฟรม)
+    out = []
+    for _ in range(n):
+        y0 = pg.evaluate("scrollY")
+        pg.evaluate("() => { window.scrollBy(0, 40); return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); }")
+        out.append(round(pg.evaluate("scrollY") - y0)); time.sleep(0.06)
+    return out
 
 
 with sync_playwright() as p:
@@ -68,6 +87,22 @@ with sync_playwright() as p:
             check("#/%s/%s แล้วเปลี่ยนจอเป็น %dx%d → ยังอยู่ %s" % (sid, tid, w, h, tid), cur == tid and hs == "#/%s/%s" % (sid, tid) and abs(y1 - y0) <= 200,
                   {"ระยะจากเส้น": [y0, y1], "หัวข้อ": cur, "hash": hs})
             ctx.close()
+
+    # 1b) อ่านช่วงท้ายของวิชาที่จอแคบ แล้วขยายจอ/หมุนจอ — เอกสารสั้นลง Chrome บีบ scrollY ลงมาล่างสุดก่อน pinKeep ทำงาน
+    #     (22 ต.ค. 2026 ก่อนแก้: scrollBy นับจากตำแหน่งที่ถูกบีบ = นับการบีบซ้ำ ผู้อ่านหลุดไป suka-abbr/suka-qa ห่าง 23 000–30 000 px)
+    for w, h in [(1000, 800), (844, 390)]:
+        ctx, pg = new_page(b, 390, 844, errors, external)
+        pg.goto(BASE + "#/suka/suka-l9"); idle(pg)
+        pg.mouse.move(195, 400)
+        for _ in range(8):
+            pg.mouse.wheel(0, 300); time.sleep(0.15)
+        time.sleep(2.5)
+        t0, c0 = pg.evaluate(LINE), pg.evaluate(CUR)
+        pg.set_viewport_size({"width": w, "height": h}); time.sleep(2.5)
+        t1, c1 = pg.evaluate(REF), pg.evaluate(CUR)
+        check("อ่าน suka-l9 ที่ 390x844 แล้วเปลี่ยนจอเป็น %dx%d → ยังอยู่ suka-l9 · ข้อความเดิมใกล้เส้น (±200 px)" % (w, h),
+              c0 == "suka-l9" and c1 == "suka-l9" and (t0 is None or (t1 is not None and abs(t1 - t0) <= 200)), {"หัวข้อ": [c0, c1], "ระยะจากเส้น": [t0, t1]})
+        ctx.close()
 
     # 2) เติมหัวข้อที่ยังว่างด้านบน (สิ่งที่เกิดเมื่อเลื่อนขึ้นอ่าน) — ตำแหน่งไม่ขยับ
     for sid, tid in [("suka", "suka-isu"), ("surn", "surn-15")]:
@@ -101,6 +136,53 @@ with sync_playwright() as p:
                 worst = max(worst, abs(err)); bad += abs(err) > 30
         check("ล้อเมาส์ %+d × %d จาก %s → ไม่มีจุดกระโดด (> 30 px)" % (dy, n, tid), bad == 0, {"worst": worst, "jumps": bad})
         ctx.close()
+
+    # 3c) จอ ≤ 900 px: เลื่อนลง (แถบหลบ html.reading ของ S2) → หยุด 2 วินาที (S2 คืนแถบเอง) → เลื่อนลงต่อ / กดเปิดเจาะลึก
+    #     แถบหลบแค่ทับ/เปิดเนื้อหา ไม่ได้ดันเนื้อหา — ตัวคงตำแหน่งต้องไม่นับเป็น «แถบบนสูงขึ้น» แล้วชดเชยตอนเหตุการณ์ถัดไป
+    #     (21 ต.ค. 2026 ก่อนแก้: ก้าวแรก −13 px แทน +40 · หัวกล่องที่กดเลื่อนลง 53 px)
+    ctx, pg = new_page(b, 390, 844, errors, external)
+    pg.goto(BASE + "#/suka/suka-l5"); idle(pg)
+    ok_bars = bars_back(pg)
+    steps = steps40(pg)
+    check("จอ 390 px: หยุดอ่านจนแถบกลับ แล้วเลื่อนลงต่อ 40 px/ก้าว → ทุกก้าว 40 px (±2)", ok_bars and all(abs(s - 40) <= 2 for s in steps), {"แถบหลบแล้วกลับ": ok_bars, "ก้าว": steps})
+    found = pg.evaluate("""() => { const s = [...document.querySelectorAll('#view .std2 details.deep:not([open]) > summary')]
+        .find(x => x.getBoundingClientRect().top > innerHeight + 400); if (!s) return false;
+      s.dataset.pin3c = ''; window.scrollBy(0, s.getBoundingClientRect().top - innerHeight / 2 - 600); return true; }""")
+    time.sleep(1.5)
+    ok_bars = found and bars_back(pg)         # หัวกล่องมาอยู่กลางจอ แถบกลับแล้ว
+    s0 = pg.evaluate("() => Math.round(document.querySelector('[data-pin3c]').getBoundingClientRect().top)") if found else None
+    if found: pg.click("[data-pin3c]"); time.sleep(1.5)
+    s1 = pg.evaluate("() => Math.round(document.querySelector('[data-pin3c]').getBoundingClientRect().top)") if found else None
+    check("จอ 390 px: หยุดอ่านจนแถบกลับ แล้วกดเปิดเจาะลึก → หัวกล่องอยู่ที่เดิม (±3 px)", ok_bars and abs(s1 - s0) <= 3, {"แถบหลบแล้วกลับ": ok_bars, "หัวกล่อง": [s0, s1]})
+    ctx.close()
+
+    # 3d) แบบ 3c บน Chrome มือถือ 820x1180 (แท็บเล็ต · มือถือแนวนอนก็เป็น): ป้าย .std2 .ed ไม่ตัดบรรทัดที่ 601–900 px หน้าจึงล้นแนวนอน
+    #     innerWidth = ความกว้างที่ขยายแล้ว (1237) ทั้งที่ CSS/S2 ใช้ (max-width: 900px) — pinLine ต้องเลือกสูตรจาก media query เดียวกัน
+    #     (22 ต.ค. 2026 ก่อนแก้: ก้าวแรก −10 px · ต่อมา +90)
+    ctx, pg = new_page(b, 820, 1180, errors, external, mobile=True)
+    pg.goto(BASE + "#/suka/suka-l9"); idle(pg)
+    ok_bars = bars_back(pg)
+    steps = steps40(pg)
+    iw = pg.evaluate("[innerWidth, matchMedia('(max-width: 900px)').matches]")
+    check("Chrome มือถือ 820 px (innerWidth %s): หยุดอ่านจนแถบกลับ แล้วเลื่อนลงต่อ → ทุกก้าว 40 px (±2)" % iw[0], ok_bars and all(abs(s - 40) <= 2 for s in steps), {"แถบหลบแล้วกลับ": ok_bars, "ก้าว": steps, "innerWidth/mq": iw})
+    ctx.close()
+
+    # 3e) จอ 390 px: โหมดอ่าน → เลื่อนลง (S2 หลบแถบในโหมดอ่านด้วย) → ออกจากโหมดอ่าน (Esc) ขณะแถบยังหลบ → รอแถบกลับที่
+    #     ข้อความที่อ่านต้องห่างเส้นใต้แถบเท่าเดิม ไม่จมใต้ชิปหัวข้อ (22 ต.ค. 2026 ก่อนแก้: จม 52 px — railKeep วัดด้วย navOffset ส่วน pin ใช้ pinLine)
+    ctx, pg = new_page(b, 390, 844, errors, external)
+    pg.goto(BASE + "#/suka/suka-l5"); idle(pg)
+    pg.evaluate("() => { if (!RAIL.focus) readToggle(); }"); time.sleep(1.2)
+    for _ in range(12):
+        pg.evaluate("window.scrollBy(0, 40)"); time.sleep(0.06)
+    hid = pg.evaluate("document.documentElement.classList.contains('reading') && document.documentElement.classList.contains('read-mode')")
+    time.sleep(0.3)
+    t0 = pg.evaluate(LINE)
+    pg.keyboard.press("Escape"); time.sleep(2.6)
+    t1 = pg.evaluate(REF)
+    out = pg.evaluate("() => !document.documentElement.classList.contains('read-mode') && !document.documentElement.classList.contains('reading')")
+    check("จอ 390 px: ออกจากโหมดอ่านขณะแถบหลบ แล้วแถบกลับ → ข้อความที่อ่านอยู่ห่างเส้นเท่าเดิม (±4 px)", hid and out and t0 is not None and t1 is not None and abs(t1 - t0) <= 4,
+          {"หลบในโหมดอ่าน": hid, "ออกแล้ว": out, "ระยะจากเส้น": [t0, t1]})
+    ctx.close()
 
     # 3b) เปิด <details> ที่ปิดอยู่เหนือเส้นอ่านแล้วเลื่อนไปหาในงานเดียวกัน (สิ่งที่ Ctrl+F ทำ) — ตัวคงตำแหน่งต้องไม่เลื่อนหนีจากเป้าหมาย
     ctx, pg = new_page(b, 1280, 904, errors, external)

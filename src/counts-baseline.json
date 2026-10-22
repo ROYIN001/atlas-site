@@ -1,8 +1,8 @@
 {
  "_about": "สร้างโดย python src/counts.py --update — ห้ามแก้มือ · จำนวนใดต่ำกว่านี้ tests/verify ตก",
  "_site": {
-  "demo_functions": 657,
-  "fig_files": 1457
+  "demo_functions": 720,
+  "fig_files": 1588
  },
  "subjects": {
   "asu": {
@@ -32,11 +32,22 @@
    "demo_slots": 796,
    "fig_files": 337,
    "fig_slots": 337,
-   "html_kb": 6941,
+   "html_kb": 6945,
    "ids": 1204,
    "meta_demos": 0,
    "summary": 4,
    "topics": 27
+  },
+  "intel": {
+   "demo_keys": 64,
+   "demo_slots": 128,
+   "fig_files": 131,
+   "fig_slots": 136,
+   "html_kb": 6312,
+   "ids": 1006,
+   "meta_demos": 0,
+   "summary": 4,
+   "topics": 28
   },
   "nadezh": {
    "demo_keys": 63,
@@ -131,7 +142,7 @@
    "demo_slots": 113,
    "fig_files": 90,
    "fig_slots": 90,
-   "html_kb": 3092,
+   "html_kb": 3093,
    "ids": 783,
    "meta_demos": 0,
    "summary": 4,
