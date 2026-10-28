@@ -97,7 +97,8 @@ _work/                          (อยู่ใน .gitignore — บนเค�
    — ทั้งหัวข้อเนื้อหา (`topics`) และบล็อกสรุป (`summary`) ใช้โฟลเดอร์เดียวกัน
 2. `figs/<รหัสรูป>.webp` รูปทุกใบที่ html อ้างถึงด้วย `data-fig="<รหัสรูป>"`
    รหัสต้องเป็น `[A-Za-z0-9_.-]` เท่านั้น และตั้งชื่อขึ้นต้นด้วยรหัสวิชากันชนกัน
-3. `app.js` — เพิ่มวิชาลง `Object.assign(DEEP, …)` (เมทาดาทาเท่านั้น ห้ามใส่ html · ฟิลด์ v6 `chk` `rev` `src` `lec` `rel` — หัวข้อ 14),
+3. `app.js` — เพิ่มวิชาลง `Object.assign(DEEP, …)` (เมทาดาทาเท่านั้น ห้ามใส่ html · ฟิลด์ v6 `chk` `rev` `src` `lec` `rel` — หัวข้อ 14
+   · **`chk: false` ตั้งแต่แรกทุกหัวข้อ** รวมบล็อกสรุปและ `*-map` — ใส่ครั้งเดียวที่ระดับวิชา `{ru, th, chk: false, …}` ก็ได้ · ขาด = `tests/links.test.cjs` ตก),
    เพิ่มอีโมจิใน `ICONS`, เพิ่มฟังก์ชันแบบจำลองเป็น `window.<XXX>DEMOS` แล้วต่อ
    `Object.assign(DEMOS, window.<XXX>DEMOS || {})`, เพิ่มกลุ่มคำศัพท์ใน `MODULES`
 4. `app.css` — เพิ่มบล็อกรูปแบบของวิชานั้นใต้ namespace ของตัวเอง (เช่น `.ppo …`)
@@ -244,6 +245,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 - ลิงก์ข้ามหัวข้อ/วิชา `<a href="#/<วิชา>/<หัวข้อ>[/<id>]">` · ในหัวข้อเดียวกัน `data-jump2` หรือ `<a href="#<id>">` · id ขององค์ประกอบไม่ซ้ำทั้งวิชาและขึ้นต้นด้วยรหัสหัวข้อ · `tests/audit-integrity` ตรวจปลายทางทุกลิงก์
 - id คำถามปากเปล่า `details.qa` = id ที่ใส่เอง หรือคำนวณจากข้อความคำถาม (แก้ข้อความ = id ใหม่ ผลซ้อม/SRS ของผู้อ่านหาย → ข้อใหม่ใส่ id เองเสมอ) · host `quiz2` ได้ id `<tid>-q<n>` ตามลำดับในหัวข้อ
 - ฟิลด์ใน DEEP ของหัวข้อ: `chk` (false ตั้งแต่แรก → true + `rev: "YYYY-MM-DD"` หลังผ่านผู้ตรวจทั้งสอง) · `src` ต้นทางสั้น · `lec: N | [N, M]` · `rel: [...]`
+  · **บังคับแล้ว (27 ต.ค. 2026):** หัวข้อ/บล็อกสรุป/แผนที่วิชาทุกตัวใน DEEP ต้องมี `chk` (ในหัวข้อ หรือครั้งเดียวที่ระดับวิชาเป็นค่าเริ่มต้น) ยกเว้นหัวข้อเก่าใน `tests/chk-legacy.json` (ลดได้เท่านั้น) · `chk: true` ต้องมี `rev` · บนหน้าเว็บ วิชาที่ไม่อยู่ใน `S7_CHK_LEGACY` (app.js) ไม่มี `chk` = ขึ้น «ยังไม่ตรวจทาน» เอง · ใส่ `chk` ให้หัวข้อเก่าแล้วลบออกจาก `tests/chk-legacy.json` (ครบทั้งวิชา → ลบวิชาออกจาก `S7_CHK_LEGACY` ด้วย)
 - ข้อความบนหน้าเว็บพูดกับผู้อ่าน — ห้าม «บอกผม» «ให้ผม» «ตามที่สั่งไว้» «เจ้าของงาน» ชื่อโฟลเดอร์/ไฟล์ .pptx/.docx/.pdf ในเครื่อง (`tests/content-rules`)
 - ห้ามใส่ overflow ให้ `math` ทุกตัวด้วย CSS (`fitWideMath()` ใส่ `.m-wide` ให้สูตรที่กว้างเกินเอง) · ข้อมูลผู้เรียนเขียนผ่าน `store()` และคีย์ใหม่ลงทะเบียน `learnerKey()` เท่านั้น
 - ความสามารถใหม่ของเว็บเสียบผ่าน `HOOKS.on/html` · `registerPage` · ช่อง SLOT — ไม่เขียน logic ใหม่ลงฟังก์ชันร่วม (`fillBody` `renderSubject` `go` …)
@@ -268,7 +270,7 @@ session หลักรันด้วย **fable** ทำหน้าที่�
 แผนวิชา `_work/<วิชา>std2/PLAN.md` → บันทึกต้นทาง `notes/` → ผู้เขียน `src/<tid>[.a|.b].src.html` (คำสั่ง `WRITER-<SID>.md` มี «งบความยาว» ต่อส่วน) + เดโม `demos/<key>.js` (คำสั่ง `DEMO-<SID>.md`)
 → `build_topic.py src out` → `check.py out/<tid>.html --prefix <p> --demos demos --figs figs` → `vis.py` → `coverage.py <ฉบับเดิม> out/<tid>.html` → `demotest.py <keys> --demos demos --steps` (ดูภาพทุกขั้นด้วยตา)
 → `totxt.py` → ผู้ตรวจเทคนิค + ภาษา **แยกกัน** (หัวข้อยาวแบ่งครึ่ง a/b) → ผู้ควบคุมตัดสิน (ตรวจซ้ำทุกข้อ «เอกสารภาควิชาน่าจะผิด» ด้วยตาจากต้นทาง) → `applyfix.py` + แก้มือ → `rebalance.py` (ถ้า check เตือน) → สร้าง/ตรวจซ้ำ
-→ **ใต้ล็อก:** `assemble.py` (ตั้ง `chk: true` + `rev` หลังผ่านผู้ตรวจทั้งสอง) → `python src/build_data.py` → `python src/counts.py --update` (อ่าน diff · ลด = ต้องอธิบาย) → ratchet `tests/content-allow.json` + `CAP` ถ้าหัวข้อเดิมอยู่ในรายการ → `node --test tests/*.test.cjs` → `python src/verify.py --subject <วิชา> --mobile --no-throttle --timeout 240` PASS → คืนล็อก → `siteshot.py --subject <วิชา> --prefix <p>` ดูภาพจากเว็บจริง
+→ **ใต้ล็อก:** `assemble.py` (หัวข้อ/วิชาใหม่ `insert` พร้อม `chk: false` · ตั้ง `chk: true` + `rev` หลังผ่านผู้ตรวจทั้งสอง) → `python src/build_data.py` → `python src/counts.py --update` (อ่าน diff · ลด = ต้องอธิบาย) → ratchet `tests/content-allow.json` + `CAP` ถ้าหัวข้อเดิมอยู่ในรายการ → `node --test tests/*.test.cjs` → `python src/verify.py --subject <วิชา> --mobile --no-throttle --timeout 240` PASS → คืนล็อก → `siteshot.py --subject <วิชา> --prefix <p>` ดูภาพจากเว็บจริง
 
 ### ส่วนกลางที่ใช้ร่วม (เจ้าของชุดกลาง = เซสชัน A · แก้ `_work/std2/**` ใต้ล็อกเท่านั้น)
 - `tools/assemble.py <_work/<วิชา>std2/assemble.json>` — ประกอบหัวข้อ STD2 ของวิชาหนึ่ง: แทนที่เฉพาะ entry `"<sid>"` ของ `DEEP` (assert ไบต์นอก entry ไม่เปลี่ยน · `insert` หัวข้อใหม่ · `set`/`drop` ฟิลด์ เช่น `chk` `rev` `src` `lec` · ลบ `demo` ที่ย้ายเข้าเนื้อหา) + `data/t` + `js/subj/<sid>.js|.css` (ต่อจาก `demos/*.js`) + รูป (≤ 780 px) + `node --check` + ตรวจ key/รูปที่วาง · ต้องมีโฟลเดอร์ล็อก · ไม่รัน build_data

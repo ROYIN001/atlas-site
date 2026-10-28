@@ -23,7 +23,7 @@ function section(startMarker, endMarker) {
 const ctx = vm.createContext({ window: { matchMedia: () => ({ matches: false }) } });
 const S = vm.runInContext(app.slice(0, app.indexOf(APP_MARKER)) + '\n' +
   section('/* ---- S7 PURE BEGIN ---- */', '/* ---- S7 PURE END ---- */') +
-  '\n({ DEEP, S7_LECFIX, s7LecIndex, s7LecScan, s7RelPick, s7Status })',
+  '\n({ DEEP, S7_LECFIX, S7_CHK_LEGACY, s7LecIndex, s7LecScan, s7RelPick, s7Status })',
   ctx, { timeout: 5000 });
 const DEEP = JSON.parse(JSON.stringify(S.DEEP));
 const IDX = S.s7LecIndex(S.DEEP, S.S7_LECFIX);
@@ -153,7 +153,7 @@ test('content status badge from optional DEEP fields rev / chk / src (topic over
   assert.deepEqual(st({ rev: '2026-01-05' }), { cls: 'rev', text: 'ปรับปรุง 5 ม.ค. 2026', src: '' });
   assert.deepEqual(st({}, { chk: true, rev: '2026-09-10' }), { cls: 'ok', text: '✓ ตรวจทานแล้ว · 10 ก.ย. 2026', src: '' });
   assert.deepEqual(st({ chk: false }, { chk: true }), { cls: 'wip', text: 'ยังไม่ตรวจทาน', src: '' });
-  assert.equal(S.s7Status({}, {}), null);                    // unknown status: no badge, no guessing
+  assert.equal(S.s7Status({}, {}), null);                    // legacy subject, unknown status: no badge, no guessing
   assert.equal(S.s7Status({ rev: '26.09.2026' }, {}), null);  // only ISO dates
   // no topic in DEEP carries malformed status fields
   for (const [sid, d] of Object.entries(DEEP)) for (const t of [d, ...d.topics, ...(d.summary || [])]) {
@@ -161,6 +161,50 @@ test('content status badge from optional DEEP fields rev / chk / src (topic over
     if (t.chk !== undefined) assert.equal(typeof t.chk, 'boolean', `${sid} ${t.id || ''} chk`);
     if (t.src !== undefined) assert.equal(typeof t.src, 'string', `${sid} ${t.id || ''} src`);
   }
+});
+
+test('new subjects start unreviewed: a missing chk reads as false outside S7_CHK_LEGACY', () => {
+  const st = (t, subj) => JSON.parse(JSON.stringify(S.s7Status(t, subj, true)));
+  assert.deepEqual(st({}, {}), { cls: 'wip', text: 'ยังไม่ตรวจทาน', src: '' });
+  assert.deepEqual(st({ rev: '2026-10-27', src: 'สไลด์ Л1' }, {}), { cls: 'wip', text: 'ยังไม่ตรวจทาน · ปรับปรุง 27 ต.ค. 2026', src: 'สไลด์ Л1' });
+  assert.deepEqual(st({ chk: true, rev: '2026-10-27' }, {}), { cls: 'ok', text: '✓ ตรวจทานแล้ว · 27 ต.ค. 2026', src: '' });
+  assert.deepEqual(st({}, { chk: true, rev: '2026-10-27' }), { cls: 'ok', text: '✓ ตรวจทานแล้ว · 27 ต.ค. 2026', src: '' });
+  // the badge call site passes the legacy flag
+  assert.match(app, /s7Status\(t, DEEP\[sid\], !S7_CHK_LEGACY\.includes\(sid\)\)/);
+});
+
+// «chk: false ตั้งแต่แรก» (27 ต.ค. 2026): every DEEP entry (topics + summary blocks) carries a boolean chk —
+// on the topic, or once on the subject as a default — except the frozen list of older topics in tests/chk-legacy.json.
+// The list can only shrink (CHK_CAP); chk: true always needs a rev date.
+const CHK_FILE = path.join(ROOT, 'tests', 'chk-legacy.json');
+const CHK_CAP = 199;
+test('chk from the start: new subjects/topics need chk (false until both reviews pass); legacy list only shrinks', () => {
+  const legacy = JSON.parse(fs.readFileSync(CHK_FILE, 'utf8')).topics;
+  const missing = [], stale = [], noRev = [];
+  for (const [sid, d] of Object.entries(DEEP)) {
+    const allowed = new Set(legacy[sid] || []);
+    for (const t of [...d.topics, ...(d.summary || [])]) {
+      const chk = t.chk !== undefined ? t.chk : d.chk;
+      const rev = t.rev !== undefined ? t.rev : d.rev;
+      if (chk === undefined) { if (!allowed.has(t.id)) missing.push(`${sid}/${t.id}`); }
+      else {
+        assert.equal(typeof chk, 'boolean', `${sid}/${t.id} chk`);
+        if (allowed.has(t.id)) stale.push(`${sid}/${t.id}`);
+        if (chk === true && !/^\d{4}-\d{2}-\d{2}$/.test(String(rev || ''))) noRev.push(`${sid}/${t.id}`);
+      }
+    }
+  }
+  for (const [sid, ids] of Object.entries(legacy)) {
+    const known = new Set(DEEP[sid] ? [...DEEP[sid].topics, ...(DEEP[sid].summary || [])].map(t => t.id) : []);
+    for (const id of ids) if (!known.has(id)) stale.push(`${sid}/${id} (ไม่มีใน DEEP แล้ว)`);
+  }
+  assert.deepEqual(missing, [], 'หัวข้อใหม่ต้องมี chk: false ตั้งแต่แรก (ในหัวข้อ หรือครั้งเดียวที่ระดับวิชาใน DEEP) → true + rev หลังผ่านผู้ตรวจ tech และ lang: ' + missing.join(' '));
+  assert.deepEqual(stale, [], 'มี chk แล้ว — ลบออกจาก tests/chk-legacy.json: ' + stale.join(' '));
+  assert.deepEqual(noRev, [], 'chk: true ต้องมี rev "YYYY-MM-DD": ' + noRev.join(' '));
+  const total = Object.values(legacy).reduce((n, a) => n + a.length, 0);
+  assert.ok(total <= CHK_CAP, `tests/chk-legacy.json มี ${total} หัวข้อ เกินเพดาน ${CHK_CAP} — รายการนี้ลดได้เท่านั้น`);
+  assert.deepEqual([...S.S7_CHK_LEGACY].sort(), Object.keys(legacy).filter(k => legacy[k].length).sort(),
+    'S7_CHK_LEGACY ใน app.js ต้องตรงกับวิชาใน tests/chk-legacy.json (วิชาที่ใส่ chk ครบแล้ว ลบออกจากทั้งสองที่)');
 });
 
 test('data/rel.json: deterministic shape, real targets, sorted by score', { skip: !fs.existsSync(path.join(ROOT, 'data', 'rel.json')) }, () => {

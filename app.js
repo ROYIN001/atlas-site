@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "b62e08099e";
+const DATA_VERSION = "7270f98ddc";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -68789,15 +68789,21 @@ function s7RelPick(entry, own, sid) {
      rev: "2026-09-26"  วันที่ปรับปรุงเนื้อหาครั้งล่าสุด
      chk: true | false  ผ่านการตรวจทานทั้ง tech-reviewer และ lang-reviewer แล้วหรือยัง
      src: "…"           ต้นทางสั้น ๆ (เช่น «สไลด์ Л5–Л6 ปี 2025 + ตำรา Лучко»)
-   ไม่มีทั้ง rev และ chk → ไม่แสดงป้าย (ยังไม่รู้สถานะ — ไม่เดาแทนเจ้าของงาน) */
+   chk: false ตั้งแต่แรก (27 ต.ค. 2026): วิชาที่ไม่อยู่ใน S7_CHK_LEGACY (= วิชาใหม่) ไม่มี chk → «ยังไม่ตรวจทาน» เอง
+   · วิชาใน S7_CHK_LEGACY มีหัวข้อเก่าที่ยังไม่มี chk → ไม่มีทั้ง rev และ chk = ไม่แสดงป้าย (ไม่เดาแทนเจ้าของงาน)
+   · tests/links.test.cjs: หัวข้อใน DEEP ที่ไม่อยู่ใน tests/chk-legacy.json ต้องมี chk (ระดับหัวข้อหรือวิชา) · chk: true ต้องมี rev
+     · S7_CHK_LEGACY ต้องตรงกับวิชาในไฟล์นั้น — ใส่ chk ครบทั้งวิชาแล้วลบวิชาออกจากทั้งสองที่ */
+const S7_CHK_LEGACY = ["asu", "elob", "nadezh", "nav", "ppo", "suka", "tau", "teh_el", "toe"];
 const S7_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 function s7RevTxt(rev) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(rev || ""));
   return m && +m[2] >= 1 && +m[2] <= 12 ? +m[3] + " " + S7_MON[+m[2] - 1] + " " + m[1] : "";
 }
-function s7Status(t, subj) {
+function s7Status(t, subj, isNew) {                // isNew = วิชาไม่อยู่ใน S7_CHK_LEGACY → ไม่มี chk นับเป็น false
   const pick = k => (t && t[k] !== undefined ? t[k] : subj ? subj[k] : undefined);
-  const rev = s7RevTxt(pick("rev")), chk = pick("chk"), src = pick("src");
+  const rev = s7RevTxt(pick("rev")), src = pick("src");
+  let chk = pick("chk");
+  if (chk === undefined && isNew) chk = false;
   let cls = "", text = "";
   if (chk === true) { cls = "ok"; text = "✓ ตรวจทานแล้ว" + (rev ? " · " + rev : ""); }
   else if (chk === false) { cls = "wip"; text = "ยังไม่ตรวจทาน" + (rev ? " · ปรับปรุง " + rev : ""); }
@@ -69150,7 +69156,7 @@ S7_DEMO_TOOLS.push((h, host, t, sid) => h.appendChild(s7Btn("s7-rep s7-mini", "�
 /* ---- 7) ป้ายสถานะเนื้อหาในหัวหัวข้อ (ฟิลด์ rev / chk / src ของ DEEP — ดู s7Status ในส่วน PURE) ---- */
 HOOKS.on("fill", (el, t, sid) => {
   const sec = el.closest("section.topic"), bar = sec && sec.querySelector(":scope > .topic-head .s7-bar");
-  const st = s7Status(t, DEEP[sid]);
+  const st = s7Status(t, DEEP[sid], !S7_CHK_LEGACY.includes(sid));
   if (!bar || !st || bar.querySelector(".s7-st")) return;
   const tip = st.cls === "ok" ? "ผ่านการตรวจทานเชิงเทคนิคและภาษาแล้ว" : st.cls === "wip"
     ? "เนื้อหานี้ยังไม่ผ่านการตรวจทาน — ถ้าเจอจุดผิด กด «แจ้งจุดผิด»" : "วันที่ปรับปรุงเนื้อหาครั้งล่าสุด";

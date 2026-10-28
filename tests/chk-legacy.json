@@ -1,0 +1,14 @@
+{
+ "_about": "หัวข้อที่มีอยู่ก่อนกติกา «chk: false ตั้งแต่แรก» (27 ต.ค. 2026) และยังไม่มี chk — tests/links.test.cjs · ratchet: ลดได้เท่านั้น · ใส่ chk ให้หัวข้อไหนแล้วลบออก · ห้ามเพิ่ม (วิชา/หัวข้อใหม่ต้องมี chk: false ตั้งแต่แรก)",
+ "topics": {
+  "asu": ["asu-map", "asu-1", "asu-2", "asu-3", "asu-4", "asu-5", "asu-7", "asu-8", "asu-9", "asu-10", "asu-11", "asu-12", "asu-13", "asu-14", "asu-15", "asu-pz1", "asu-pz4", "asu-pz5", "asu-pz6", "asu-ex", "asu-s1", "asu-s2", "asu-s3", "asu-s4"],
+  "elob": ["elob-map", "elob-1", "elob-2", "elob-3", "elob-4", "elob-5", "elob-7", "elob-8", "elob-9", "elob-10", "elob-11", "elob-12", "elob-13", "elob-14", "elob-15", "elob-16", "elob-17", "elob-18", "elob-pz1", "elob-pz2", "elob-pz3", "elob-pz4", "elob-pz5", "elob-pz6", "elob-pz7", "elob-lr1", "elob-lr2", "elob-lr3", "elob-lr4", "elob-rgr", "elob-ex", "elob-s1", "elob-s2", "elob-s3", "elob-s4"],
+  "nadezh": ["nas-map", "nas-1", "nas-2", "nas-3", "nas-4", "nas-6", "nas-7", "nas-sem", "nas-8", "nas-9", "nas-10", "nas-ex", "nas-pz1", "nas-pz2", "nas-pz3", "nas-pz4", "nas-pz5", "nas-pz6", "nas-pz7", "nas-pz8", "nas-pz9", "nas-pz10", "nas-pz11", "nas-s1", "nas-s2", "nas-s3", "nas-s4"],
+  "nav": ["nav-1", "nav-2", "nav-3", "nav-4", "nav-5", "nav-6", "nav-7", "nav-8", "nav-9", "nav-10", "nav-11", "nav-12", "nav-13", "nav-14", "nav-15", "nav-16", "nav-app", "nav-ex", "nav-s1", "nav-s2", "nav-s3", "nav-s4"],
+  "ppo": ["ppo-map", "ppo-1", "ppo-2", "ppo-3", "ppo-4", "ppo-6", "ppo-7", "ppo-8", "ppo-9", "ppo-10", "ppo-11", "ppo-12", "ppo-13", "ppo-14", "ppo-15", "ppo-16", "ppo-17", "ppo-18", "ppo-19", "ppo-20", "ppo-21", "ppo-22", "ppo-23", "ppo-pz", "ppo-lr1", "ppo-lr2", "ppo-lr3", "ppo-nak", "ppo-ex", "ppo-s1", "ppo-s2", "ppo-s3", "ppo-s4"],
+  "suka": ["suka-map", "suka-t1", "suka-t2", "suka-t3", "suka-sim", "suka-tasks", "suka-exam", "suka-qa", "suka-abbr", "suka-glos", "suka-lit", "suka-links", "suka-s1", "suka-s2", "suka-s3", "suka-s4"],
+  "tau": ["tau-map", "tau-8", "tau-s1", "tau-s2", "tau-s3", "tau-s4"],
+  "teh_el": ["te-map", "te-1", "te-2", "te-3", "te-4", "te-5", "te-6", "te-7", "te-8", "te-9", "te-10", "te-11", "te-13", "te-14", "te-15", "te-16", "te-17", "te-18", "te-19", "te-20", "te-21", "te-ex", "te-s1", "te-s2", "te-s3", "te-s4"],
+  "toe": ["toe-1", "toe-2", "toe-3", "toe-4", "toe-6", "toe-7", "toe-s1", "toe-s2", "toe-s3", "toe-s4"]
+ }
+}
