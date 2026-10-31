@@ -1,7 +1,7 @@
 {
  "_about": "สร้างโดย python src/counts.py --update — ห้ามแก้มือ · จำนวนใดต่ำกว่านี้ tests/verify ตก",
  "_site": {
-  "demo_functions": 774,
+  "demo_functions": 858,
   "fig_files": 1588
  },
  "subjects": {
@@ -72,12 +72,12 @@
    "topics": 22
   },
   "ppo": {
-   "demo_keys": 44,
-   "demo_slots": 45,
+   "demo_keys": 128,
+   "demo_slots": 249,
    "fig_files": 74,
    "fig_slots": 86,
-   "html_kb": 2113,
-   "ids": 25,
+   "html_kb": 5199,
+   "ids": 1297,
    "meta_demos": 0,
    "summary": 4,
    "topics": 34
