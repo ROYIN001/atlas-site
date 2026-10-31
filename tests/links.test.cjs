@@ -177,7 +177,7 @@ test('new subjects start unreviewed: a missing chk reads as false outside S7_CHK
 // on the topic, or once on the subject as a default — except the frozen list of older topics in tests/chk-legacy.json.
 // The list can only shrink (CHK_CAP); chk: true always needs a rev date.
 const CHK_FILE = path.join(ROOT, 'tests', 'chk-legacy.json');
-const CHK_CAP = 199;
+const CHK_CAP = 179;
 test('chk from the start: new subjects/topics need chk (false until both reviews pass); legacy list only shrinks', () => {
   const legacy = JSON.parse(fs.readFileSync(CHK_FILE, 'utf8')).topics;
   const missing = [], stale = [], noRev = [];
