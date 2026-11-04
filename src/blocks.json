@@ -31,7 +31,7 @@
    "end": "/* История: DEEP END */",
    "source": "ต้นทาง История (zip) → _work/hist/",
    "build": "python _work/hist/integrate_hist.py",
-   "sha1": "0a031532666d"
+   "sha1": "0049aa0a1087"
   },
   "vhist-demos": {
    "file": "app.js",
