@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "df1a56081c";
+const DATA_VERSION = "dd8980f3c0";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -34481,7 +34481,7 @@ IH.thBands = function (y0, y1) {
       const x = HS.find(v => v.id === S.sel);
       box.querySelector(".ih-hcard").innerHTML = '<div class="who">' + esc(x.th) + ' <span class="ih-ru" lang="ru">(' + esc(x.who) + ', ' + esc(x.life) + ')</span><span class="ih-tag' + (x.intl ? " intl" : "") + '">' + esc(x.sch) + '</span></div>' +
         '<blockquote lang="ru">«' + esc(String(x.ru).replace(/^[«"]+|[»"]+$/g, "")) + '»</blockquote><p>' + esc(x.tx) + '</p>' +
-        (x.intl ? '<div class="ih-src">มุมมองสากล — ใช้เข้าใจภาพกว้าง ในห้องสอบให้ตอบตามแนวบรรยาย</div>' : (HS.src === "" ? "" : '<div class="ih-src">' + esc(HS.src || "ถ้อยคำภาษารัสเซียตามสไลด์ของบรรยาย") + '</div>'));
+        (x.intl ? '<div class="ih-src">มุมมองสากล — ใช้เพื่อเข้าใจภาพกว้าง ในห้องสอบให้ตอบตามแนวบรรยาย</div>' : (HS.src === "" ? "" : '<div class="ih-src">' + esc(HS.src || "ถ้อยคำภาษารัสเซียตามสไลด์ของบรรยาย") + '</div>'));
     }
     function quiz() {
       const pool = HS.filter(v => !v.intl), cand0 = pool.filter(v => v.id !== S.sel && (!S.q || v.id !== S.q.id)), cand = cand0.length ? cand0 : pool;
