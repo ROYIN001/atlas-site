@@ -38,7 +38,7 @@ src/blocks.py + blocks.json     sha1 ของบล็อกที่ประ�
 src/registry.cjs                อ่าน DEEP / คีย์ DEMOS จาก app.js ใน vm (counts + tests ใช้ร่วม)
 src/ci_subjects.py              เลือกวิชาที่ CI ต้อง verify ตาม diff
 src/fetch_fonts.py              ดึงฟอนต์ชุดนั้นจาก Google Fonts ใหม่ เขียน fonts/ ทั้งโฟลเดอร์ — ห้ามแก้ fonts.css มือ
-tests/                          *.test.cjs 11 ไฟล์ (node --test · 100 เทสต์) · *.browser.cjs 8 ไฟล์ + pin.browser.py (Playwright รันมือ) · content-allow.json (หัวข้อ 4, 14)
+tests/                          *.test.cjs 12 ไฟล์ (node --test · 103 เทสต์) · *.browser.cjs 8 ไฟล์ + pin.browser.py (Playwright รันมือ) · content-allow.json (หัวข้อ 4, 14)
 .github/workflows/check.yml     CI: tests + verify รายวิชาทุก PR/push เข้า main · กลางคืน --mobile ทั้งเว็บ (หัวข้อ 4) · PR: เตือนเมื่อตัวตนผู้เรียนต่างจาก merge base (หัวข้อ 16)
 .github/workflows/atlas-skills.yml  CI ของสกิล Atlas: mirror + unittest บน Linux/Windows (หัวข้อ 16)
 preview.bat + preview.ps1       เซิร์ฟเวอร์เล็ก ๆ ไว้ดูในเครื่อง (ไม่มี dependency)

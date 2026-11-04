@@ -47,7 +47,7 @@
    "end": "/* История: IHDEMOS END */",
    "source": "ต้นทาง История shared/hist.js + hist-data.js",
    "build": "tools/pack.py แล้ว python _work/hist/integrate_hist.py",
-   "sha1": "525fac372793"
+   "sha1": "85f502d82871"
   },
   "std2-js": {
    "file": "app.js",

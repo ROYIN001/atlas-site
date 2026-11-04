@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "dd8980f3c0";
+const DATA_VERSION = "4eaff0fad5";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -33962,6 +33962,20 @@ IH.REIGNS = [
 ];
 
 /* คำบรรยายของแต่ละเฟรมแผนที่ (ปีตรงกับชุดข้อมูลขอบเขต) */
+/* ชื่อเมืองตามยุคของเฟรม: [ปีเริ่มใช้, ชื่อ] เรียงจากเก่าไปใหม่ · คีย์ใน data/ih/atlas.json คงเดิม
+   ปี 1915 ของเปโตรกราด: เปลี่ยนชื่อหลังสงครามเริ่มในปี 1914 เฟรม 1914 จึงยังเป็นชื่อเดิม */
+IH.CITY_NAMES = {
+  "Санкт-Петербург": [[1915, "Петроград"], [1924, "Ленинград"], [1991, "Санкт-Петербург"]],
+  "Нижний Новгород": [[1932, "Горький"], [1990, "Нижний Новгород"]],
+  "Екатеринбург": [[1924, "Свердловск"], [1991, "Екатеринбург"]],
+  "Тверь": [[1931, "Калинин"], [1990, "Тверь"]],
+  "Тифлис": [[1936, "Тбилиси"]],
+  "Новосибирск": [[0, "Новониколаевск"], [1926, "Новосибирск"]],
+  "Алма-Ата": [[0, "Верный"], [1921, "Алма-Ата"], [1993, "Алматы"]],
+  "Петропавловск-Камчатский": [[0, "Петропавловск"], [1924, "Петропавловск-Камчатский"]],
+  "Хабаровск": [[0, "Хабаровка"], [1893, "Хабаровск"]]
+};
+IH.cityName = (k, y) => { let n = k; (IH.CITY_NAMES[k] || []).forEach(r => { if (y >= r[0]) n = r[1]; }); return n; };
 IH.FRAME_TXT = {
   1054: ["ราว 1054", "รุสเคียฟปลายรัชกาลยาโรสลาฟผู้ปราดเปรื่อง — รัฐของชาวสลาฟตะวันออก ศูนย์กลางที่เคียฟ · หลังปี 1132 แตกเป็นราชรัฐ", "Древнерусское государство при Ярославе Мудром"],
   1300: ["ราว 1300", "ราชรัฐมอสโกยังเล็กมาก — เป็นหนึ่งในราชรัฐใต้อำนาจโกลเดนฮอร์ด · ไม่ใช่การ «เสียดินแดน» จากเฟรมก่อน: รุสแตกเป็นหลายราชรัฐแล้วถูกมองโกลรุกราน (1237–1240)", "Московское княжество под властью Золотой Орды"],
@@ -34174,7 +34188,7 @@ IH.thBands = function (y0, y1) {
         const cx = X(n.p), cy = Y(n.p), isCap = cap(n), fs = isCap ? 13 : 11.5, r = isCap ? 4.2 : 2.8;
         const dot = [cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1];
         if (hit(dot) && !isCap) return;
-        const w = textW(n.k, (isCap ? "700 " : "500 ") + fs + "px " + FC) + 4, asc = fs * 0.92, dsc = fs * 0.34;
+        n.nm = IH.cityName(n.k, y); const w = textW(n.nm, (isCap ? "700 " : "500 ") + fs + "px " + FC) + 4, asc = fs * 0.92, dsc = fs * 0.34;
         const R = [["start", r + 4, -3], ["start", r + 4, fs * 0.36], ["start", r + 4, fs * 0.95]], Lf = [["end", -r - 4, -3], ["end", -r - 4, fs * 0.36], ["end", -r - 4, fs * 0.95]];
         const V = [["middle", 0, -r - 5], ["middle", 0, r + fs + 2]];
         let C = CITY_LEFT[n.k] ? Lf.concat(R) : R.concat(Lf);
@@ -34231,7 +34245,7 @@ IH.thBands = function (y0, y1) {
         if (n.kind === "city") {
           const [an, dx, dy, fs, r, isCap] = n.o;
           n.c.setAttribute("cx", n.p[0]); n.c.setAttribute("cy", n.p[1]); n.c.setAttribute("r", px(r));
-          n.t.setAttribute("text-anchor", an); n.t.setAttribute("x", n.p[0] + dx * k); n.t.setAttribute("y", n.p[1] + dy * k);
+          if (n.nm && n.t.textContent !== n.nm) n.t.textContent = n.nm; n.t.setAttribute("text-anchor", an); n.t.setAttribute("x", n.p[0] + dx * k); n.t.setAttribute("y", n.p[1] + dy * k);
           n.t.style.fontSize = px(fs) + "px"; n.t.style.fontWeight = isCap ? "700" : "500"; n.t.style.strokeWidth = px(3) + "px";
         } else {
           const [dx, dy, fs] = n.o;
