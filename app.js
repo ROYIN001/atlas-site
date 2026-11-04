@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "2fb6af1d73";
+const DATA_VERSION = "2866f01166";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -33087,7 +33087,9 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
     const FRONTS = (S.fronts || []).map(f => Object.assign({}, f, { keys: f.keys.map(k => ({ d: k.d, pts: k.pts ? resample(k.pts, 64, false) : null, a: k.a == null ? 1 : k.a })) }));
     const ARROWS = (S.arrows || []).map(a => Object.assign({ w: 1 }, a));
     /* ดูทีละฉาก: ลูกศรที่เริ่มในวันของฉากวาดเต็มเส้นเมื่อมาถึงฉากนั้น เพราะภาพหยุดตรงวันของฉากซึ่งเวลาจริงยังไม่เดิน */
-    const sceneOf = A => SC.findIndex(e => Math.floor(A.d0) === Math.floor(e.d));
+    /* «วันเดียวกับฉาก»: แผนที่หน่วยเดือนและหน่วยปีต้องเทียบเป็นวัน ไม่ใช่ทั้งเดือนหรือทั้งปี */
+    const sceneDay = x => Math.floor(S.unit === "month" ? x * 30 : S.unit === "year" ? x * 365 : x);
+    const sceneOf = A => SC.findIndex(e => sceneDay(A.d0) === sceneDay(e.d));
     ARROWS.forEach(A => { A.sk = sceneOf(A); });
     function aProg(A, d) {
       const p = d < A.d0 ? 0 : clamp((d - A.d0) / Math.max(A.quick ? 1e-3 : D / 200, A.d1 - A.d0), 0, 1);
@@ -33235,7 +33237,7 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
     function vis(o, d) {
       const f = o.from == null ? -1e9 : o.from, t = o.to == null ? 1e9 : o.to, r = o.fade || Math.max(0.05, D / 60);
       /* ดูทีละฉาก: ภาพหยุดตรงวันของฉาก ป้ายที่ขึ้นในวันนั้นต้องเห็นเต็ม */
-      if (story && SC[scn] && o.from != null && d >= SC[scn].d - 1e-6 && d <= t && Math.floor(f) === Math.floor(SC[scn].d)) return 1;
+      if (story && SC[scn] && o.from != null && d >= SC[scn].d - 1e-6 && d <= t && sceneDay(f) === sceneDay(SC[scn].d)) return 1;
       /* ภาพหยุดนิ่ง (กดจุดเวลา กดการ์ด หยุดเล่น): ป้ายที่ถึงเวลาแล้วต้องเห็นเต็ม การค่อย ๆ ขึ้นมีไว้ตอนภาพเคลื่อนเท่านั้น */
       if (!playing && !gliding && o.from != null && d >= f - 1e-6 && d <= t) return 1;
       if (d < f || d > t + r) return 0;
