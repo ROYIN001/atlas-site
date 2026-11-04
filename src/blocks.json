@@ -39,7 +39,7 @@
    "end": "/* ВИ: VHDEMOS END */",
    "source": "_work/vhist/engine/ + maps/",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "e8326f0930ae"
+   "sha1": "4b27f2b8b651"
   },
   "hist-demos": {
    "file": "app.js",

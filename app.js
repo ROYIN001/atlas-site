@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "89ea7f8df8";
+const DATA_VERSION = "b690f25737";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -33086,6 +33086,15 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
     });
     const FRONTS = (S.fronts || []).map(f => Object.assign({}, f, { keys: f.keys.map(k => ({ d: k.d, pts: k.pts ? resample(k.pts, 64, false) : null, a: k.a == null ? 1 : k.a })) }));
     const ARROWS = (S.arrows || []).map(a => Object.assign({ w: 1 }, a));
+    /* ดูทีละฉาก: ลูกศรที่เริ่มในวันของฉากวาดเต็มเส้นเมื่อมาถึงฉากนั้น เพราะภาพหยุดตรงวันของฉากซึ่งเวลาจริงยังไม่เดิน */
+    const sceneOf = A => SC.findIndex(e => Math.floor(A.d0) === Math.floor(e.d));
+    ARROWS.forEach(A => { A.sk = sceneOf(A); });
+    function aProg(A, d) {
+      const p = d < A.d0 ? 0 : clamp((d - A.d0) / Math.max(A.quick ? 1e-3 : D / 200, A.d1 - A.d0), 0, 1);
+      const k = A.sk == null ? sceneOf(A) : A.sk;
+      if (!story || k < 0 || scn < k) return p;
+      return Math.max(p, clamp(1 - (A.d0 - d), 0, 1));
+    }
     let day = S.start || 0, playing = false, speed = 1, raf = 0, lastT = 0, visible = true, curEv = null;
     let story = false, scn = 0, glideRaf = 0, dots = [];
 
@@ -33225,6 +33234,8 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
     }
     function vis(o, d) {
       const f = o.from == null ? -1e9 : o.from, t = o.to == null ? 1e9 : o.to, r = o.fade || Math.max(0.05, D / 60);
+      /* ดูทีละฉาก: ภาพหยุดตรงวันของฉาก ป้ายที่ขึ้นในวันนั้นต้องเห็นเต็ม */
+      if (story && SC[scn] && o.from != null && d >= SC[scn].d - 1e-6 && d <= t && Math.floor(f) === Math.floor(SC[scn].d)) return 1;
       if (d < f || d > t + r) return 0;
       return Math.min(1, o.from == null ? 1 : (d - f) / r + 0.001, d <= t ? 1 : 1 - (d - t) / r);
     }
@@ -33325,8 +33336,8 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       });
       // стрелы
       ARROWS.forEach(A => {
-        if (d < A.d0) return;
-        const prog = ease(clamp((d - A.d0) / Math.max(A.quick ? 1e-3 : D / 200, A.d1 - A.d0), 0, 1));
+        const pr0 = aProg(A, d); if (pr0 <= 0) return;
+        const prog = ease(pr0);
         let al = 1; if (A.ghost != null && d > A.ghost) al = Math.max(0.28, 1 - (d - A.ghost) / Math.max(D / 25, 0.5));
         if (A.to != null && d > A.to) al = Math.min(al, Math.max(0, 1 - (d - A.to) / Math.max(D / 50, 0.3)));
         if (al > 0) drawArrow(c, A, prog, al, P_);
@@ -33430,7 +33441,7 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       });
       (I.arrows || []).forEach(A => {
         if (d < A.d0 || (A.to != null && d > A.to)) return;
-        const pr = clamp((d - A.d0) / Math.max(A.quick ? 1e-3 : D / 200, A.d1 - A.d0), 0, 1), pts = A.pts.map(Q);
+        const pr = aProg(A, d), pts = A.pts.map(Q);
         const L = cumlen(pts), need = L[L.length - 1] * pr; c.strokeStyle = sideCol(P_, A.side); c.lineWidth = 3.5; c.lineCap = "round"; c.beginPath();
         c.moveTo(pts[0][0], pts[0][1]);
         for (let i = 1; i < pts.length; i++) { if (L[i] <= need) c.lineTo(pts[i][0], pts[i][1]); else { const tt = (need - L[i - 1]) / (L[i] - L[i - 1]); c.lineTo(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * tt, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * tt); break; } }
