@@ -39,7 +39,7 @@
    "end": "/* ВИ: VHDEMOS END */",
    "source": "_work/vhist/engine/ + maps/",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "9079a1a9fe85"
+   "sha1": "e8326f0930ae"
   },
   "hist-demos": {
    "file": "app.js",
@@ -47,7 +47,7 @@
    "end": "/* История: IHDEMOS END */",
    "source": "ต้นทาง История shared/hist.js + hist-data.js",
    "build": "tools/pack.py แล้ว python _work/hist/integrate_hist.py",
-   "sha1": "8f297b468eb8"
+   "sha1": "960343c4b209"
   },
   "std2-js": {
    "file": "app.js",
@@ -71,7 +71,7 @@
    "end": "/* ===== ВИ CSS END ===== */",
    "source": "_work/vhist/engine/*.css",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "71958428bcf6"
+   "sha1": "35facaab8dec"
   },
   "std2-css": {
    "file": "app.css",

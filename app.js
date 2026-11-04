@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "03db8a2f50";
+const DATA_VERSION = "690327f08f";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -33067,9 +33067,12 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       const det = document.createElement("details");
       det.className = "vhm-forces";
       if (tb.open) det.open = true;
+      /* คอลัมน์ข้อความยาวตัดบรรทัดและชิดซ้าย · คอลัมน์ตัวเลขคงชิดขวาไม่ตัดบรรทัด */
+      const wcol = tb.head.map((_, i) => i > 0 && tb.rows.some(r => String(r[i] == null ? "" : r[i]).replace(/<[^>]+>/g, "").length > 30));
+      const cc = i => !i ? "" : wcol[i] ? ' class="w"' : ' class="n"';
       det.innerHTML = "<summary>" + (tb.title || "กำลังรบของทั้งสองฝ่าย") + "</summary><div class=\"vhm-tw\"><table><thead><tr>" +
-        tb.head.map((h, i) => "<th" + (i ? ' class="n"' : "") + ">" + h + "</th>").join("") + "</tr></thead><tbody>" +
-        tb.rows.map(r => "<tr>" + r.map((c, i) => "<td" + (i ? ' class="n"' : "") + ">" + c + "</td>").join("") + "</tr>").join("") +
+        tb.head.map((h, i) => "<th" + cc(i) + ">" + h + "</th>").join("") + "</tr></thead><tbody>" +
+        tb.rows.map(r => "<tr>" + r.map((c, i) => "<td" + cc(i) + ">" + c + "</td>").join("") + "</tr>").join("") +
         "</tbody></table></div>" + (tb.note ? '<p class="vhm-tn">' + tb.note + "</p>" : "");
       ex.appendChild(det);
     });
@@ -33323,7 +33326,7 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       // стрелы
       ARROWS.forEach(A => {
         if (d < A.d0) return;
-        const prog = ease(clamp((d - A.d0) / Math.max(D / 200, A.d1 - A.d0), 0, 1));
+        const prog = ease(clamp((d - A.d0) / Math.max(A.quick ? 1e-3 : D / 200, A.d1 - A.d0), 0, 1));
         let al = 1; if (A.ghost != null && d > A.ghost) al = Math.max(0.28, 1 - (d - A.ghost) / Math.max(D / 25, 0.5));
         if (A.to != null && d > A.to) al = Math.min(al, Math.max(0, 1 - (d - A.to) / Math.max(D / 50, 0.3)));
         if (al > 0) drawArrow(c, A, prog, al, P_);
@@ -33427,7 +33430,7 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       });
       (I.arrows || []).forEach(A => {
         if (d < A.d0 || (A.to != null && d > A.to)) return;
-        const pr = clamp((d - A.d0) / Math.max(D / 200, A.d1 - A.d0), 0, 1), pts = A.pts.map(Q);
+        const pr = clamp((d - A.d0) / Math.max(A.quick ? 1e-3 : D / 200, A.d1 - A.d0), 0, 1), pts = A.pts.map(Q);
         const L = cumlen(pts), need = L[L.length - 1] * pr; c.strokeStyle = sideCol(P_, A.side); c.lineWidth = 3.5; c.lineCap = "round"; c.beginPath();
         c.moveTo(pts[0][0], pts[0][1]);
         for (let i = 1; i < pts.length; i++) { if (L[i] <= need) c.lineTo(pts[i][0], pts[i][1]); else { const tt = (need - L[i - 1]) / (L[i] - L[i - 1]); c.lineTo(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * tt, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * tt); break; } }
@@ -33956,7 +33959,7 @@ IH.FRAME_TXT = {
   1880: ["ราว 1880", "ได้ลุ่มอามูร์–อุสซูรี (1858–1860) คอเคซัสทั้งหมด และเอเชียกลาง · ขายอะแลสกาแล้ว (1867) · สีส้ม = รัฐในอารักขา: เอมิเรตบุฮาราและข่านาตคีวา", "Российская империя при Александре II; протектораты — Бухарский эмират, Хивинское ханство"],
   1914: ["1914", "จักรวรรดิรัสเซียก่อนสงครามโลก — สไลด์ระบุพื้นที่ 22.4 ล้าน กม² · เสียซาฮาลินใต้ให้ญี่ปุ่น (1905) · สีส้ม = รัฐในอารักขา: บุฮารา คีวา และตูวา (ดินแดนอูเรียงไค 1914)", "Российская империя — 22,4 млн км²; протектораты — Бухара, Хива, Урянхайский край"],
   1938: ["1938", "สหภาพโซเวียตก่อนสงครามโลกครั้งที่ 2 — ฟินแลนด์ โปแลนด์ และรัฐบอลติกแยกเป็นเอกราช (1917–1920) เบสซาราเบียอยู่กับโรมาเนีย", "СССР в межвоенный период"],
-  1945: ["1945", "สหภาพโซเวียตหลังชัยชนะ 1945 — ได้รัฐบอลติก ยูเครนและเบลารุสตะวันตก มอลโดวา (1940) ตูวา (1944) ปรัสเซียตะวันออกส่วนเหนือ (คาลินินกราด) ซาฮาลินใต้และหมู่เกาะคูริล", "СССР после Второй мировой войны"],
+  1945: ["1945", "สหภาพโซเวียตหลังชัยชนะ 1945 — ได้รัฐบอลติก ยูเครนและเบลารุสตะวันตก มอลโดวา คอคอดคาเรเลียและวีบอร์ก (1940) ตูวา เปตซาโม (1944) ทรานส์คาร์เพเทีย ปรัสเซียตะวันออกส่วนเหนือ (คาลินินกราด) ซาฮาลินใต้และหมู่เกาะคูริล", "СССР после Второй мировой войны"],
   1994: ["หลัง 1991", "สหพันธรัฐรัสเซียหลังสหภาพโซเวียตล่มสลาย", "Российская Федерация"]
 };
 

@@ -2238,6 +2238,7 @@
 .vhm-forces th,.vhm-forces td{padding:5px 8px;border-bottom:1px solid var(--vh-bd);text-align:left;vertical-align:top}
 .vhm-forces th{font-size:12.5px;color:var(--vh-ink2);font-weight:600}
 .vhm-forces .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vhm-forces .w{text-align:left;white-space:normal;min-width:150px}
 .vhm-tn{margin:4px 12px 10px;font-size:12px;color:var(--vh-ink3)}
 .vhm-warn{margin-top:8px;padding:8px 10px;border-radius:6px;border-left:3px solid var(--vh-gold);background:var(--vh-bg);font-size:13.5px;color:var(--vh-ink2)}
 .vhm-warn b{color:var(--vh-gold)}
