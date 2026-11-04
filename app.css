@@ -2241,6 +2241,8 @@
 .vhm-tn{margin:4px 12px 10px;font-size:12px;color:var(--vh-ink3)}
 .vhm-warn{margin-top:8px;padding:8px 10px;border-radius:6px;border-left:3px solid var(--vh-gold);background:var(--vh-bg);font-size:13.5px;color:var(--vh-ink2)}
 .vhm-warn b{color:var(--vh-gold)}
+.vhm-warn.risk{border-left-color:var(--vh-su)}
+.vhm-warn.risk b{color:var(--vh-su)}
 @media (max-width:560px){.vhm-extra{padding:0 12px 8px}}
 
 .vhm-forces th,.vhm-forces td{text-transform:none;letter-spacing:normal;font-family:"IBM Plex Sans","IBM Plex Sans Thai",sans-serif}

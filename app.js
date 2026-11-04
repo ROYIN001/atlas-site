@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "5420df51da";
+const DATA_VERSION = "72e87b0b25";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -33453,8 +33453,9 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
         (e.key ? '<span class="vhm-tag key">จำให้ได้</span>' : "") + (e.fun ? '<span class="vhm-tag fun">เกร็ด</span>' : "") + "</div>" +
         "<b>" + esc(e.h) + "</b>" + (e.ru ? ' <span class="vhm-ru">(' + e.ru + ")</span>" : "") +
         "<p>" + esc(e.tx) + "</p>" + (e.more ? '<div class="vhm-more">' + e.more + "</div>" : "") +
+        (e.risk ? '<div class="vhm-warn risk"><b>จุดเสี่ยงสอบ</b> ' + e.risk + "</div>" : "") +
         (e.warn ? '<div class="vhm-warn"><b>หมายเหตุต้นฉบับ</b> ' + e.warn + "</div>" : "") +
-        (e.intl ? '<div class="vhm-intl"><b>มุมมองสากล (ผู้เรียบเรียง)</b> ' + e.intl + "</div>" : "") +
+        (e.intl ? '<div class="vhm-intl"><b>มุมมองสากล</b> ' + e.intl + "</div>" : "") +
         (e.src ? '<div class="vhm-srcl">ที่มา: ' + e.src + "</div>" : "");
     }
 
@@ -34362,7 +34363,7 @@ IH.thBands = function (y0, y1) {
       const chip = x => "<button type='button' class='ih-btn ih-chipb' data-go='" + x.id + "'>" + esc(x.th) + "</button>";
       cardEl.innerHTML = "<b>" + esc(n.th) + "</b> <span class='ih-ru' lang='ru'>(" + esc(n.ru) + ")</span><p>" + esc(n.tx) + "</p>" +
         (from.length ? "<div class='ih-rel'>มาจาก: " + from.map(chip).join("") + "</div>" : "") + (to.length ? "<div class='ih-rel'>นำไปสู่: " + to.map(chip).join("") + "</div>" : "") +
-        "<div class='ih-src'>ที่มา: " + esc(n.src) + "</div>";
+        (n.src ? "<div class='ih-src'>ที่มา: " + esc(n.src) + "</div>" : "");
       cardEl.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => { const id = b.dataset.go, k = F.steps.findIndex(st => st[2].includes(id)); if (k > S.step) S.step = k; S.sel = id; paint(); showCard(); }));
     }
     box.querySelector('[data-s="next"]').addEventListener("click", () => { S.step = Math.min(F.steps.length - 1, S.step + 1); paint(); });
@@ -34392,7 +34393,7 @@ IH.thBands = function (y0, y1) {
       const x = HS.find(v => v.id === S.sel);
       box.querySelector(".ih-hcard").innerHTML = '<div class="who">' + esc(x.th) + ' <span class="ih-ru" lang="ru">(' + esc(x.who) + ', ' + esc(x.life) + ')</span><span class="ih-tag' + (x.intl ? " intl" : "") + '">' + esc(x.sch) + '</span></div>' +
         '<blockquote lang="ru">«' + esc(String(x.ru).replace(/^[«"]+|[»"]+$/g, "")) + '»</blockquote><p>' + esc(x.tx) + '</p>' +
-        (x.intl ? '<div class="ih-src">มุมมองสากล — ใช้เข้าใจภาพกว้าง ในห้องสอบให้ตอบตามแนวบรรยาย</div>' : '<div class="ih-src">' + esc(HS.src || "ถ้อยคำภาษารัสเซียตามสไลด์ของบรรยาย") + '</div>');
+        (x.intl ? '<div class="ih-src">มุมมองสากล — ใช้เข้าใจภาพกว้าง ในห้องสอบให้ตอบตามแนวบรรยาย</div>' : (HS.src === "" ? "" : '<div class="ih-src">' + esc(HS.src || "ถ้อยคำภาษารัสเซียตามสไลด์ของบรรยาย") + '</div>'));
     }
     function quiz() {
       const pool = HS.filter(v => !v.intl), cand0 = pool.filter(v => v.id !== S.sel && (!S.q || v.id !== S.q.id)), cand = cand0.length ? cand0 : pool;
