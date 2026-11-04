@@ -27,6 +27,7 @@ data/vh/*.json                  78 ไฟล์ · แผนที่ ВИ 39 + 
 data/ih/atlas.json · world.json แผนที่ของ История (หัวข้อ 10)
 figs/<รหัสรูป>.webp             1 588 ไฟล์ · 39 MB (22 ต.ค. 2026 · เดิม 1 158 · 30 MB) · รูปตัดจากสไลด์ภาควิชา
 fonts/                          33 ไฟล์: IBM Plex + Noto Sans Math (.woff2 30 ไฟล์ + fonts.css + LICENSE 2 ไฟล์) เก็บในเว็บเอง
+models/<รุ่น>/                   แบบจำลอง 3 มิติแบบหน้าแยก เปิดใน iframe เมื่อกดเท่านั้น (ไม่อยู่ในชุดออฟไลน์ · README + sha256 ในโฟลเดอร์ · `.gitattributes` เก็บตรงทุกไบต์)
 sw.js · manifest.webmanifest    อ่านแบบออฟไลน์ + ติดตั้งเป็นแอปบนมือถือ (หัวข้อ 13) · icons/ ไอคอนของเว็บ 6 ไฟล์
 js/subj/<วิชา>.js|.css          10 วิชา (tau surn suka asu intel ppo ยกระดับทั้งวิชา · elob nadezh teh_el toe มีเฉพาะหัวข้อต้นแบบ · ยังไม่มีไฟล์ .css · 31 ต.ค. 2026) · แบบจำลอง/รูปแบบของวิชา — โหลดเมื่อเปิดวิชานั้น (หัวข้อ 13, 15)
 src/build_data.py               สร้าง data/ix + manifest จาก data/t · เขียน ?v= ใน index.html + DATA_VERSION · รัน src/build_steps/*.py

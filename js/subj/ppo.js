@@ -2648,6 +2648,924 @@
     }
   });
 })();
+/* --- ppo-13-soyuz3d.js --- */
+/* ppo-13 · ส่วน 5.1 · «Союз-2» บนตัวจรวด (ppo13-soyuz3d) — ภาพจรวดโยงแถวตารางสไลด์ 45 ทีละท่อน · มวลทั้งลำ · หกทิศทางของสไลด์ 44
+   + แบบสามมิติ (iframe ไปที่ models/soyuz-2-1a/ โหลดเมื่อกดเท่านั้น)
+   ไฟล์นี้สร้างด้วย _work/ppostd2/variants/compose_final.py จาก soyuz-common.js + soyuz-d.js — แก้ที่ต้นฉบับสองไฟล์นั้นแล้วรันซ้ำ
+   ไม่แตะ document ที่ระดับบนสุด (tests รันไฟล์ใน vm) */
+(function () {
+  "use strict";
+  const SOYUZ3D = (function () {
+    const RU = t => '<span lang="ru">' + t + "</span>";
+    const nf = (v, d) => window.STEPS2.nf(v, d);
+    const SRC = "models/soyuz-2-1a/Soyuz_3D_Realism_v7_TH.html";
+    const POSTER = { dark: "data:image/webp;base64,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", light: "data:image/webp;base64,UklGRswVAABXRUJQVlA4WAoAAAAQAAAA7wAAOQIAQUxQSGMDAAABtyAkSKFdIiLaZrPZwIFsW03zFZEoitje/veaJsThBU2J6P8EyN//p027KKosrpnCr0m4W9I03VqF5/GGZCz/c4Oha7hheepwm6YCdzuWmntgqctelq6Orj57ObJ6DA8A/Cg83bADAHJPAICdFphkvDcALTvSQR4RQCh+hOXfzzxd4+nLn75Guvzpy9GlyXJyWW4tJMEMuM+R7ucHOoYK6/HohZ+iGeaHMNNjuhFP9uTUdpifQUmNbt2I5yti1KX38wbgpTTWjcsWCy2m7f2MbUnRTeemZaOFkupiez+vG6EnRJm2H8YFm49sKNPYfhjndTs0XFSI0HOh2TJtDAARiJYHCx2DR82DSBWFUBnF8FlEZa+KLvWOcHmnfEf0dHXZy2YvR8QF0dIwxzPRhb//kh2HM4dBojA8CGbESoO1EoMRUTSIxELlEa/+uKKzl6Krpktlr/LrV3H6UmRMERRkSBXKCJ+hJP+0oSwfXaieDwklf+itp6+FLtC10IV/v2woy4eEkh+MVrrwc9JAl/u4gq8kmi7/xExQyG9Yjq4mzMKIDwNG8Pff338/rxR81KEMHybUhY9LqCb/NKHa/NOGsnx0oXo+llDgY6ULf/99HrOhLB8qVMWHCSV84uzV0oXgmi4crVq6EGFFF85NLoqCCsR5ZvJ0IVLFQxULePB0KbpmuhBtQddMF3JNSdcaUUUCYj5GabpWuvDWGOkCA4YuHAxGupBfDF14e/R0IbcYunBAaOlC2lm68JIlXTNdPV1IuYouHBTGdCtfBek204XcVbzOkGrz6yDVcGDo0qx8JaTZRBfeKpoupNhEF3JX8Wo6vfyrIb1weNCppV8PqYXT12UHSrqmxDI7gMxRZy+9B1NaNXuAtMIhYqALfBm6Orrkl681ezm67OmrPZw1hzNHFw5nlq6WriZ7VXTJ1xGwNZFlsZfpBLpE+BKhC2xpumQfPF3D4cydedQ+9Cnl9gEpJXzJIaJLK0/XsAc2b7g9AF9IKuzimlLDPriUkn2Y6PJ0gS/wtdKFIZmwjwZAKjWxiASCSCrVCNzLAxIslY0twojIVSvXHIj4IPLsVkpSG1jURr08v42SJO+2kUgk0WNZuZFt3TOS8PoxmbWEfMBK6j9QS+A7QuB0R8I7OCHRAU7+tgQAVlA4IEISAABQcQCdASrwADoCPjEYi0QiIaERmYygIAMEtLdyV2tTI2GG3s25fYAOlRJr2G/sPRL66PMA/VjpZfsr6gP1w/Y73ef9J6t/QA/nv9Q6zj0FP2u9OD9s/hC/un/a9JnNV/7V+Nfh7/o/yL7G72D7kcxvrnxP/g39/+ZHtd/uPJ/bR3nEAX1d76//T9I/sl6LP6l/vuSq+yf672A/4p/S/99/iPyZ+RL/u/1n5K+7/86/03/i9xj+W/13/p9jP0EP2PF4+Bci+S5F8lyL2jJA47Tok03HRrrBns65R7DApXIvkuQW2vUnAtA2/RzLqaPqivkuRfJWmEeXhGFqB5nwLkXr/mMMQzecCo8z3/qwla/0SGw9+6X20iAcfR+Ij+qPM+BcgtEyVq3WDyBAiLecCo8z2gokmWhnJjaDlvIwHBjLBoQSO4pvOBUeZ7P/77xwwISdBkuMVuGxU+op+h8C5F8fnfTgJtje7bxW8k1xHGhfJci+Pzqgko832ksXDDL0rfwM9pQXIvj++QUTp9My0qHqryqtn5iZnwLkXx9dnqCFFTVjRdQhviLFa8RtJwKjzPZ8ixIOc4cJXslbZ8C5F8lXRIuEEJXhzvCi+S5FlqGtuzDmP+XwNSlhPnvVz4FyL5Kj4woTbut8iKF7X96MP5cia0J8C5F8lXT1GMRid0uJubVaKC5F8lwP4a7wUS3bNZmaeBUeZ7/0CCzdHh0i2WQ7hXyXIvkq49MR6ctXoSguRfJcD+whn3USrtljLyAsPLSguRfJUnm4t1mnlbVNxSNZXGli16uRfJcgedeYsbGD84twhSBNFSsfpDr1ci+S4FEftmW8Ex5SGYF9HflNF8lyLKNnMlMQzbRd0q5xpb48rRsuZKvGlciysQtrIPY2r9mfLtB5njSlw1d4q5cD9hLdGuqGafFq5v2syUVF7WAdOKUCkyZ/CYTkNzdCyS6wZ7/RXHjt2uoPKlFzQWtNxV3U3bNKH4WvQDzJzvC8v6C4FxmfAuQN+ifglODasnIlCiQYTqZJ4wq7F9F+B1lU+glujXHz+1AxBCLbX1OaQAMIVHme/wHzlpKs2+hV6A/Wt5oVOEflGUj87faRvN+4Qovkt+GjQgOxOxNWgJkdVNBC4Z9LQOcJizj+Uo5iZ/5jrzAqPM9n7WDohu9fO4OqyxcFTOI/X6YP+VE1sKtTw230MTJAwZYwh5gVHme3MSIpp7Sb3AAA/v/pGAECdkCfRVAa0mYv9hYz4z9t7FmYLlxs6/8IZGO4rRir0h/Eemr+xXrrqEP/XbVS8KDm6BvSCF5pIhEDRekrCYOBNQkOWSEFPIzNQGqyI7whmIJskl6WZwdSABmmLqQexSpOSGA/1xZ6Ck/UvUdD04SL3+gL9el22s1V96FDL3WEnZj1KXMrIOE1MOgh1cBN/ugqdDbNls8ixj8fLlbwqkfi6/J3WDVnjXiMSJcDfN8K82ngxHzGiAaXfLfRC81Rfut4iCRJ8i3gnCQX0mlGUrD24LGn/x9WaIr4ff+R+8oa0ahmPeI6AsqLHLz1Xw0yzj0dQi6+3ozVCwmIXA5SkXM1vrb8T/SbBuoizb3RZJL/sqE7lR6toubqNPB8RKB4GSFeaAJ/yZZ246AxckIaW3khwZxVMzY53DRSKb8lPixld1YsTHpsDFtSJu7sysEDfJfv1jP2J8ttvVYxocsOX5xAAGcVtkNlMDPm5Y65PZtH3FTuf/EH2VivuQvYxXmI6dGR6cFQCN0aus9GfU4+IAYpZQTYDiHwjHHxhkNYnJG5yDz/N3RqADuRyIhMzC0MYgQPrSmBjqScHCZUj+T4bT7jLx1ft29yG1+7lwb/UxfdOigfjQndu+rtC3+YVLMXN1oqEMLztYV8q9bn3NKT8s4kQ1+jn/yrwKmNuq2e/IyP7seVRQ5QwJ905wMX0hPEAvDBWx3O7ZrFBi/P2Z5xmAtzuKY1rCJ6OBodu7AfkMWLmb3ROLu2owWau498rofgbZXD9cVaW+NLUj/Buo93PA8MKemDGlUSOCkPfnj9RU7MWZ3rmiTowcM6O6DRLkASdHOXUela443w/4OrWZerWIwlQMUjRkS0agSuyjGDcYIhwLPLyAWwCjND7OsaEKaR26+IC5Q0z3TeCJ521jLMN8qMdKvSzC5sK/Kp/Ib19uqK1q4lAM+csfzWsN+qjl63NUPLpwIsgIjk0Z3dwg5GuI0u+TSytDS9HhmnBUKphZbVmbb4ZZm74POa8ZdtpTtQmm/80ff5NcRXWMp6sZQpD2rMDZMsIpNp3UPdaH4RmqUxsxZBM4x9tHtd+rDE/VYS+GAD0ANuvIepfeLTz/ovwKy+yrEjUi1rvLAiJDNGPwxSxlD5//WIzr2Ijp10Lkr2JIjyNNuXwu4/d0p2gluAxo1iTjtnn+Jf7gBVClsiviuFV378Bgb2yWFvkFVkShIDG11FbJ/sq1xfnCJlqe64R+1dyeiGXnAj3GNEMHjxEjx50wdCLvJCJTRQ7ip53pkb+AvIDEzVmkENXDPRh+VlcQuR8rjViNWhl3AylrelhTuRB33kGjgGmaJCioHjevOmOi2l+aFgkvooqdX7XC549jG6yAHDCQ/nt5wcBLc6lrZ3ZMLL2PSynC2ImXAuGXU9y6glh771uviSAQf0AxKcTcgHdWOwvAAmojgr8vGF4Nlc64AsG0h9bbrX0fLgv9wvlwvtP4t+haKeF6koFv9YutGRIsp6WqjY/PLKt9lOR0mbwKIZ8t7Pvkq/m5lqd7cnM3VjuD0vT0SVXAVOH18W+p5BAFKtXIJQjlXoXojc79gpePwsX60V0xlXPpZmz26YFNawpCgxkOr5rOkIc0bxg8nqdASlKR1kAOGEh/XRyZze8W1OqqYVVBYyjYR3T+KSStuEn3h+iu2jQfFPX4TD/g+H+eQ37scDVR/EsjN1rTWsyhA5x/PI+gmvWC9y6EAWLq3WZi2+A2FPEcI5H29xxJvXxeXIBjv46Gtx4zSqb5SHOMY/pAymhiZttjfkHpO2t5T9ch4L7KtwjLUhA6C/tRswTNW9vaxOnb3XMiVELpi8rsiPR0pJGYonMjT1twJtqn7dPEKna46x1l1EKPouoyOc/Iisv/gj0wB+PpkPwJu+ToVpBReumreI+6ERPuXWZcptwXtT/vCd5DVIcI0ky8dDZuY/5sA6AHQVRtwMW8asq8aPs7vdiu8hsKA5m/Gj0Nmfdaai1hOKXCG2wAPCb26dhl71EKOaO0HCZYS1Y5VCNno3cndOcMS4GK38oknUenOMZIjGkWiuhGXVWfY6P1NvWFwDLLi9ihooaBmJpKU9yPJIBRH9uadMAqi+C54NUSOaXtB85M8lrByYefotfwq+9nC7sKi49/AgHkSqAOmBEC8YLpaMphJeOWPfPiGee3IwMqBb6eo7gJUL8qko4eqHKhPoVW+JiRogjik3VwxGJOhGjAJlkkc03y4p9dacBarVQhxtx4SoW0opvS2FPdKgXCelZTb32Q4CAb4E90UTD2nb/GEGx8XhblCbkz98OLUi3wL9SHyvYA8DRFaaq9Vs6ffZolyb6tjHPOCKmwKYf1tB87/Hc8xUaTbnTbk097A4pDyfWbMkTrpHrKQNwfLrPRF6SRWQHLaT99/xE7yOrKcJB8npPGJAuLqPG/9221M4aOIsxC6dr4RFUpnADoTn1kcoElBYgP898he/f+HuWj1okKD5/XsTHWCt1BirqpQbW/Hs1bWfQMirYYUlbQGyccKV96JVpa+uKs2usD3CfK9CMm+7/+Uhit+VKGc0iozV0gqnfXdJWwi3Fk+VuqfHFVU1CokY9lZzeaZ88WCOi6Y6hT+CusrgbFGs6ZdYTFSwsHSjPJSWaXVVQsGRVFOzEbYvf8hE4y1FE4g64Q7KUvszCafg0XMjP+SmnEPrGUfKBVYGr035C9nWfU8RvUEBQZ2tTSGiAyzoh9HURtmsL9tWVhkkPbFcfZtNDSEXk0hmxLiIxXHz+1X4oJXgdDXymbqPJwQdW6ATv0z1RS7bDmUeQleNO1D6SRwleQCZpyU8wnkQo6UHnBTNe1MR3cVdjAjF/zAi3QqpwbSfxXZLhsuJ0s6AAEX5/cokk0hLjS1YKwlb/1xIocbZ8r/KlwmE4/HdARhU3k9RsF0KbTEZxMxj0XuMnkuVgJ211Fs8/Q4KdnqzGQdyEnl6OE4j1rj6wuOJ195IGpxhO2btkkNAJbW/tQWcnwdDkocZ8Tq3fpQMJO7xdmQR0ggDnZVUmLsvUuHecBXFWXaWcxcf+CvhWxFkZH3mZDrae2TlIJTjJ2ui/K6lv21qvetxBFlroHJMdiO93wxqTvKv0jo9dFkwpiM4qPiKUdMTefiBCWvyh+U5/KnlljYaLK5ufCuzaaSCwTegLLUTMWtdtd9oNhlMJoNQHS+UUJxUNPin+CW7zhdWS66n66jvkgepZaZfKBjlWi/m8YWIXEUwVoE3Bj+3oMHZ7481Wmy2UlAQpzKs72gT/yGonAeffRGOCxVT4Awf01BxjrrxT1JwfqSgThItUqoBU7js5fFQFcbD1nBGoDCna1O7JweZxpAoT68dY+CWS2yN9zAchpug36TzkYfi0v4BkDR66a8XGujW6LbJXCyiohgxYXrgCS1/aCSVHf5AV9QgWLjP5Sd7Ck0xD2+7Lqtt9Zjq9H+8SNTwXocoKi9r5S8gfscVpNaE0No8/rI0gqc/4RUYGadN74Q//kRKanEIPkmj5PQX0N9ephRuWJ6ZThcRqIieYCveZVVDY5xg0OR8MzHBfZqYtNMYko/imTrKOzCl1gookdb6GYbyBuy0drQBJRDv7jMx0ExAvH/xFTF6zt4L3u/mqEqEYgOrs/z1XMBpbGY1WRZJwIs3r5DRQuG5wZG7LRaE0cFdI+Puvs14+C7wq23krmd8tPEn+kS0zGSZj4qBAJ86Et/ljNVgMG9Gg/TU/8iSgsx+mGDuaoWC9WR+r+Al/k3LnPwGbzySSWjkus+mugs3ob1M76kz+DjoYRwsKKfK/ZZkAW5RW7V6GU9ZVz/Q+AQAwsrV8FdnUswwshY7ieHsGi7fHyeeodUVgTUoRh/I95k2dNQSmK0btooO3YUxBSp01lfibWggZRG4w4nec5IY0Qv/SrHgp5QH0HRiwAvl8SnKQCbQMK5+LNrX74aZjJJOJPaK9CH+VlkWX3PYuls4agzLz1D7cFRWXKIDlFkyauwL+E64J0KEdPXOzcMNfl53wmO8WsDMRjjhae7Ie5UCHksHMNPmvb1de89q8zed7a/S6UWU72Wfxg5U+yWceYM789AuTjAntQsze5HJ5Xvf0SXznNezHKx7G3CEp0NZM397iodbaFZJJEOBjB4iegWA//IPIFiAbUpIITGEyNOF+vbBO/enPFoRMK9tLijwiH+Wv4qectB/pDyoCiAs6232qz5y6/p0tqVnz7VzWDGPRKXUdqZODFXD8jxyH2sGcL/J3s53sgHQvmjBvFM4vkfK8J8RRcBsf4bPiS1VLIUSApGBrUuqPTN1nUpOgKnv617AWxxUDybQqwOlsmRGQZ1TLFX46w+jQCtOzGlAcwOtZQGFEsitQqBfYOIcpwUyWuLRb8sd3TLSy/rpgzdV0S/zGafiKNo1sArmqGRlUEiu+Vt7q5bDQe2EnqJCeivDJnomyUn5yGye21IoA0QG8j0l68CcnyIfojpWkWwqqsoktHo7k7d/msGJ8DaxX7E8oDR4yN1L3+mZs5Dqd3pGxydv56SBEmO9M4LDo8J5vrI8V3tKXT6OnFO/TQ0EFPd001KQpK0RJ7zv35Ccw/eaRxoQ98+m6/28OPYBGE0UcohgREwZkYQDWM0tocZ/+sd/Vyn83EVRn9uli3lrcKFd3tXII5HaPzsHmAZi4NMQFf0EtcbfW/msCWqInFEIjDwiX2ZFWxUw4eG/RCfU7WvijMIr0DMAZyzaTAvkjnrEABGjLui68s+By8kFE9G12E/gXzuDtg67TWxgMmcxBJAUfh+mOflm4b+Y81zJkZ8vFCH5ieD3eoZPx1HtLiWmy4cQAxedfwglVUTxjJKXQQvWHO5/TnA/GEkXaaqVAcP8Sk1vt3jjvagjpwAsYlmUxNrVEVKUOGOXloiFrYXOr7r1xT/KFAHNpkI40xYrz3PbI0hd31HlcpK1XkD9tPbXCCqHZqdq+p1fqEE44pHV/MY9AqQMUbm4qRdzRtBirqB53ou+bLux6wCYvhLOIAAAAAA=" };
+    const CROP = { x: 70, y: 16, w: 100, h: 546 };
+    /* ช่วงของแต่ละส่วนบน poster (วัดจากเงาของภาพ) — clip = สี่เหลี่ยมในพิกัด poster ที่ «เป็นของส่วนนั้น» */
+    const REG = {
+      hd: { y0: 24, y1: 186, ly: 105, c: "deep", clip: [[70, 16, 170, 186]] },
+      s3: { y0: 186, y1: 282, ly: 234, c: "lin", clip: [[70, 186, 170, 282]] },
+      /* บล็อกกลางช่วงล่าง: เห็นเป็นแถบแคบ x 116–125 ระหว่างบล็อกข้างสองบล็อกด้านหน้า (ตรวจจากพิกเซลของ poster) */
+      s2: { y0: 282, y1: 552, ly: 322, c: "meas", clip: [[70, 282, 170, 366], [103, 366, 136, 470], [116, 470, 126, 556]] },
+      s1: { y0: 366, y1: 552, ly: 470, c: "ref", clip: [[70, 366, 103, 562], [136, 366, 170, 562], [103, 470, 116, 562], [126, 470, 136, 562]] }
+    };
+    const lum = c => {
+      const m = /^#?([0-9a-f]{6})/i.exec(String(c).trim());
+      if (!m) { const r = /(\d+)\D+(\d+)\D+(\d+)/.exec(c); return r ? (r[1] * 299 + r[2] * 587 + r[3] * 114) / 1000 : 255; }
+      const n = parseInt(m[1], 16);
+      return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+    };
+    const rgb01 = c => { const r = /(\d+)\D+(\d+)\D+(\d+)/.exec(c); return r ? [r[1] / 255, r[2] / 255, r[3] / 255] : [1, 1, 1]; };
+
+    function T(ctx, C, txt, x, y, col, o) {
+      o = o || {};
+      let sz = o.size || 12.5;
+      const mk = s => { ctx.font = (o.wt || 600) + " " + s + "px " + (o.mono ? C.mono : C.thai); };
+      mk(sz);
+      if (o.maxW) while (sz > (o.min || 10) && ctx.measureText(txt).width > o.maxW) { sz -= 0.5; mk(sz); }
+      ctx.fillStyle = col; ctx.textAlign = o.align || "left"; ctx.textBaseline = o.base || "middle";
+      if (o.halo) { ctx.lineJoin = "round"; ctx.lineWidth = o.halo; ctx.strokeStyle = C.bg; ctx.strokeText(txt, x, y); }
+      ctx.fillText(txt, x, y);
+      return ctx.measureText(txt).width;
+    }
+    function rr(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    }
+
+    /* ---------- ภาพจรวดจาก poster: ส่วนที่ไม่เลือกจาง ส่วนที่เลือกชัด (ค่อย ๆ เปลี่ยน) ---------- */
+    function makePoster(redraw) {
+      const img = {};
+      return th => {
+        if (!img[th]) { const im = new Image(); im.decoding = "async"; im.onload = redraw; im.src = POSTER[th]; img[th] = im; }
+        return img[th];
+      };
+    }
+    function drawRocket(ctx, im, box, selNow, selWas, e) {
+      if (!(im && im.complete && im.naturalWidth)) return;
+      const { ix, iy, dw, dh } = box, k = dh / CROP.h;
+      const full = a => { ctx.save(); ctx.globalAlpha = a; ctx.drawImage(im, CROP.x, CROP.y, CROP.w, CROP.h, ix, iy, dw, dh); ctx.restore(); };
+      const part = (keys, a) => {
+        if (!keys || !keys.length || a <= 0.01) return;
+        ctx.save(); ctx.beginPath();
+        keys.forEach(key => REG[key].clip.forEach(([x0, y0, x1, y1]) =>
+          ctx.rect(ix + (x0 - CROP.x) * k, iy + (y0 - CROP.y) * k, (x1 - x0) * k, (y1 - y0) * k)));
+        ctx.clip(); full(a); ctx.restore();
+      };
+      const allNow = !selNow || !selNow.length, allWas = !selWas || !selWas.length;
+      const bNow = allNow ? 1 : 0.2, bWas = allWas ? 1 : 0.2;
+      const base = bWas + (bNow - bWas) * e;                 /* ความทึบของส่วนที่ไม่ได้เลือก */
+      full(base);
+      if (base >= 0.999) return;
+      /* ทุกส่วนที่เลือกก่อนหรือหลังต้องจบที่ความทึบ d = lerp(ก่อน, หลัง) พอดี: base + x(1 − base) = d
+         ส่วนที่ได้ x เท่ากันรวมเป็น clip path เดียว (ไม่เกิดรอยต่อจางที่ขอบสี่เหลี่ยมติดกัน) */
+      const byX = new Map();
+      new Set([...(allNow ? [] : selNow), ...(allWas ? [] : selWas)]).forEach(key => {
+        const tNow = allNow || selNow.includes(key) ? 1 : bNow, tWas = allWas || selWas.includes(key) ? 1 : bWas;
+        const x = Math.round((tWas + (tNow - tWas) * e - base) / (1 - base) * 1000) / 1000;
+        byX.set(x, (byX.get(x) || []).concat(key));
+      });
+      byX.forEach((keys, x) => part(keys, x));
+    }
+    const rocketBox = (ix, iy, dh) => ({ ix, iy, dh, dw: CROP.w * dh / CROP.h, Y: ys => iy + (ys - CROP.y) * dh / CROP.h });
+
+    /* ---------- แบบสามมิติที่ฝังทับ canvas ---------- */
+    const EMBED_CSS =
+      "html,body{background:transparent!important;overflow:hidden!important;height:100%!important;margin:0!important}" +
+      "#soyuz-anatomy .masthead,#soyuz-anatomy .intro,#soyuz-anatomy .inspector,#soyuz-anatomy .flight-panel," +
+      "#soyuz-anatomy .knowledge-panel,#soyuz-anatomy .scene-caption,#soyuz-anatomy .scene-tools,#soyuz-anatomy .control-panel," +
+      "#soyuz-anatomy .plate-top,#soyuz-anatomy .plate-bottom,#soyuz-anatomy .zoom-controls,#soyuz-anatomy .iso-plate-corners{display:none!important}" +
+      "#soyuz-anatomy .anatomy-app{padding:0!important;max-width:none!important;margin:0!important}" +
+      "#soyuz-anatomy .explorer-layout{display:block!important;margin:0!important;padding:0!important}" +
+      "#soyuz-anatomy .iso-plate{border:0!important;border-radius:0!important;margin:0!important;background:transparent!important}" +
+      "#soyuz-anatomy #viewport{height:100vh!important;min-height:0!important}" +
+      /* ลากแนวตั้งบนมือถือ = เลื่อนหน้า (ไม่ติดอยู่ในแบบจำลอง) · แนวนอน/สองนิ้ว = หมุน/ซูม */
+      "#soyuz-anatomy #viewport,#soyuz-anatomy #rocket-canvas{touch-action:pan-y!important}";
+
+    let OPEN3D = null;                       /* เปิดแบบสามมิติได้ทีละชุดทั้งหน้า (ไฟล์ 5 MB + WebGL หนึ่งตัว) */
+    /* attach3D(api, host, o)
+       o.hint / o.hintOpen : ข้อความใต้ภาพตอนปิด / เปิด (สั้น ๆ บรรทัดเดียว)
+       o.act(doc, step)    : สั่งตัวแสดงผลให้ตรงกับขั้น (camAct หรือของแบบนั้นเอง)
+       o.region(W, H)      : (ทางเลือก) {x, y, w, h} เป็น px ภายในช่องภาพ — วางแบบสามมิติทับเฉพาะส่วนนั้น ส่วนอื่นของ canvas (เช่นตาราง) ยังเห็น
+                             คืน null = ทับทั้งช่อง (จอแคบ)
+       คืน { sync(step, dark), busy(text), idle(), doc() } */
+    function attach3D(api, host, o) {
+      const fig = api.el, stage = fig.querySelector(".anim-stage");
+      const narrow0 = (stage.clientWidth || host.clientWidth || 600) < 520;
+      let frame = null, ready = false, applied = -1, dark = false, pseudo = false;
+      const bar = document.createElement("div");
+      bar.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;border-top:1px solid var(--line);background:var(--s2-sunk)";
+      const L = narrow0
+        ? { open: "◆ สามมิติ", close: "◇ สองมิติ", full: "⤢", exit: "✕" }
+        : { open: "◆ ดูแบบสามมิติ", close: "◇ กลับเป็นภาพสองมิติ", full: "เต็มจอ", exit: "ออกจากเต็มจอ" };
+      bar.innerHTML =
+        '<button type="button" class="ab" data-m3d="open" style="flex:0 0 auto;min-height:40px;padding:6px 14px">' + L.open + "</button>" +
+        '<button type="button" class="ab" data-m3d="full" aria-label="เต็มจอ" style="flex:0 0 auto;min-height:40px;padding:6px 12px" hidden>' + L.full + "</button>" +
+        '<span data-m3d="hint" style="flex:1 1 160px;min-width:0;font:400 12.5px/1.5 var(--s2-thai);color:var(--ink-3)"></span>';
+      /* จอแคบ: แถบอยู่ใต้ปุ่มขั้น (ไม่ดันปุ่มขั้นลงไปไกลจากภาพ) · จอกว้าง: ใต้ภาพ */
+      const ctrl = fig.querySelector(".anim-ctrl");
+      if (narrow0 && ctrl) ctrl.after(bar); else stage.after(bar);
+      const bOpen = bar.querySelector('[data-m3d="open"]'), bFull = bar.querySelector('[data-m3d="full"]'), hint = bar.querySelector('[data-m3d="hint"]');
+      hint.textContent = o.hint;
+      const badge = document.createElement("div");
+      badge.textContent = "สามมิติ · ลากเพื่อหมุน";
+      badge.style.cssText = "position:absolute;z-index:2;padding:3px 9px;border-radius:999px;font:600 11.5px/1.5 var(--s2-thai);" +
+        "color:var(--accent);background:var(--s2-sunk);border:1px solid var(--line);pointer-events:none;display:none";
+      stage.appendChild(badge);
+      function place() {                     /* ตำแหน่ง iframe + ป้าย ตาม o.region (เรียกใหม่เมื่อขนาดเปลี่ยน) */
+        const W = stage.clientWidth, H = stage.clientHeight;
+        const r = !pseudo && !isFull() && o.region ? o.region(W, H) : null;
+        const box = r || { x: 0, y: 0, w: W, h: H };
+        if (frame) Object.assign(frame.style, { left: box.x + "px", top: box.y + "px", width: box.w + "px", height: box.h + "px" });
+        Object.assign(badge.style, { left: box.x + 10 + "px", top: box.y + 8 + "px" });
+      }
+      if (window.ResizeObserver) new ResizeObserver(place).observe(stage);
+      bOpen.addEventListener("click", () => (frame ? close() : open()));
+      /* เต็มจอทั้งการ์ด (ภาพ + ปุ่มขั้น + คำอธิบาย) · ไม่มี Fullscreen API (iPhone) → เต็มหน้าต่างด้วย CSS ไม่ออกจากบทเรียน */
+      const isFull = () => (document.fullscreenElement || document.webkitFullscreenElement) === fig;
+      /* เต็มจอ: แถบ (ปุ่มออก) อยู่ใต้ภาพทันที และช่องภาพสูงเท่าที่เหลือจากหัวการ์ด แถบ คำอธิบายสี และปุ่มขั้น
+         — มือถือ 375×667 เดิมใช้ 70vh แล้วปุ่ม «✕» ตกขอบล่างจอ · คำอธิบายขั้นเลื่อนดูต่อได้ในการ์ด */
+      const head = fig.querySelector(".anim-head"), leg = fig.querySelector(".anim-leg");
+      let onResize = null;
+      const setFullLook = on => {
+        fig.style.overflow = on ? "auto" : ""; fig.style.background = on ? "var(--s2-card)" : ""; fig.style.borderRadius = on ? "0" : "";
+        if (pseudo) Object.assign(fig.style, on ? { position: "fixed", inset: "0", zIndex: "1000", height: "100dvh", margin: "0" } : { position: "", inset: "", zIndex: "", height: "", margin: "" });
+        if (on || !(narrow0 && ctrl)) stage.after(bar); else ctrl.after(bar);
+        bFull.textContent = on ? L.exit : L.full; bFull.setAttribute("aria-label", on ? "ออกจากเต็มจอ" : "เต็มจอ");
+        /* เต็มจอมีเฉพาะตอนเปิดแบบสามมิติ (ปุ่มเต็มจอซ่อนจนแบบจำลองพร้อม · close() ออกจากเต็มจอ) — canvas สองมิติสูงกว่าช่องภาพได้
+           (จอแคบ 520 px) ต้องตัดไว้ ไม่งั้นทับแถบปุ่มที่อยู่ใต้ช่องภาพ */
+        stage.style.overflow = on ? "hidden" : "";
+        if (on) {
+          const other = (head ? head.offsetHeight : 0) + bar.offsetHeight + (leg ? leg.offsetHeight : 0) + (ctrl ? ctrl.offsetHeight : 0);
+          stage.style.height = Math.round(Math.max(220, Math.min(innerHeight * 0.7, innerHeight - other - 8))) + "px";
+          if (!onResize) { onResize = () => setFullLook(true); window.addEventListener("resize", onResize); }
+        } else {
+          stage.style.height = "";
+          if (onResize) { window.removeEventListener("resize", onResize); onResize = null; }
+        }
+        place();
+      };
+      const escPseudo = e => { if (e.key === "Escape" && pseudo) leavePseudo(); };
+      const leavePseudo = () => { setFullLook(false); pseudo = false; document.removeEventListener("keydown", escPseudo); };
+      bFull.addEventListener("click", () => {
+        if (isFull()) return void (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if (pseudo) return leavePseudo();
+        const req = fig.requestFullscreen || fig.webkitRequestFullscreen;
+        if (req) Promise.resolve(req.call(fig)).catch(() => { pseudo = true; setFullLook(true); document.addEventListener("keydown", escPseudo); });
+        else { pseudo = true; setFullLook(true); document.addEventListener("keydown", escPseudo); }
+      });
+      const onFull = () => {
+        if (!fig.isConnected) { document.removeEventListener("fullscreenchange", onFull); document.removeEventListener("webkitfullscreenchange", onFull); return; }
+        setFullLook(isFull());
+      };
+      document.addEventListener("fullscreenchange", onFull);
+      document.addEventListener("webkitfullscreenchange", onFull);
+      const win = () => { try { return frame && frame.contentWindow; } catch (e) { return null; } };
+      function paintBg() {                   /* สีพื้น WebGL ของตัวแสดงผล (ทึบ) → สีพื้นการ์ดของเว็บ */
+        const w = win(); if (!w) return;
+        const c = rgb01(getComputedStyle(stage).backgroundColor);
+        try {
+          w.__atlasBg = c;
+          if (!w.__atlasPatched) {
+            w.__atlasPatched = true;
+            [w.WebGLRenderingContext, w.WebGL2RenderingContext].forEach(K => {
+              if (!K) return;
+              const orig = K.prototype.clearColor;
+              K.prototype.clearColor = function (r, g, b, a) { return a === 0 ? orig.call(this, r, g, b, a) : orig.call(this, w.__atlasBg[0], w.__atlasBg[1], w.__atlasBg[2], 1); };
+            });
+          }
+          /* ไม่เรียก getContext ที่นี่ — ตัวแสดงผลเรียก clearColor ทุกเฟรมอยู่แล้ว ฮุกด้านบนใช้สีใหม่ในเฟรมถัดไป */
+        } catch (e) { /* ข้าม */ }
+      }
+      function sync(step, isDark) {
+        if (isDark !== undefined) dark = isDark;
+        const w = win(); if (!ready || !w) return;
+        const d = w.document;
+        const iso = d.querySelector(".iso"), th = d.getElementById("theme");
+        /* คลิก #theme ได้ครั้งเดียวต่อธีมที่ขอและต่อ iframe (กันสลับวนถ้าตัวแสดงผลรุ่นหน้าเปลี่ยนธีมแบบไม่ทันที) */
+        if (iso && th && (iso.getAttribute("data-theme") === "dark") !== dark && frame.__asked !== dark) { frame.__asked = dark; th.click(); paintBg(); }
+        if (step !== undefined && applied !== step) { applied = step; try { o.act(d, step, api); } catch (e) { /* ข้าม */ } }
+      }
+      /* ออฟไลน์: แบบสามมิติไม่อยู่ในชุด «เก็บไว้อ่านออฟไลน์» (ไฟล์ 5 เมกะไบต์) — บอกเหตุแทนการให้ลองใหม่เปล่า ๆ */
+      const FAIL = () => "โหลดแบบจำลองไม่สำเร็จ" +
+        (typeof navigator !== "undefined" && navigator.onLine === false ? " — ตอนนี้ออฟไลน์อยู่ และแบบสามมิติไม่ได้เก็บไว้อ่านออฟไลน์" : "") +
+        " — กดกลับเป็นภาพสองมิติแล้วลองใหม่";
+      function open() {
+        if (frame) return;
+        if (OPEN3D && OPEN3D !== close) OPEN3D("ปิดแบบสามมิติให้อัตโนมัติเพราะเปิดอีกชุดหนึ่ง — กดเปิดอีกครั้งได้");
+        OPEN3D = close;
+        const f = frame = document.createElement("iframe");
+        frame.title = "แบบจำลองสามมิติของจรวด «Союз-2.1а» กับยาน «Союз МС»";
+        frame.src = SRC;
+        frame.setAttribute("allow", "fullscreen");
+        frame.style.cssText = "position:absolute;border:0;visibility:hidden;background:transparent;z-index:1;border-radius:10px";
+        stage.appendChild(frame); place();
+        bOpen.textContent = L.close;
+        hint.textContent = "กำลังโหลดแบบจำลอง (ราว 5 เมกะไบต์)…";
+        ready = false; applied = -1;
+        let loaded = false;
+        /* load ยังไม่มา (เน็ตช้า) — บอกเบา ๆ ไม่ตัดสินว่าล้ม เพราะไฟล์อาจยังโหลดอยู่ */
+        setTimeout(() => { if (frame === f && !loaded) hint.textContent = "ยังโหลดไม่เสร็จ — เน็ตช้าให้รอต่อ หรือกลับเป็นภาพสองมิติ"; }, 30000);
+        frame.addEventListener("load", () => {
+          if (frame !== f) return;
+          loaded = true;
+          const w = win(); if (!w) return;
+          /* หน้าแจ้งข้อผิดพลาดของเบราว์เซอร์ (ออฟไลน์) เป็นคนละ origin → w.document โยน SecurityError */
+          try { const st = w.document.createElement("style"); st.textContent = EMBED_CSS; w.document.head.appendChild(st); }
+          catch (e) { hint.textContent = FAIL(); return; }
+          /* หน้า 404 ของเว็บเดียวกันโหลดได้แต่ไม่ใช่ตัวแสดงผล — #soyuz-anatomy อยู่ใน html ของตัวแสดงผลตั้งแต่แรก (EMBED_CSS ใช้ id นี้) */
+          if (!w.document.getElementById("soyuz-anatomy")) { hint.textContent = FAIL(); return; }
+          let tries = 0;
+          const wait = () => {
+            if (frame !== f || win() !== w) return;
+            const d = w.document, c = d.querySelector("#viewport canvas");
+            if (c && c.getBoundingClientRect().height > 50 && d.getElementById("camera")) {
+              /* คลิก #tour ทำให้ตัวแสดงผลปิดการนำชมเมื่อว่างถาวร (ไม่งั้นกล้องจะเริ่มนำชมเองหลังเปลี่ยนขั้น 1,4–3,6 วินาที)
+                 คลิกแรกเริ่มการนำชม คลิกที่สองหยุด · ผู้ใช้ที่ลดการเคลื่อนไหว ตัวแสดงผลไม่นำชมอยู่แล้ว */
+              const tour = d.getElementById("tour");
+              const still = (() => { try { return w.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } })();
+              if (tour && !still) { tour.click(); if (tour.getAttribute("aria-pressed") === "true") tour.click(); }
+              ready = true; paintBg(); sync(api.step());
+              frame.style.visibility = "visible"; badge.style.display = "block";
+              bFull.hidden = false;
+              if (!busyText) hint.textContent = o.hintOpen;
+              return;
+            }
+            if (++tries < 60) setTimeout(wait, 250);
+            else hint.textContent = FAIL();
+          };
+          wait();
+        });
+      }
+      function close(why) {
+        if (!frame) return;
+        if (isFull()) (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+        if (pseudo) leavePseudo();
+        frame.remove(); frame = null; ready = false; busyText = "";
+        if (OPEN3D === close) OPEN3D = null;
+        badge.style.display = "none";
+        bOpen.textContent = L.open; bFull.hidden = true;
+        hint.textContent = why || o.hint;
+      }
+      let busyText = "";
+      const busy = t => { busyText = t; if (frame) hint.textContent = t; };
+      const idle = () => { busyText = ""; if (frame && ready) hint.textContent = o.hintOpen; };
+      if (typeof IntersectionObserver === "function") {
+        const io = new IntersectionObserver(es => es.forEach(e => {
+          if (!fig.isConnected) { io.disconnect(); return; }
+          if (!e.isIntersecting && frame && !isFull() && !pseudo)
+            close("ปิดแบบสามมิติให้อัตโนมัติเมื่อเลื่อนออกห่าง เพื่อคืนหน่วยความจำ — กดเปิดอีกครั้งได้");
+        }), { rootMargin: "1500px 0px" });
+        io.observe(fig);
+        /* ให้ clearDemos ของเว็บตัด observer นี้ตอนเปลี่ยนหน้า (LIVE ข้ามรายการที่ไม่มี draw/tick) */
+        try { if (typeof LIVE !== "undefined" && Array.isArray(LIVE)) LIVE.push({ io }); } catch (e) { /* นอกเว็บจริง */ }
+      }
+      return { sync, busy, idle, doc: () => { const w = win(); return ready && w ? w.document : null; }, isOpen: () => !!frame };
+    }
+    const camAct = cams => (d, step) => {   /* #reset ก่อนเสมอ: มุม rd107 ฯลฯ ซ่อนส่วนอื่นของจรวดไว้ */
+      const rs = d.getElementById("reset"), cam = d.getElementById("camera");
+      if (rs) rs.click();
+      if (cam) { cam.value = cams[step]; cam.dispatchEvent(new Event("change", { bubbles: true })); }
+    };
+
+    const CAPTION = "ตัวเลข: сл. 45 · รายการปรับปรุง: сл. 44 · อักษรบล็อก Б В Г Д และ А จำนวนห้องเผาไหม้ การจุดท่อน I กับ II พร้อมกันที่พื้น และการทำงานต่อของท่อน II หลังบล็อกข้างแยก: ผู้เรียบเรียง · " +
+      "ภาพจรวดและแบบจำลองสามมิติ: ผู้เรียบเรียงสร้างจากภาพถ่ายและเอกสารเผยแพร่ของผู้ผลิต มิติย่อยเป็นค่าประมาณ ไม่ใช่เอกสารของภาควิชา — ตอบข้อสอบให้ยึดตารางสไลด์ 45";
+
+    return { RU, nf, SRC, REG, CROP, lum, T, rr, makePoster, drawRocket, rocketBox, attach3D, camAct, CAPTION };
+  })();
+
+  const { RU, REG, CROP, lum, T, rr, makePoster, drawRocket, rocketBox, attach3D, camAct, CAPTION } = SOYUZ3D;
+
+  const AXMAX = 110;                                    /* แกนแรงขับ 0–110 тс คงที่ทุกขั้น */
+  const TICKS = [0, 25, 50, 75, 100];
+  const c01 = x => Math.max(0, Math.min(1, x));
+  const mix = (a, b, t) => a + (b - a) * t;
+  function alpha(ctx, a, fn) { if (a <= 0.004) return; ctx.save(); ctx.globalAlpha *= Math.min(1, a); fn(); ctx.restore(); }
+
+  /* ---------- ข้อมูลแถว: บน → ล่าง เหมือนตัวจรวด (ค่าแรงขับจากสไลด์ 45 · «/» = ที่พื้น / สุญญากาศ เท่านั้น) ---------- */
+  const ROWS = [
+    /* ป้ายบอก «ตารางให้ค่าแรงขับที่ใด» — ส่วนหัวไม่มีค่าในตาราง (ไม่ใช่ «ไม่มีแรงขับ»: หอหนีภัยมีเครื่องยนต์) · บรรทัดรองบรรยายภาพของผู้เรียบเรียง */
+    { key: "hd", name: "หัวบรรทุก (ГЧ)", sub: "ในภาพ: ยานในครอบหัวจรวด · หอหนีภัย", tag: "ไม่มีค่าในตาราง", kind: "",
+      subN: ["ในภาพ: ยานในครอบหัวจรวด", "หอหนีภัย"] },             /* จอแคบมาก: ใช้เมื่อบรรทัดเดียวกว้างเกินที่ที่ 10 px */
+    { key: "s3", name: "ท่อน III", sub: "РД-0110 · РД-0124", subF: "РД-0110 (2-1а) · РД-0124 (2-1б)", tag: "สุญญากาศ", kind: "v",
+      val: "30,4 · 30,0",
+      bars: [{ v: 30.4, lab: "РД-0110 30,4", labN: "РД-0110 (2-1а) · 30,4 тс" },
+             { v: 30.0, lab: "РД-0124 30,0", labN: "РД-0124 (2-1б) · 30,0 тс" }],
+      linkW: "сл. 44 ข้อ 5: เครื่องยนต์ท่อน III แบบใหม่ · ผู้เรียบเรียงเทียบ",
+      linkN: ["сл. 44 ข้อ 5: เครื่องยนต์ท่อน III", "แบบใหม่ · ผู้เรียบเรียงเทียบ"],
+      linkS: ["сл. 44 ข้อ 5:", "เครื่องยนต์ท่อน III แบบใหม่", "ผู้เรียบเรียงเทียบ"] },
+    { key: "s2", name: "ท่อน II · บล็อกกลาง", sub: "РД-108А", tag: "พื้น + สุญญากาศ", kind: "gv",
+      val: "79,4 / 101,0", bars: [{ g: 79.4, v: 101.0 }],
+      chips: [{ t: "342", c: "ref" }, { t: "79,4", c: "meas" }], cw: [62, 46],
+      sum: "= 421,4 тс", noteW: ["แรงขับตอนยกตัว ≈ 1,35 เท่าของมวลปล่อย 311,7 т · ผู้เรียบเรียงคำนวณ"],
+      sumN: "= 421,4 тс ตอนยกตัว", noteN: ["≈ 1,35 เท่าของมวลปล่อย 311,7 т", "ผู้เรียบเรียงคำนวณ"] },
+    { key: "s1", name: "ท่อน I · บล็อกข้างสี่บล็อก", sub: "4 × РД-107А", tag: "พื้น + สุญญากาศ", kind: "gv",
+      val: "85,5 / 104,1", bars: [{ g: 85.5, v: 104.1 }],
+      chips: [{ t: "85,5", c: "ref" }, { t: "85,5", c: "ref" }, { t: "85,5", c: "ref" }, { t: "85,5", c: "ref" }], cw: [44, 34],
+      sum: "= 342 тс", noteW: ["ทั้งท่อน I ที่พื้น (สี่เครื่องรวมกัน) · ผู้เรียบเรียงคำนวณ"],
+      sumN: "= 342 тс ทั้งท่อนที่พื้น", noteN: ["ผู้เรียบเรียงคำนวณ"] }
+  ];
+  const SEL = [null, "s1", "s2", "s3", null, null];       /* แถวที่ขยายในแต่ละขั้น */
+  const ROCK = [null, ["s1"], ["s2"], ["s3"], null, null]; /* ส่วนของภาพจรวดที่ชัด (null = ทั้งลำ) */
+  const SCN = ["rows", "rows", "rows", "rows", "mass", "tags"];
+
+  /* ---------- สไลด์ 44 (ถ้อยคำจากรายการ «หกทิศทางการปรับปรุง» ของหัวข้อนี้) ----------
+     ข้อ 6 ทั้งข้อเป็นงานที่ที่ตั้งปล่อย 17П32 (แท่นหมุน + เสาบริการ колонны обслуживания) — ป้ายทั้งสองของข้อ 6 ชี้ที่โครงสร้างของที่ตั้งปล่อย
+     ที่วาดเพิ่ม (เสาบริการข้างจรวด · แผ่นแท่น) ไม่ชี้ที่ตัวจรวด · ข้อ 1 = หัวพ่นเชื้อเพลิง (форсуночные головки) ในห้องเผาไหม้
+     ไม่ใช่หัวฉีด (сопло) — จุดโยงอยู่ที่ช่วงเครื่องยนต์ (ส่วนสีส้ม) ไม่ใช่ที่ปากหัวฉีด */
+  const TAGS = [
+    { n: "6", c: "ink2", at: "col", want: 140,
+      w: ["ที่ตั้งปล่อย: เปลี่ยนรูปเสาบริการ (колонны обслуживания)", "ให้รับครอบหัวจรวด (ГО) ที่ใหญ่ขึ้น"],
+      nn: ["ที่ตั้งปล่อย: เปลี่ยนรูปเสาบริการ", "(колонны обслуживания) ให้รับ", "ครอบหัวจรวด (ГО) ที่ใหญ่ขึ้น"],
+      /* จอแคบมาก: แบบที่แบ่งบรรทัดมากขึ้น (คำเดิม) — ใช้แบบแรกที่ทุกบรรทัดพอที่ที่ 10 px */
+      nnS: [["ที่ตั้งปล่อย: เปลี่ยนรูปเสาบริการ", "(колонны обслуживания)", "ให้รับครอบหัวจรวด (ГО) ที่ใหญ่ขึ้น"],
+            ["ที่ตั้งปล่อย: เปลี่ยนรูปเสาบริการ", "(колонны обслуживания)", "ให้รับครอบหัวจรวด (ГО)", "ที่ใหญ่ขึ้น"]] },
+    { n: "5", c: "lin", at: [[125, 234, "lin"]], want: 234,
+      w: ["เครื่องยนต์ท่อน III แบบใหม่", "(КБ химавтоматики)"], nn: ["เครื่องยนต์ท่อน III แบบใหม่", "(КБ химавтоматики)"] },
+    { grp: true, c: "ink2", want: 330 },
+    /* (141, 528) ช่วงเครื่องยนต์ของบล็อกข้างด้านหน้า · (121, 520) แถบบล็อกกลางที่เห็นได้ระหว่างบล็อกข้าง (REG.s2: x 116–125 ที่ y 470–556) */
+    { n: "1", c: "ref", at: [[141, 528, "ref"], [121, 520, "meas"]], want: 524,
+      w: ["หัวพ่นเชื้อเพลิงแบบใหม่ (форсуночные головки)", "ในห้องเผาไหม้ท่อน I และ II · ผสมดีขึ้น → สมรรถนะจำเพาะสูงขึ้น", "(НПО «Энергомаш»)"],
+      nn: ["หัวพ่นเชื้อเพลิงแบบใหม่", "(форсуночные головки)", "ท่อน I และ II · สมรรถนะจำเพาะสูงขึ้น", "(НПО «Энергомаш»)"],
+      nnS: [["หัวพ่นเชื้อเพลิงแบบใหม่", "(форсуночные головки)", "ท่อน I และ II", "สมรรถนะจำเพาะสูงขึ้น", "(НПО «Энергомаш»)"]] },
+    { n: "6", c: "ink2", at: "pad", want: 572,
+      w: ["ที่ตั้งปล่อย 17П32", "ถอดแท่นหมุน (поворотный круг) ที่ใช้เล็งจรวดตามมุมทิศ"],
+      nn: ["ที่ตั้งปล่อย 17П32", "ถอดแท่นหมุน", "(поворотный круг)"] }
+  ];
+  /* เสาบริการที่วาด (พิกัดภาพต้นฉบับ: ขวาของบล็อกข้างซึ่งกว้างสุด x 155 · ยอดระดับครอบหัวจรวด · แขนยื่นเข้าหาครอบหัวจรวด)
+     วาดเป็นโครงถักสองราง ไม่ใช่เส้นเดียว — ไม่ให้ดูเหมือนวงเล็บ «ทั้งระบบ» ที่อยู่ข้างกัน */
+  const COL = { x: [164, 161], top: 112, arm: 147 };
+  const GROUP = [
+    { n: "2", w: "ระบบควบคุมแบบดิจิทัล", nn: ["ระบบควบคุมแบบดิจิทัล"] },
+    { n: "3", w: "ระบบวัดโทรมาตรดิจิทัลความจุสูง", nn: ["ระบบวัดโทรมาตรดิจิทัล", "ความจุสูง"] },
+    { n: "4", w: "ระบบวัดวิถีจากภายนอก (ВТИ) บนฐานอุปกรณ์นำร่องดาวเทียม", nn: ["วัดวิถีจากภายนอก (ВТИ)", "บนฐานอุปกรณ์นำร่องดาวเทียม"],
+      nnS: [["วัดวิถีจากภายนอก (ВТИ)", "บนฐานอุปกรณ์นำร่อง", "ดาวเทียม"]] }
+  ];
+  const MASS2 = "278,8 ÷ 311,7 · ผู้เรียบเรียงคำนวณ", MASS2S = ["278,8 ÷ 311,7", "ผู้เรียบเรียงคำนวณ"];
+
+  /* ---------- เรขาคณิต ---------- */
+  const colW = W => Math.round(W * 0.38);                 /* คอลัมน์จรวดของจอกว้าง = พื้นที่ของแบบสามมิติ */
+  function geo(W, H) {
+    const n = W < 600;
+    if (!n) {
+      const cw = colW(W), dh = H - 36, dw = dh * CROP.w / CROP.h;
+      const box = rocketBox(Math.round(cw / 2 - dw / 2 - 14), 16, dh);
+      const px = cw + 12, pw = W - px - 10, lab = 124;
+      return { n, W, H, box, bx: box.ix + box.dw + 9, bx1: 13, px, pw, tx: px + 14, tr: px + pw - 10,
+        ax0: px + 14, ax1: px + pw - lab - 8, labX: px + pw - lab, top: 34, bot: H - 8, gap: 10 };
+    }
+    /* ช่องภาพแคบกว่า 290 px (จอ 320–340 px): ให้แผงขวากว้างขึ้น ภาพจรวดเล็กลง */
+    const px = W < 290 ? Math.max(80, Math.round(W * 0.32)) : Math.max(100, Math.round(W * 0.345));
+    const dh = Math.min(H - 80, (px - 30) * CROP.h / CROP.w), dw = dh * CROP.w / CROP.h;
+    const box = rocketBox(Math.max(2, Math.round((px - 26 - dw) / 2)), Math.round((H - dh) / 2 + 8), dh);
+    const pw = W - px - 4;
+    return { n, W, H, box, bx: box.ix + box.dw + 4, bx1: 7, px, pw, tx: px + 11, tr: px + pw - 8,
+      ax0: px + 11, ax1: px + pw - 11, labX: 0, top: 40, bot: H - 8, gap: 8 };
+  }
+  const PX = (g, xs) => g.box.ix + (xs - CROP.x) * g.box.dh / CROP.h;   /* พิกัด x ของภาพต้นฉบับ → canvas */
+
+  /* ---------- จอแคบ: เลือกรูปบรรทัดจากความกว้างจริงของข้อความ (วัดที่ 10 px = ขนาดเล็กสุดที่ T() ย่อถึง) ----------
+     แบบบรรทัดเดียวพอที่ → ใช้แบบเดิม (จอ ≥ 360 px ไม่เปลี่ยน) · ไม่พอ → แบบที่แบ่งบรรทัดมากขึ้น (คำเดิม) และกล่องสูงขึ้นตาม */
+  function fitN(ctx, C, g) {
+    const w10 = (s, wt, mono) => { ctx.font = wt + " 10px " + (mono ? C.mono : C.thai); return ctx.measureText(s).width; };
+    const pick = (forms, maxW, wt0, wt1) => forms.find(f => f.every((s, k) => w10(s, k ? wt1 : wt0) <= maxW)) || forms[forms.length - 1];
+    const av = g.tr - g.tx, pillW = s => 12 + w10(s, 600);
+    const rows = ROWS.filter(r => r.kind);
+    /* ป้ายช่วงที่ตารางให้ค่า: ปกติอยู่บรรทัด 2 ข้างชื่อเครื่อง · ถ้าแถวใดไม่พอ ย้ายป้ายทุกแถวขึ้นบรรทัด 1 ข้างชื่อท่อน (แบบแถวหัวบรรทุก)
+       แล้วถ้าชื่อเต็มไม่พอข้างป้าย ใช้ส่วนหน้า « · » (เช่น «ท่อน I») — ชื่อเต็มอยู่ในหัวขั้นและข้อความใต้ภาพ */
+    const pl1 = rows.some(r => w10(r.sub, 600, true) + 4 + pillW(r.tag) > av);
+    const nm = {};
+    rows.forEach(r => { nm[r.key] = !pl1 || w10(r.name, 700) + 6 + pillW(r.tag) <= av ? r.name : r.name.split(" · ")[0]; });
+    const hd = ROWS[0], s3 = ROWS[1];
+    const tw = g.pw - 36, gw = g.pw - 43;               /* ที่ของข้อความในป้ายข้อ (lx = x + 28) และในกล่องข้อ 2–4 (lx = x + 35) */
+    return {
+      pl1, nm,
+      hd: w10(hd.sub, 500) <= av ? [hd.sub] : hd.subN,
+      link: s3.linkN.every(s => w10(s, 600) <= av - 14) ? s3.linkN : s3.linkS,
+      mass2: w10(MASS2, 500) <= av - 3 ? [MASS2] : MASS2S,
+      tag: TAGS.map(t => t.grp ? null : pick([t.nn].concat(t.nnS || []), tw, 700, 500)),
+      grp: GROUP.map(it => pick([it.nn].concat(it.nnS || []), gw, 600, 500))
+    };
+  }
+
+  function rowH(g, key, full) {
+    if (key === "hd") return g.n ? 30 + 14 * g.F.hd.length : 48;
+    if (!full) return g.n ? 72 : 66;
+    if (g.n) return key === "s3" ? 166 + 14 * (g.F.link.length - 2) : key === "s2" ? 172 : 158;
+    return key === "s3" ? 136 : 144;
+  }
+  function rowsLayout(g, step) {
+    const hs = ROWS.map(r => rowH(g, r.key, r.key === SEL[step]));
+    const sum = hs.reduce((a, b) => a + b, 0);
+    /* ช่องไฟระหว่างแถวยืดได้เมื่อมีที่ (ภาพรวมไม่เหลือแถบว่างใหญ่ด้านบน) · จอแคบ ภาพรวม (ไม่มีแถวที่เลือก) ยืดได้ถึง 40 px
+       ให้แถวกระจายตามความสูงของภาพจรวด (เปลี่ยนขั้น 1 ↔ 2 ตำแหน่งแถวค่อย ๆ เลื่อน) */
+    const cap = g.n ? (SEL[step] ? 14 : 40) : 22;
+    const gap = Math.max(g.gap, Math.min(cap, (g.bot - g.top - sum) / (ROWS.length - 1)));
+    const tot = sum + gap * (ROWS.length - 1);
+    let y = g.top + Math.max(0, (g.bot - g.top - tot) / 2);
+    return hs.map(h => { const o = { y, h }; y += h + gap; return o; });
+  }
+
+  /* ---------- ชิ้นวาดเล็ก ---------- */
+  function seg(ctx, x0, x1, y, h, col, vac) {             /* แท่งทึบ (ที่พื้น) หรือเส้นประพื้นจาง (สุญญากาศ) */
+    const w = x1 - x0;
+    if (w <= 0.5) return;
+    if (h < 8) {
+      ctx.save(); ctx.strokeStyle = col; ctx.lineCap = "butt";
+      if (vac) { ctx.lineWidth = Math.max(1.6, h - 2); ctx.setLineDash([3, 2.5]); } else ctx.lineWidth = h;
+      ctx.beginPath(); ctx.moveTo(x0, y + h / 2); ctx.lineTo(x1, y + h / 2); ctx.stroke(); ctx.restore();
+      return;
+    }
+    rr(ctx, x0, y, w, h, Math.min(4, w / 2, h / 2));
+    if (vac) {
+      ctx.save(); ctx.globalAlpha *= 0.25; ctx.fillStyle = col; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.setLineDash([3.5, 3]); ctx.lineWidth = 1.4; ctx.strokeStyle = col; ctx.stroke(); ctx.restore();
+    } else { ctx.fillStyle = col; ctx.fill(); }
+  }
+  function pill(ctx, C, xr, cy, txt, col, kind, sz, pad) { /* ป้ายมนชิดขวาที่ xr · คืนความกว้าง */
+    pad = pad || 8;
+    ctx.font = "600 " + sz + "px " + C.thai;
+    const tw = ctx.measureText(txt).width, sw = kind === "gv" ? 20 : kind === "v" ? 16 : 0;
+    const h = sz + 8, w = pad + sw + (sw ? 5 : 0) + tw + pad, x = xr - w;
+    rr(ctx, x, cy - h / 2, w, h, h / 2); ctx.fillStyle = C.bg; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = col; ctx.stroke();
+    if (kind === "gv") { seg(ctx, x + 8, x + 17, cy - 3, 6, col, false); seg(ctx, x + 17, x + 28, cy - 3, 6, col, true); }
+    else if (kind === "v") seg(ctx, x + 8, x + 24, cy - 3, 6, col, true);
+    T(ctx, C, txt, x + pad + sw + (sw ? 5 : 0), cy, C.ink2, { size: sz, wt: 600 });
+    return w;
+  }
+  function bracket(ctx, x, y0, y1, col, lw) {
+    ctx.beginPath(); ctx.moveTo(x - 5, y0); ctx.lineTo(x, y0); ctx.lineTo(x, y1); ctx.lineTo(x - 5, y1);
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke();
+  }
+  function leader(ctx, C, x0, y0, x1, y1, col, lw, dash, dotAt1) {
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    const mx = (x0 + x1) / 2;
+    ctx.bezierCurveTo(mx, y0, mx, y1, x1, y1);
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+    const dx = dotAt1 ? x1 : x0, dy = dotAt1 ? y1 : y0;
+    ctx.beginPath(); ctx.arc(dx, dy, dotAt1 ? 3.4 : 2.8, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    if (dotAt1) { ctx.lineWidth = 1.5; ctx.strokeStyle = C.bg; ctx.stroke(); }
+    ctx.restore();
+  }
+  function card(ctx, C, x, y, w, h, stripe) {
+    rr(ctx, x, y, w, h, 10); ctx.fillStyle = C.sunk; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = C.line; ctx.stroke();
+    if (stripe) { ctx.fillStyle = stripe; rr(ctx, x, y, 5, h, 2.5); ctx.fill(); }
+  }
+  function ticks(ctx, C, X, y0, y1, yl, segs) {           /* segs = ช่วงของเส้นกริด [[y0, y1], …] (ไม่ให้ = ช่วงเดียว y0–y1) */
+    ctx.save(); ctx.strokeStyle = C.line2; ctx.globalAlpha *= 0.55; ctx.lineWidth = 1;
+    TICKS.forEach(t => {
+      const x = Math.round(X(t)) + 0.5;
+      (segs || [[y0, y1]]).forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(x, a); ctx.lineTo(x, b); ctx.stroke(); });
+    });
+    ctx.restore();
+    TICKS.forEach(t => T(ctx, C, String(t), X(t), yl, C.ink3, { size: 10, wt: 500, mono: true, align: "center" }));
+  }
+  function chips(ctx, C, x0, y, h, items, cw, gapW, sz) {
+    let x = x0;
+    items.forEach((it, i) => {
+      const col = C[it.c];
+      if (i) { T(ctx, C, "+", x + gapW / 2, y + h / 2, C.ink2, { size: 12, wt: 700, align: "center" }); x += gapW; }
+      rr(ctx, x, y, cw, h, 6);
+      ctx.save(); ctx.globalAlpha *= 0.16; ctx.fillStyle = col; ctx.fill(); ctx.restore();
+      ctx.lineWidth = 1.2; ctx.strokeStyle = col; ctx.stroke();
+      T(ctx, C, it.t, x + cw / 2, y + h / 2, C.ink, { size: sz, wt: 700, mono: true, align: "center", maxW: cw - 6 });
+      x += cw;
+    });
+    return x;
+  }
+
+  /* ---------- หัวของแผงขวา (สามแบบตามฉาก) ---------- */
+  function header(ctx, C, g, scene) {
+    const n = g.n, x = g.px, xr = g.px + g.pw, y = n ? 12 : 16, sz = n ? 10.5 : 11.5;
+    if (scene === "rows") {
+      const tw = T(ctx, C, "сл. 45 · แรงขับต่อเครื่อง, тс", x, y, C.ink3, { size: sz, wt: 600, maxW: g.pw });
+      /* คำอธิบายแท่ง: ทึบ = ที่พื้น / ประ = สุญญากาศ */
+      ctx.font = "600 " + sz + "px " + C.thai;
+      const a = ctx.measureText("ที่พื้น").width, b = ctx.measureText(" / ").width, c = ctx.measureText("สุญญากาศ").width;
+      const full = 16 + 5 + a + b + 16 + 5 + c;
+      let lx = n ? x : xr - full;
+      const ly = n ? 27 : y;
+      if (!n && lx < x + tw + 12) { lx = x; }          /* ไม่พอที่ — ไม่ควรเกิดที่ ≥ 600 px */
+      seg(ctx, lx, lx + 16, ly - 3.5, 7, C.ink2, false); lx += 21;
+      T(ctx, C, "ที่พื้น", lx, ly, C.ink2, { size: sz, wt: 600 }); lx += a;
+      T(ctx, C, " / ", lx, ly, C.ink3, { size: sz, wt: 600 }); lx += b;
+      seg(ctx, lx, lx + 16, ly - 3.5, 7, C.ink2, true); lx += 21;
+      T(ctx, C, "สุญญากาศ", lx, ly, C.ink2, { size: sz, wt: 600 });
+      return;
+    }
+    /* จอกว้างที่เปิดแบบสามมิติ (g.hide): ไม่มีเส้นโยง — บอกว่าเส้นโยงอยู่ในภาพสองมิติ (ป้ายลอยโดยตั้งใจ) */
+    const L = scene === "mass" ? ["сл. 45 · มวล, т", "ตัวเลขที่คำนวณ: ผู้เรียบเรียง"]
+      : ["сл. 44 · หกทิศทางการปรับปรุง", g.hide ? "เส้นโยงอยู่ในภาพสองมิติ · ผู้เรียบเรียง" : "การโยงกับตัวจรวด: ผู้เรียบเรียง"];
+    if (n) {
+      T(ctx, C, L[0], x, y, C.ink3, { size: sz, wt: 600, maxW: g.pw });
+      T(ctx, C, L[1], x, 27, C.ink3, { size: 10, wt: 500, maxW: g.pw });
+    } else {
+      const tw = T(ctx, C, L[0], x, y, C.ink3, { size: sz, wt: 600, maxW: g.pw * 0.5 });
+      T(ctx, C, L[1], xr, y, C.ink3, { size: 10.5, wt: 500, align: "right", maxW: g.pw - tw - 16 });
+    }
+  }
+
+  /* ---------- ฉากที่ 1–4: แถวของตารางสไลด์ 45 ---------- */
+  function drawRow(ctx, C, g, r, y, h, full, on) {
+    const n = g.n, col = C[REG[r.key].c], x = g.px, w = g.pw, tx = g.tx, tr = g.tr;
+    const aBox = 0.35 + 0.65 * on, aTxt = 0.65 + 0.35 * on, aBar = 0.5 + 0.5 * on;
+    const X = v => g.ax0 + (g.ax1 - g.ax0) * v / AXMAX;
+    const outA = c01(1 - full / 0.5), inA = c01((full - 0.5) / 0.5);   /* ข้อความสองแบบสลับกัน ไม่ซ้อน */
+    alpha(ctx, aBox, () => card(ctx, C, x, y, w, h, col));
+    alpha(ctx, full, () => {
+      rr(ctx, x, y, w, h, 10); ctx.fillStyle = C.wash; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke();
+      ctx.fillStyle = col; rr(ctx, x, y, 5, h, 2.5); ctx.fill();
+    });
+    ctx.save(); rr(ctx, x, y, w, h, 10); ctx.clip();
+    /* บรรทัด 1–2 + ป้ายช่วงที่ตารางให้ค่า */
+    alpha(ctx, aTxt, () => {
+      const subOf = (s, yy, maxW) => {
+        if (r.key === "hd") T(ctx, C, s, tx, yy, C.ink2, { size: n ? 11 : 12, wt: 500, maxW });
+        else T(ctx, C, s, tx, yy, col, { size: n ? 11 : 12, wt: 600, mono: true, maxW });
+      };
+      const sub2 = (yy, maxW) => {          /* จอแคบใช้ชื่อสั้นเสมอ (ชื่อคอลัมน์อยู่ในป้ายของแท่งแล้ว) */
+        if (r.subF && !n) { alpha(ctx, outA, () => subOf(r.sub, yy, maxW)); alpha(ctx, inA, () => subOf(r.subF, yy, maxW)); }
+        else subOf(r.sub, yy, maxW);
+      };
+      if (n) {                              /* จอแคบ: ป้ายไม่มีลายเส้น (ลายอยู่ในแท่งบางของแถวแล้ว) */
+        if (r.key === "hd") {
+          const pw = pill(ctx, C, tr, y + 14, r.tag, col, "", 10, 6);
+          T(ctx, C, r.name, tx, y + 14, C.ink, { size: 12, wt: 700, maxW: tr - tx - pw - 6 });
+          g.F.hd.forEach((s, k) => subOf(s, y + 31 + k * 14, tr - tx));
+        } else if (g.F.pl1) {               /* จอแคบมาก: ป้ายขึ้นบรรทัด 1 · บรรทัด 2 ให้ชื่อเครื่องเต็มความกว้าง */
+          const pw = pill(ctx, C, tr, y + 14, r.tag, col, "", 10, 6);
+          T(ctx, C, g.F.nm[r.key], tx, y + 14, C.ink, { size: 12, wt: 700, maxW: tr - tx - pw - 6 });
+          sub2(y + 31, tr - tx);
+        } else {
+          T(ctx, C, r.name, tx, y + 14, C.ink, { size: 12, wt: 700, maxW: tr - tx });
+          const pw = pill(ctx, C, tr, y + 31, r.tag, col, "", 10, 6);
+          sub2(y + 31, tr - tx - pw - 5);
+        }
+      } else {
+        const pw = pill(ctx, C, tr, y + 17, r.tag, col, r.kind, 11);
+        T(ctx, C, r.name, tx, y + 17, C.ink, { size: 13.5, wt: 700, maxW: tr - tx - pw - 10 });
+        sub2(y + 36, r.subF && full > 0.5 ? tr - tx : g.ax1 - tx);
+      }
+    });
+    if (!r.bars) { ctx.restore(); return; }
+    /* แท่งบาง (แถวที่ไม่ได้เลือก) — แกนเดียวกับแท่งหนา */
+    const thin = 1 - full;
+    alpha(ctx, aBar * thin, () => {
+      if (r.key === "s3") r.bars.forEach((b, k) => seg(ctx, X(0), X(b.v), y + (n ? 56 : 49) + k * 6, 4, col, true));
+      else {
+        const b = r.bars[0], yy = y + (n ? 58.5 : 50.5);
+        seg(ctx, X(0), X(b.g), yy, 5, col, false); seg(ctx, X(b.g), X(b.v), yy, 5, col, true);
+      }
+    });
+    alpha(ctx, aTxt * outA, () => {
+      if (n) T(ctx, C, r.val, tx, y + 47, C.ink2, { size: 12, wt: 600, mono: true, maxW: tr - tx });
+      else T(ctx, C, r.val, g.labX, y + 53, C.ink2, { size: 12.5, wt: 600, mono: true, maxW: tr - g.labX });
+    });
+    /* แถวที่เลือก: แท่งหนาค่อย ๆ ยาวขึ้น (ที่พื้นก่อน แล้วส่วนต่อสุญญากาศ) */
+    if (full > 0.004) {
+      const gG = c01(full / 0.55), gV = c01((full - 0.45) / 0.55), late = c01((full - 0.35) / 0.65);
+      if (r.key === "s3") {
+        /* จอแคบ: ป้ายอยู่เหนือแท่ง — เส้นกริดเว้นช่วงป้าย */
+        alpha(ctx, late, () => ticks(ctx, C, X, 0, 0, y + (n ? 112 : 92), n ? [[y + 56, y + 72], [y + 87, y + 103]] : [[y + 42, y + 84]]));
+        alpha(ctx, full, () => r.bars.forEach((b, k) => {
+          const by = n ? y + 58 + k * 31 : y + 46 + k * 18, bh = n ? 12 : 14;
+          seg(ctx, X(0), X(0) + (X(b.v) - X(0)) * c01(full / 0.7), by, bh, col, true);
+        }));
+        alpha(ctx, inA, () => r.bars.forEach((b, k) => {
+          const by = n ? y + 58 + k * 31 : y + 46 + k * 18, bh = n ? 12 : 14;
+          if (n) T(ctx, C, b.labN, tx, by - 8, C.new, { size: 11.5, wt: 700, mono: true, maxW: tr - tx });
+          else T(ctx, C, b.lab, g.labX, by + bh / 2, C.new, { size: 13.5, wt: 700, mono: true, maxW: tr - g.labX });
+        }));
+        alpha(ctx, late, () => {                         /* ป้ายโยงไปข้อ 5 ของสไลด์ 44 */
+          const py = n ? y + 122 : y + 103, ph = n ? 8 + 14 * g.F.link.length : 22;
+          ctx.font = "600 " + (n ? 10 : 11) + "px " + C.thai;
+          const ww = n ? tr - tx : Math.min(tr - tx, ctx.measureText(r.linkW).width + 24);
+          rr(ctx, tx, py, ww, ph, 8); ctx.fillStyle = C.bg; ctx.fill();
+          ctx.setLineDash([3, 2.5]); ctx.lineWidth = 1.1; ctx.strokeStyle = C.deep; ctx.stroke(); ctx.setLineDash([]);
+          if (n) g.F.link.forEach((s, k) => T(ctx, C, s, tx + 8, py + 11 + k * 14, C.ink2, { size: 10, wt: 600, maxW: ww - 14 }));
+          else T(ctx, C, r.linkW, tx + 10, py + ph / 2, C.ink2, { size: 11, wt: 600, maxW: ww - 18 });
+        });
+      } else {
+        const b = r.bars[0], by = n ? y + 58 : y + 46, bh = n ? 16 : 20;
+        alpha(ctx, late, () => ticks(ctx, C, X, y + (n ? 55 : 42), y + (n ? 78 : 72), y + (n ? 87 : 80)));
+        alpha(ctx, full, () => {
+          seg(ctx, X(0), X(0) + (X(b.g) - X(0)) * gG, by, bh, col, false);
+          if (gV > 0) seg(ctx, X(b.g), X(b.g) + (X(b.v) - X(b.g)) * gV, by, bh, col, true);
+        });
+        alpha(ctx, inA, () => {
+          if (n) T(ctx, C, r.val + " тс", tx, y + 49, C.new, { size: 14, wt: 700, mono: true, maxW: tr - tx });
+          else T(ctx, C, r.val, g.labX, by + bh / 2, C.new, { size: 15, wt: 700, mono: true, maxW: tr - g.labX });
+        });
+        alpha(ctx, late, () => {
+          /* จอแคบ: ชิ้นทั้งแถวต้องอยู่ในแผง — ไม่พอ ลดช่อง «+» เป็น 10 px แล้วแคบชิ้นลง (จอ ≥ 375 px เหมือนเดิม) */
+          const cy = n ? y + 97 : y + 92, ch = n ? 20 : 22, k = r.chips.length, cw0 = r.cw[n ? 1 : 0];
+          const gapW = !n ? 16 : cw0 * k + 12 * (k - 1) > tr - tx ? 10 : 12;
+          const cw = n ? Math.min(cw0, Math.floor((tr - tx - gapW * (k - 1)) / k)) : cw0;
+          chips(ctx, C, tx, cy, ch, r.chips, cw, gapW, n ? 10.5 : 11.5);
+          if (n) {
+            T(ctx, C, r.sumN, tx, y + 131, C.new, { size: 12, wt: 700, maxW: tr - tx });
+            r.noteN.forEach((s, k) => T(ctx, C, s, tx, y + 146 + k * 14, C.ink3, { size: 10, wt: 500, maxW: tr - tx }));
+          } else {
+            T(ctx, C, r.sum, g.labX, cy + ch / 2, C.new, { size: 13.5, wt: 700, mono: true, maxW: tr - g.labX });
+            r.noteW.forEach((s, k) => T(ctx, C, s, tx, y + 132 + k * 14, C.ink3, { size: 10.5, wt: 500, maxW: tr - tx }));
+          }
+        });
+      }
+    }
+    ctx.restore();
+  }
+  function drawRows(ctx, C, g, step, anim, A) {
+    const e = anim.e, fromR = SCN[anim.from] === "rows", toR = SCN[step] === "rows";
+    const sF = fromR ? anim.from : step, sT = toR ? step : anim.from;     /* ฉากอื่น ↔ แถว: ตำแหน่งแถวไม่ขยับ จางอย่างเดียว */
+    const L0 = rowsLayout(g, sF), L1 = rowsLayout(g, sT), box = g.box;
+    const selF = SEL[sF], selT = SEL[sT];
+    alpha(ctx, A, () => header(ctx, C, g, "rows"));
+    const st = ROWS.map((r, i) => ({
+      r, y: mix(L0[i].y, L1[i].y, e), h: mix(L0[i].h, L1[i].h, e),
+      full: mix(selF === r.key ? 1 : 0, selT === r.key ? 1 : 0, e),
+      on: mix(!selF || selF === r.key ? 1 : 0, !selT || selT === r.key ? 1 : 0, e)
+    }));
+    /* วงเล็บบนตัวจรวด + เส้นโยงไปแถว (วาดก่อนแถว) */
+    if (!g.hide) st.forEach(s => {
+      const R = REG[s.r.key], col = C[R.c], bx = g.bx + (s.r.key === "s1" ? g.bx1 : 0);
+      const y0 = box.Y(R.y0) + 2, y1 = box.Y(R.y1) - 2;
+      const ly = s.r.key === "s1" ? box.Y(500) : s.r.key === "s2" ? box.Y(322) : (y0 + y1) / 2;
+      const ty = s.y + Math.min(s.h / 2, g.n ? 22 : 26);
+      alpha(ctx, A * (0.35 + 0.65 * s.on), () => {
+        bracket(ctx, bx, y0, y1, col, mix(1.8, 2.6, s.full));
+        leader(ctx, C, bx, ly, g.px - 2, ty, col, mix(1, 1.8, s.full), s.full > 0.5 ? [] : [2, 3], false);
+      });
+    });
+    st.forEach(s => alpha(ctx, A, () => drawRow(ctx, C, g, s.r, s.y, s.h, s.full, s.on)));
+  }
+
+  /* ---------- ฉากที่ 5: ส่วนหัวและมวลทั้งลำ ---------- */
+  function drawMass(ctx, C, g, A) {
+    const n = g.n, x = g.px, w = g.pw, tx = g.tx, tr = g.tr, box = g.box;
+    alpha(ctx, A, () => {
+      header(ctx, C, g, "mass");
+      const bA = n ? { y: 40, h: 96 } : { y: 40, h: 72 }, bB = n ? { y: 146, h: 82 } : { y: 124, h: 72 };
+      /* วงเล็บ: ส่วนหัว · จรวดไม่รวมส่วนหัว */
+      const hy0 = box.Y(24) + 2, hy1 = box.Y(186) - 2, by0 = box.Y(186) + 2, by1 = box.Y(552) - 2;
+      if (!g.hide) {
+        bracket(ctx, g.bx, hy0, hy1, C.deep, 2.4);
+        bracket(ctx, g.bx, by0, by1, C.ink2, 2.2);
+        leader(ctx, C, g.bx, (hy0 + hy1) / 2, x - 2, bA.y + 18, C.deep, 1.6, [], false);
+        leader(ctx, C, g.bx, (by0 + by1) / 2, x - 2, bB.y + 18, C.ink2, 1.6, [], false);
+      }
+      /* กล่อง A: ส่วนหัว = ผลต่าง */
+      card(ctx, C, x, bA.y, w, bA.h, C.deep);
+      if (n) {
+        T(ctx, C, "หัวบรรทุก (ГЧ)", tx, bA.y + 15, C.ink, { size: 12, wt: 700, maxW: tr - tx });
+        T(ctx, C, "311,7 − 303,2 = 8,5 т", tx, bA.y + 34, C.new, { size: 12, wt: 700, mono: true, maxW: tr - tx });
+        ["ผู้เรียบเรียงคำนวณ", "ตารางไม่ได้บอกว่า", "บรรทุกอะไร"].forEach((s, k) =>
+          T(ctx, C, s, tx, bA.y + 52 + k * 14.5, C.ink3, { size: 10, wt: 500, maxW: tr - tx }));
+      } else {
+        T(ctx, C, "หัวบรรทุก (ГЧ)", tx, bA.y + 18, C.ink, { size: 13.5, wt: 700, maxW: tr - tx });
+        T(ctx, C, "311,7 − 303,2 = 8,5 т", tx, bA.y + 39, C.new, { size: 13.5, wt: 700, mono: true, maxW: tr - tx });
+        T(ctx, C, "ผู้เรียบเรียงคำนวณ · ตารางไม่ได้บอกว่าบรรทุกอะไร", tx, bA.y + 58, C.ink3, { size: 10.5, wt: 500, maxW: tr - tx });
+      }
+      /* กล่อง B: จรวดไม่รวมส่วนหัว = โครงสร้าง + เชื้อเพลิง */
+      card(ctx, C, x, bB.y, w, bB.h, C.ink2);
+      if (n) {
+        T(ctx, C, "จรวดไม่รวมหัวบรรทุก", tx, bB.y + 15, C.ink, { size: 12, wt: 700, maxW: tr - tx });
+        T(ctx, C, "24,4 + 278,8 = 303,2 т", tx, bB.y + 34, C.new, { size: 11.5, wt: 700, mono: true, maxW: tr - tx });
+        ["โครงสร้าง + เชื้อเพลิง (сл. 45)", "ผู้เรียบเรียงบวกแล้วตรงพอดี"].forEach((s, k) =>
+          T(ctx, C, s, tx, bB.y + 52 + k * 14.5, C.ink3, { size: 10, wt: 500, maxW: tr - tx }));
+      } else {
+        T(ctx, C, "จรวดไม่รวมหัวบรรทุก", tx, bB.y + 18, C.ink, { size: 13.5, wt: 700, maxW: tr - tx });
+        T(ctx, C, "24,4 + 278,8 = 303,2 т", tx, bB.y + 39, C.new, { size: 13.5, wt: 700, mono: true, maxW: tr - tx });
+        T(ctx, C, "โครงสร้าง + เชื้อเพลิง (сл. 45) · ผู้เรียบเรียงบวกแล้วตรงพอดี", tx, bB.y + 58, C.ink3, { size: 10.5, wt: 500, maxW: tr - tx });
+      }
+      /* แท่งมวลซ้อน 311,7 = 8,5 + 24,4 + 278,8 */
+      const bh = n ? 136 + 14 * g.F.mass2.length : 150, top = bB.y + bB.h, my = top + Math.max(12, (g.bot - top - bh) / 2);
+      const m0 = tx, m1 = tr - (n ? 3 : 4), M = v => m0 + (m1 - m0) * v / 311.7;
+      const xg = M(8.5), xs = M(8.5 + 24.4);
+      T(ctx, C, "มวลปล่อย 311,7 т (сл. 45)", m0, my + 10, C.ink, { size: n ? 11.5 : 12.5, wt: 700, maxW: m1 - m0 });
+      const midB = (xg + m1) / 2;
+      T(ctx, C, "303,2 т ไม่รวมหัวบรรทุก", midB, my + (n ? 30 : 32), C.ink2, { size: n ? 10.5 : 11, wt: 600, align: "center", maxW: m1 - xg });
+      ctx.save(); ctx.strokeStyle = C.ink2; ctx.lineWidth = 1.4; ctx.lineJoin = "round";
+      const kb = my + (n ? 39 : 42);
+      ctx.beginPath(); ctx.moveTo(xg + 1, kb + 6); ctx.lineTo(xg + 1, kb); ctx.lineTo(m1 - 1, kb); ctx.lineTo(m1 - 1, kb + 6); ctx.stroke();
+      ctx.restore();
+      const y0 = my + (n ? 48 : 52), hb = n ? 26 : 30;
+      ctx.save(); rr(ctx, m0, y0, m1 - m0, hb, 5); ctx.clip();
+      ctx.fillStyle = C.deep; ctx.fillRect(m0, y0, xg - m0, hb);
+      ctx.fillStyle = C.ink2; ctx.fillRect(xg, y0, xs - xg, hb);
+      ctx.fillStyle = C.line2; ctx.fillRect(xs, y0, m1 - xs, hb);
+      ctx.strokeStyle = C.bg; ctx.lineWidth = 1.5;
+      [xg, xs].forEach(xx => { ctx.beginPath(); ctx.moveTo(xx, y0); ctx.lineTo(xx, y0 + hb); ctx.stroke(); });
+      ctx.restore();
+      T(ctx, C, "เชื้อเพลิง 278,8 т", (xs + m1) / 2, y0 + hb / 2, C.ink, { size: n ? 11 : 12, wt: 700, align: "center", maxW: m1 - xs - 10 });
+      /* ป้ายส่วนเล็กสองส่วน: ขีดลงแล้วเขียนทางขวา (โครงสร้างบน · ส่วนหัวล่าง ไม่ทับกัน) */
+      const ys = y0 + hb + (n ? 14 : 14), yg = y0 + hb + (n ? 30 : 32), cxs = (xg + xs) / 2, cxg = (m0 + xg) / 2;
+      ctx.save(); ctx.lineWidth = 1.2;
+      ctx.strokeStyle = C.ink2; ctx.beginPath(); ctx.moveTo(cxs, y0 + hb); ctx.lineTo(cxs, ys); ctx.lineTo(cxs + 4, ys); ctx.stroke();
+      ctx.strokeStyle = C.deep; ctx.beginPath(); ctx.moveTo(cxg, y0 + hb); ctx.lineTo(cxg, yg); ctx.lineTo(cxg + 4, yg); ctx.stroke();
+      ctx.restore();
+      T(ctx, C, "โครงสร้าง 24,4 т", cxs + 7, ys, C.ink2, { size: n ? 10.5 : 11, wt: 600, maxW: m1 - cxs - 8 });
+      T(ctx, C, "หัวบรรทุก (ГЧ) 8,5 т", cxg + 7, yg, C.deep, { size: n ? 10.5 : 11, wt: 700, maxW: m1 - cxg - 8 });
+      if (n) {
+        T(ctx, C, "เชื้อเพลิงราว 89 % ของมวลปล่อย", m0, my + 126, C.ink2, { size: 11, wt: 600, maxW: m1 - m0 });
+        g.F.mass2.forEach((s, k) => T(ctx, C, s, m0, my + 141 + k * 14, C.ink3, { size: 10, wt: 500, maxW: m1 - m0 }));
+      } else {
+        T(ctx, C, "เชื้อเพลิงราว 89 % ของมวลปล่อย (278,8 ÷ 311,7) · ผู้เรียบเรียงคำนวณ", m0, my + 136, C.ink2, { size: 11, wt: 600, maxW: m1 - m0 });
+      }
+    });
+  }
+
+  /* ---------- ฉากที่ 6: สไลด์ 44 บนตัวจรวด ---------- */
+  function tagH(g, t) {
+    /* กล่องข้อ 2–4 จอแคบ: 124 px ที่ 5 บรรทัด (แบบเดิม) + 13,5 px ต่อบรรทัดที่เพิ่ม */
+    if (t.grp) return g.n ? 124 + 13.5 * (g.F.grp.reduce((a, f) => a + f.length, 0) - 5) : 88;
+    const L = (g.n ? g.F.tag[TAGS.indexOf(t)] : t.w).length;
+    return g.n ? 12 + 14 * L : 14 + 16 * L;
+  }
+  function drawTags(ctx, C, g, A) {
+    const n = g.n, x = g.px, w = g.pw, box = g.box;
+    const padY = box.iy + box.dh + 1;
+    const Yc = ys => ys > 562 ? padY + 2 : box.Y(ys);
+    /* วางป้ายใกล้ส่วนที่ชี้ แล้วดันไม่ให้ซ้อนกัน (ลงก่อน แล้วขึ้นถ้าเกินขอบล่าง) */
+    const hs = TAGS.map(t => tagH(g, t)), ys = TAGS.map((t, i) => Yc(t.want) - hs[i] / 2);
+    for (let i = 0; i < ys.length; i++) ys[i] = Math.max(i ? ys[i - 1] + hs[i - 1] + g.gap : g.top, ys[i]);
+    for (let i = ys.length - 1; i >= 0; i--) ys[i] = Math.min(i < ys.length - 1 ? ys[i + 1] - g.gap - hs[i] : g.bot - hs[i], ys[i]);
+    alpha(ctx, A, () => {
+      header(ctx, C, g, "tags");
+      /* ที่ตั้งปล่อย (ผู้เรียบเรียงวาด): แผ่นแท่นใต้จรวด ยื่นเลยวงเล็บไปทางขวา + เสาบริการข้างจรวดสูงถึงระดับครอบหัวจรวด
+         วงเล็บ «ทั้งระบบ» คลุมเฉพาะตัวจรวด (หยุดที่ฐานจรวด ไม่ลงถึงแท่น) */
+      const wy0 = box.Y(24) + 2, wy1 = box.Y(552) - 2, wmid = box.Y(300);
+      const padR = g.bx + 14, cx = PX(g, COL.x[n ? 1 : 0]), cTop = box.Y(COL.top);
+      if (!g.hide) {
+        const p0 = Math.max(2, box.ix - 10), rw = n ? 2 : 2.5, pitch = n ? 7 : 8;
+        ctx.save(); ctx.strokeStyle = C.ink3; ctx.lineCap = "butt"; ctx.lineJoin = "miter";
+        ctx.lineWidth = 1.3; ctx.beginPath();
+        ctx.moveTo(cx - rw, padY); ctx.lineTo(cx - rw, cTop); ctx.moveTo(cx + rw, padY); ctx.lineTo(cx + rw, cTop);
+        for (let yy = padY; yy - pitch >= cTop; yy -= pitch) {   /* ตัวยึดทแยงซิกแซก */
+          ctx.moveTo(cx - rw, yy); ctx.lineTo(cx + rw, yy - pitch / 2); ctx.lineTo(cx - rw, yy - pitch);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(cx + rw, cTop); ctx.lineTo(PX(g, COL.arm), cTop); ctx.stroke();
+        ctx.restore();
+        rr(ctx, p0, padY, padR - p0, 5, 2); ctx.fillStyle = C.ink3; ctx.fill();
+        bracket(ctx, g.bx, wy0, wy1, C.ink2, 2);
+      }
+      TAGS.forEach((t, i) => {
+        const y = ys[i], col = C[t.c];
+        const fy = y + (n ? 13 : 15);
+        if (g.hide) { /* แบบสามมิติทับคอลัมน์จรวด — ไม่มีเส้นโยง (หัวแผงบอกไว้) */ }
+        else if (t.grp) leader(ctx, C, g.bx, wmid, x - 2, fy, C.ink2, 1.5, [], false);
+        else {
+          const pts = t.at === "pad" ? [[padR - 2, padY + 2.5, t.c]]
+            : t.at === "col" ? [[cx, cTop, t.c]]
+            : t.at.map(([px, py, c]) => [PX(g, px), box.Y(py), c]);
+          /* หลายเส้นจากป้ายเดียว: แยกจุดเริ่มห่าง 8 px — เส้นที่ไปจุดต่ำกว่าเริ่มต่ำกว่า (ไม่ไขว้ ไม่ทับกัน) */
+          const ord = pts.map((p, k) => k).sort((a, b) => pts[a][1] - pts[b][1]);
+          pts.forEach(([ax, ay, c], k) => {
+            const dy = pts.length > 1 ? (ord.indexOf(k) - (pts.length - 1) / 2) * 8 : 0;
+            leader(ctx, C, x - 2, fy + dy, ax, ay, C[c], 1.4, [], true);
+          });
+        }
+        card(ctx, C, x, y, w, hs[i], null);
+        if (t.grp) return drawGroup(ctx, C, g, y, hs[i]);
+        const bxc = x + (n ? 14 : 16), r = n ? 9 : 10;
+        ctx.beginPath(); ctx.arc(bxc, fy, r, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        T(ctx, C, t.n, bxc, fy + 0.5, C.bg, { size: n ? 10.5 : 11.5, wt: 700, align: "center" });
+        const lx = x + (n ? 28 : 32), lines = n ? g.F.tag[i] : t.w;
+        lines.forEach((s, k) => T(ctx, C, s, lx, fy + k * (n ? 14 : 16), k ? C.ink2 : C.ink,
+          { size: k ? (n ? 10.5 : 11) : (n ? 11.5 : 12.5), wt: k ? 500 : 700, maxW: x + w - lx - 8 }));
+      });
+    });
+  }
+  function drawGroup(ctx, C, g, y, h) {
+    const n = g.n, x = g.px, w = g.pw;
+    const tw = T(ctx, C, "ทั้งระบบ · ข้อ 2–4", x + (n ? 11 : 14), y + (n ? 13 : 15), C.ink, { size: n ? 11.5 : 12.5, wt: 700 });
+    if (n) T(ctx, C, "สไลด์ไม่ได้ระบุตำแหน่งบนตัวจรวด", x + 11, y + 27, C.ink3, { size: 10, wt: 500, maxW: w - 19 });
+    else T(ctx, C, "สไลด์ไม่ได้ระบุตำแหน่งบนตัวจรวด", x + 14 + tw + 10, y + 15, C.ink3, { size: 10.5, wt: 500, maxW: w - tw - 36 });
+    const bxk = x + (n ? 13 : 17), bc = x + (n ? 25 : 30), lx = x + (n ? 35 : 42), lh = n ? 13.5 : 18;
+    let yy = y + (n ? 43 : 34);
+    const y0 = yy - 7;
+    GROUP.forEach((it, j) => {
+      ctx.beginPath(); ctx.arc(bc, yy, n ? 7 : 8, 0, Math.PI * 2); ctx.fillStyle = C.ink2; ctx.fill();
+      T(ctx, C, it.n, bc, yy + 0.5, C.bg, { size: 10, wt: 700, align: "center" });
+      const lines = n ? g.F.grp[j] : [it.w];
+      lines.forEach((s, k) => T(ctx, C, s, lx, yy + k * lh, C.ink, { size: n ? 10.5 : 11.5, wt: k ? 500 : 600, maxW: x + w - lx - 8 }));
+      yy += lines.length * lh + (n ? 4 : 0);
+    });
+    ctx.save(); ctx.strokeStyle = C.ink2; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const y1 = yy - lh - (n ? 4 : 0) + 7;
+    ctx.beginPath(); ctx.moveTo(bxk + 5, y0); ctx.lineTo(bxk, y0); ctx.lineTo(bxk, y1); ctx.lineTo(bxk + 5, y1); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- ขั้น (ข้อความใต้ภาพ) ---------- */
+  const STEPS = [
+    { title: "ภาพรวม — แถวของตารางสไลด์ 45 อยู่ตรงไหนบนตัวจรวด",
+      text: "แถวในภาพเรียงจากบนลงล่างตามตัวจรวด: หัวบรรทุก · ท่อน III · ท่อน II · ท่อน I · แถวของท่อนเป็นแถวแรงขับของตาราง แท่งบางในแต่ละแถวใช้แกน 0–110 тс เดียวกันทุกขั้น " +
+        "ป้ายเล็กบอกว่าตารางให้ค่าที่ใด: ท่อน I และ II มีทั้ง «ที่พื้น» และ «ในสุญญากาศ» ส่วนท่อน III มีแต่ «ในสุญญากาศ» เพราะท่อน I กับ II จุดพร้อมกันบนแท่นปล่อย " +
+        "ส่วนท่อน III เริ่มทำงานเมื่อจรวดขึ้นสูงพ้นบรรยากาศแล้ว (เหตุผลนี้: ผู้เรียบเรียงอธิบาย) · แถวหัวบรรทุกไม่มีค่าแรงขับในตาราง",
+      nums: [{ k: "มวลปล่อย", v: "311,7 т", note: "сл. 45" },
+             { k: "มวลจรวดไม่รวมหัวบรรทุก (" + RU("ГЧ") + ")", v: "303,2 т", note: "сл. 45" }],
+      alt: "ภาพจรวดทางซ้าย วงเล็บสี่สีโยงไปสี่แถวทางขวา: หัวบรรทุก ท่อน III ท่อน II ท่อน I แต่ละแถวมีแท่งแรงขับบางบนแกนเดียวกัน และป้ายบอกว่าตารางมีค่าที่พื้นกับในสุญญากาศ หรือในสุญญากาศอย่างเดียว หรือไม่มีในตาราง" },
+    { title: "ท่อน I — บล็อกข้างสี่บล็อก",
+      text: "บล็อกข้างสี่บล็อก (" + RU("Б, В, Г, Д") + " · อักษรบล็อก: ผู้เรียบเรียงเติม) บล็อกละหนึ่งเครื่อง " + RU("РД-107А") +
+        " แท่งทึบคือแรงขับที่พื้นต่อเครื่อง 85,5 тс ส่วนต่อเส้นประถึง 104,1 тс คือค่าในสุญญากาศ ทั้งท่อนที่พื้นได้ 4 × 85,5 = 342 тс (ผู้เรียบเรียงคำนวณ) · " +
+        "เครื่องหนึ่งมีห้องเผาไหม้หลักสี่ห้องกับห้องเผาไหม้ปรับทิศ (" + RU("рулевые камеры") + ") สองห้อง (จำนวนห้อง: ผู้เรียบเรียงเติม ไม่อยู่ในสไลด์ 44–45)",
+      nums: [{ k: "แรงขับต่อเครื่อง ที่พื้น / สุญญากาศ", v: "85,5 / 104,1 тс", big: true, note: "сл. 45" },
+             { k: "ทั้งท่อนที่พื้น", v: "4 × 85,5 = 342 тс", note: "ผู้เรียบเรียงคำนวณ" }],
+      alt: "แถวท่อน I ขยาย แท่งทึบถึง 85,5 และส่วนต่อเส้นประถึง 104,1 บนแกน 0 ถึง 110 ใต้แท่งมีชิ้น 85,5 สี่ชิ้นบวกกันเท่ากับ 342" },
+    { title: "ท่อน II — บล็อกกลาง",
+      text: "บล็อกกลาง (" + RU("А") + ") มีเครื่อง " + RU("РД-108А") + " หนึ่งเครื่อง มีห้องเผาไหม้หลักสี่ห้องกับห้องเผาไหม้ปรับทิศสี่ห้อง จุดพร้อมท่อน I บนแท่น และทำงานต่อหลังบล็อกข้างแยกออก " +
+        "(อักษรบล็อก จำนวนห้อง และลำดับการทำงาน: ผู้เรียบเรียงเติม) · ประโยชน์ของการจุดพร้อมกัน: ท่อน I อย่างเดียวให้ 342 тс เป็นเพียงราว 1,1 เท่าของมวลปล่อย 311,7 т " +
+        "เหลือแรงเร่งขึ้นน้อยมาก เมื่อรวมท่อน II เป็น 421,4 тс ราว 1,35 เท่าของมวลปล่อย (1 тс คือน้ำหนักของมวล 1 т จึงเทียบกันได้ตรง ๆ · ตัวเลข: ผู้เรียบเรียงคำนวณ · เหตุผล: ผู้เรียบเรียงอธิบาย) · " +
+        "ในสุญญากาศแรงขับมากขึ้นเพราะไม่มีความดันอากาศดันสวนที่ปากหัวฉีด (" + RU("срез сопла") + " · ผู้เรียบเรียงอธิบาย)",
+      nums: [{ k: "แรงขับ ที่พื้น / สุญญากาศ", v: "79,4 / 101,0 тс", big: true, note: "сл. 45" },
+             { k: "แรงขับรวมตอนยกตัว", v: "342 + 79,4 = 421,4 тс", note: "ผู้เรียบเรียงคำนวณ" },
+             { k: "เทียบกับมวลปล่อย 311,7 т", v: "≈ 1,35 เท่า", note: "ผู้เรียบเรียงคำนวณ" }],
+      alt: "แถวท่อน II ขยาย แท่งทึบถึง 79,4 ส่วนต่อเส้นประถึง 101,0 บนแกนเดียวกัน ใต้แท่ง 342 บวก 79,4 เท่ากับ 421,4 ราว 1,35 เท่าของมวลปล่อย" },
+    { title: "ท่อน III — ค่าในสุญญากาศเท่านั้น",
+      text: "ตารางให้แรงขับท่อน III เฉพาะในสุญญากาศ จึงเป็นแท่งเส้นประล้วนบนแกนเดียวกับท่อน I และ II · «" + RU("Союз-2-1а") + "» ใช้ " + RU("РД-0110") +
+        " 30,4 тс และ «" + RU("Союз-2-1б") + "» ใช้ " + RU("РД-0124") + " 30,0 тс (ตารางให้ 30,4/30,0 ในช่องเดียว ไม่แยกตามรุ่น · " + RU("РД-0110") + " บนรุ่น 1а: сл. 55 · " + RU("РД-0124") + " บนรุ่น 1б: ผู้เรียบเรียงอนุมานจาก сл. 52–54) " +
+        "แรงขับใกล้กันมาก และเป็นเพียงราว 1 ใน 3,3–3,4 ของแรงขับเครื่องท่อน II ในสุญญากาศ 101,0 тс (ผู้เรียบเรียงคำนวณ) · " + RU("РД-0124") + " น่าจะคือ «เครื่องยนต์ท่อน III แบบใหม่» ในข้อ 5 ของสไลด์ 44 ซึ่งไม่ได้ระบุชื่อเครื่อง (ผู้เรียบเรียงเทียบ)",
+      nums: [{ k: RU("РД-0110") + " (" + RU("Союз-2-1а") + ") · สุญญากาศ", v: "30,4 тс", note: "แรงขับ: сл. 45 · รุ่น: сл. 55" },
+             { k: RU("РД-0124") + " (" + RU("Союз-2-1б") + ") · สุญญากาศ", v: "30,0 тс", note: "แรงขับ: сл. 45 · รุ่น: ผู้เรียบเรียงอนุมานจาก сл. 52–54" }],
+      alt: "แถวท่อน III ขยาย แท่งเส้นประสองแท่ง 30,4 และ 30,0 บนแกนเดียวกับท่อน I และ II และป้ายโยงไปข้อ 5 ของสไลด์ 44" },
+    { title: "หัวบรรทุกและมวลทั้งลำ",
+      text: "แถวมวลของตารางแบ่งจรวดได้ครบ: มวลปล่อย 311,7 т ลบมวลไม่รวมหัวบรรทุก 303,2 т เหลือหัวบรรทุก (" + RU("ГЧ") + ") 8,5 т และ 303,2 т นี้คือโครงสร้าง 24,4 т " +
+        "บวกเชื้อเพลิง 278,8 т พอดี เชื้อเพลิงจึงเป็นราว 89 % ของมวลปล่อย (ผลต่าง ผลบวก และร้อยละ: ผู้เรียบเรียงคำนวณ) · ตารางไม่ได้บอกว่าหัวบรรทุก 8,5 т นี้บรรทุกอะไร " +
+        "จึงอย่าอ่านว่าเป็นมวลของยาน «" + RU("Союз МС") + "» ในภาพ (ยานอย่างเดียวราว 7 т · ผู้เรียบเรียง) · ในแบบสามมิติ ขั้นนี้ซ่อนครอบหัวจรวดให้เห็นยาน (ไม่ใช่ลำดับการบิน)",
+      nums: [{ k: "หัวบรรทุก (" + RU("ГЧ") + ")", v: "311,7 − 303,2 = 8,5 т", note: "ผู้เรียบเรียงคำนวณ" },
+             { k: "โครงสร้าง + เชื้อเพลิง", v: "24,4 + 278,8 = 303,2 т", note: "ค่าจาก сл. 45 · ผลบวก: ผู้เรียบเรียงตรวจ" },
+             { k: "เชื้อเพลิงต่อมวลปล่อย", v: "≈ 89 %", note: "ผู้เรียบเรียงคำนวณ" }],
+      alt: "วงเล็บบนตัวจรวดแบ่งเป็นหัวบรรทุกกับจรวดไม่รวมหัวบรรทุก แท่งมวลซ้อนแบ่ง 311,7 ตันเป็นหัวบรรทุก 8,5 โครงสร้าง 24,4 และเชื้อเพลิง 278,8" },
+    { title: "สไลด์ 44 — หกทิศทางการปรับปรุงบนตัวจรวด",
+      text: "ข้อ 1 เพิ่มสมรรถนะจำเพาะ (" + RU("удельные характеристики") + ") ของเครื่องยนต์ท่อน I และ II ด้วยหัวพ่นเชื้อเพลิงแบบใหม่ (" + RU("форсуночные головки") + ") ที่ทำให้เชื้อเพลิงผสมกันในห้องเผาไหม้ดีขึ้น · " +
+        "ข้อ 5 คือเครื่องยนต์ท่อน III · ข้อ 6 แก้เฉพาะที่ตั้งปล่อย " + RU("17П32") + " ไม่ใช่ตัวจรวด: ถอดแท่นหมุน (" + RU("поворотный круг") + ") ที่ใช้เล็งจรวดตามมุมทิศ " +
+        "และเปลี่ยนรูปเสาบริการ (" + RU("колонны обслуживания") + ") ให้รับครอบหัวจรวดที่ใหญ่ขึ้น (เส้นผ่านศูนย์กลาง 3,7 м และ 4,11 м · сл. 44) · " +
+        "ข้อ 2–4 (ระบบควบคุมดิจิทัล โทรมาตรดิจิทัล วัดวิถีด้วยอุปกรณ์นำร่องดาวเทียม) เป็นระบบของทั้งลำ สไลด์ไม่ได้ระบุตำแหน่งบนตัวจรวด " +
+        "จึงรวมไว้ใต้วงเล็บเดียว «ทั้งระบบ» (การโยงแต่ละข้อกับส่วนของจรวด และภาพเสาบริการกับแท่น: ผู้เรียบเรียง)",
+      nums: [{ k: "ข้อ 1 · หัวพ่นเชื้อเพลิงแบบใหม่", v: RU("НПО «Энергомаш»"), note: "сл. 44 · ผู้พัฒนาตามข้อความบรรยาย" },
+             { k: "ข้อ 2 · ระบบควบคุมดิจิทัล", v: RU("НПО автоматики им. Н.А. Семихатова"), note: "сл. 44 · ผู้พัฒนาตามข้อความบรรยาย" },
+             { k: "ข้อ 3 · โทรมาตรดิจิทัล", v: RU("РНИИ КП"), note: "сл. 44 · ผู้พัฒนาตามข้อความบรรยาย" },
+             { k: "ข้อ 5 · เครื่องยนต์ท่อน III", v: RU("КБ химавтоматики"), note: "сл. 44 · ผู้พัฒนาตามข้อความบรรยาย" }],
+      alt: "ป้ายข้อของสไลด์ 44 โยงเส้นไปที่ภาพ: ป้ายข้อ 6 ทั้งสองไปที่เสาบริการและแผ่นแท่นของที่ตั้งปล่อย ข้อ 5 ไปที่ท่อน III ข้อ 1 ไปที่ช่วงเครื่องยนต์ของท่อน I และ II ข้อ 2 ถึง 4 อยู่ใต้วงเล็บทั้งระบบที่คลุมตัวจรวด" }
+  ];
+
+  Object.assign(DEMOS, {
+    "ppo13-soyuz3d": function (host) {
+      let api, m3d;
+      const poster = makePoster(() => api && api.redraw());
+      api = window.STEPS2(host, {
+        label: "แอนิเมชันทีละขั้น + แบบสามมิติ",
+        title: "«" + RU("Союз-2") + "» บนตัวจรวด — ตารางสไลด์ 45 ทีละท่อน มวลทั้งลำ และหกทิศทางของสไลด์ 44",
+        legend: [{ cls: "lg-ref dot", text: "ท่อน I" }, { cls: "lg-meas dot", text: "ท่อน II" }, { cls: "lg-lin dot", text: "ท่อน III" },
+                 { cls: "dot", text: "หัวบรรทุก", color: "var(--s2-deep)" }],
+        steps: STEPS,
+        caption: CAPTION + " · ผลรวม ผลต่าง อัตราส่วน และร้อยละ (342 · 421,4 тс · ≈ 1,35 · 8,5 т · ≈ 89 %) เหตุผลเรื่องการจุดพร้อมกันและความดันอากาศที่ปากหัวฉีด " +
+          "ภาพเสาบริการกับแท่นของที่ตั้งปล่อย และการโยงข้อของสไลด์ 44 กับส่วนของจรวด: ผู้เรียบเรียง",
+        height: w => w < 600 ? 520 : 460,
+        duration: () => 700,
+        draw(ctx, W, H, step, C, anim) {
+          const dark = lum(C.bg) < 128;
+          if (m3d) m3d.sync(step, dark);
+          const g = geo(W, H), e = anim.e;
+          if (g.n) g.F = fitN(ctx, C, g);
+          /* จอกว้างที่แบบสามมิติแสดงอยู่: คอลัมน์จรวดถูกทับ — ไม่วาดภาพจรวด วงเล็บ และเส้นโยง (ไม่เหลือเศษเส้นที่ขอบ) */
+          g.hide = !g.n && !!(m3d && m3d.doc());
+          if (!g.hide) drawRocket(ctx, poster(dark ? "dark" : "light"), g.box, ROCK[step], ROCK[anim.from], e);
+          /* เปลี่ยนฉาก: ฉากเดิมจางออกครึ่งแรก ฉากใหม่ขึ้นครึ่งหลัง (ไม่ซ้อนกันกลางทาง) */
+          const sa = s => {
+            const was = SCN[anim.from] === s, now = SCN[step] === s;
+            return was && now ? 1 : now ? c01((e - 0.45) / 0.55) : was ? c01(1 - e / 0.5) : 0;
+          };
+          const aR = sa("rows"), aM = sa("mass"), aT = sa("tags");
+          if (aR > 0.004) drawRows(ctx, C, g, step, anim, aR);
+          if (aM > 0.004) drawMass(ctx, C, g, aM);
+          if (aT > 0.004) drawTags(ctx, C, g, aT);
+        }
+      });
+      m3d = attach3D(api, host, {
+        hint: "เปิดแบบสามมิติแล้วกดปุ่มขั้น กล้องจะหันไปที่ส่วนของจรวดในขั้นนั้น · ไฟล์ราว 5 เมกะไบต์ โหลดเมื่อกดเท่านั้น",
+        hintOpen: "ลากเพื่อหมุน · ล้อเมาส์หรือสองนิ้วเพื่อซูม · ขั้น 5 ซ่อนครอบหัวจรวดให้เห็นยาน (ไม่ใช่ลำดับการบิน)",
+        act: camAct(["front", "rd107", "rd108", "rd0110", "soyuz", "front"]),
+        region: (W, H) => W < 600 ? null : { x: 0, y: 0, w: colW(W) + 2, h: H }
+      });
+      /* วาดใหม่เมื่อแบบสามมิติปรากฏ/ปิด (iframe ถูกเพิ่ม ลบ หรือเปลี่ยน visibility) — draw() ซ่อน/คืนภาพจรวดและเส้นโยง */
+      try {
+        const stage = api.el.querySelector(".anim-stage");
+        const isF = nd => nd && nd.nodeName === "IFRAME";
+        new MutationObserver(rs => {
+          if (rs.some(m => isF(m.target) || [...m.addedNodes, ...m.removedNodes].some(isF))) api.redraw();
+        }).observe(stage, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+      } catch (e) { /* ไม่มี MutationObserver — เศษเส้นที่ขอบแบบสามมิติยังอยู่ ไม่กระทบเนื้อหา */ }
+      return api;
+    }
+  });
+})();
 /* --- ppo-13.js --- */
 /* ppo-13 — แอนิเมชันทีละขั้นของบรรยาย 13 (ППО ЛА · Тема 4)
    ppo13-ready : ระดับความพร้อม Г3/Г2/Г1 บนเส้นเวลา 0–78 ч (6 ขั้น)

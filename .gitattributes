@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# แบบจำลอง 3 มิติ: เก็บไบต์ตรงตามไฟล์ส่งมอบ (README ระบุ sha256)
+models/** -text
