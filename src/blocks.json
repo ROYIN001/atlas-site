@@ -23,7 +23,7 @@
    "end": "/* ВИ: DEEP END */",
    "source": "_work/vhist/",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "ef07f052af15"
+   "sha1": "809c2016459f"
   },
   "hist-deep": {
    "file": "app.js",
@@ -31,7 +31,7 @@
    "end": "/* История: DEEP END */",
    "source": "ต้นทาง История (zip) → _work/hist/",
    "build": "python _work/hist/integrate_hist.py",
-   "sha1": "b591918506be"
+   "sha1": "6a458b4df719"
   },
   "vhist-demos": {
    "file": "app.js",
