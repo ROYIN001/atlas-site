@@ -4019,7 +4019,7 @@ details.cr-miss { border-left: 3px solid var(--crit); }
 .cram .std2 .traps > li { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 5px 0; }
 .cram .std2 .traps p { font-size: 14px; line-height: 1.5; }
 .cram .std2 .tg { font-size: 11px; padding: 1px 0; }
-@media (min-width: 900px) { .cram .std2 .traps { display: block; columns: 2; column-gap: 24px; } .cram .std2 .traps > li { break-inside: avoid; } }
+@media (min-width: 900px) { .wrap.cram { max-width: 1100px; } .cram .std2 .traps, .cram .std2 .sum-list { display: block; columns: 2; column-gap: 24px; } .cram .std2 .traps > li, .cram .std2 .sum-list > li { break-inside: avoid; } .cram .std2 .sum-list > li { margin-bottom: 3px; } }
 .cram .std2 details.qa { border-radius: 10px; }
 .cram .std2 details.qa > summary { min-height: 0; padding: 6px 12px; gap: 10px; }
 .cram .std2 details.qa > summary::after { padding: 3px 8px; font-size: 11.5px; }

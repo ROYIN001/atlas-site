@@ -7,7 +7,7 @@
    "end": "/* ВИ: словарь END */",
    "source": "_work/vhist/ (คลังศัพท์ ВИ)",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "3289486cfb6b"
+   "sha1": "33afba30da67"
   },
   "hist-vocab": {
    "file": "app.js",
@@ -39,7 +39,7 @@
    "end": "/* ВИ: VHDEMOS END */",
    "source": "_work/vhist/engine/ + maps/",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "3f4552ec9ffa"
+   "sha1": "88f934f2b041"
   },
   "hist-demos": {
    "file": "app.js",
