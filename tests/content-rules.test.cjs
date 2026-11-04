@@ -57,7 +57,8 @@ function ownerHits(text) {
 
 // ---- ข ----
 const SOURCE_KW = /แหล่งอ้างอิง|แหล่งที่มา|ที่มา|ต้นทาง|อ้างอิง|Источник|Литература/;
-const needsSource = tid => !/-map$|-s[1-4]$/.test(tid);
+// สองวิชาประวัติศาสตร์ไม่แสดงบรรทัดอ้างอิงบนหน้าเว็บ (เจ้าของงานตัดสิน 4 พ.ย. 2026 · แหล่งอ้างอิงเก็บในบันทึกภายใน)
+const needsSource = tid => !/-map$|-s[1-4]$/.test(tid) && !/^(?:hist|vhist)-/.test(tid);
 function hasSourceLine(html) {
   const h = stripScripts(html);
   if (SOURCE_KW.test(plain(h).slice(-800))) return true;
