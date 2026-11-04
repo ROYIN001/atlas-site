@@ -949,7 +949,7 @@ function FIGS_LOAD() {
    จัดการแคชเอง — หน้าเว็บจึงเบาและเพิ่มวิชาได้ไม่จำกัด                  */
 // Keep lesson and search data aligned with this application release.
 // DATA_VERSION เขียนโดย python src/build_data.py (hash ของ app.js + app.css + manifest) — ห้ามแก้มือ
-const DATA_VERSION = "cb9e0707d9";
+const DATA_VERSION = "2fb6af1d73";
 const DBCACHE = new Map();             // เรียงจากใช้ล่าสุดไปเก่าสุด (ลบแล้วใส่ใหม่ทุกครั้งที่ใช้)
 const DB_KEEP = 40;                    // หัวข้อ (data/t) ที่เก็บในหน่วยความจำ — มือถือแรมน้อยเปิดหลายวิชาในเซสชันเดียว
 let DB_FAILED = false;
@@ -33096,7 +33096,7 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       return Math.max(p, clamp(1 - (A.d0 - d), 0, 1));
     }
     let day = S.start || 0, playing = false, speed = 1, raf = 0, lastT = 0, visible = true, curEv = null;
-    let story = false, scn = 0, glideRaf = 0, dots = [];
+    let story = false, scn = 0, glideRaf = 0, dots = [], gliding = false;
 
     /* ----- проекция ----- */
     let MOB = false;
@@ -33236,6 +33236,8 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       const f = o.from == null ? -1e9 : o.from, t = o.to == null ? 1e9 : o.to, r = o.fade || Math.max(0.05, D / 60);
       /* ดูทีละฉาก: ภาพหยุดตรงวันของฉาก ป้ายที่ขึ้นในวันนั้นต้องเห็นเต็ม */
       if (story && SC[scn] && o.from != null && d >= SC[scn].d - 1e-6 && d <= t && Math.floor(f) === Math.floor(SC[scn].d)) return 1;
+      /* ภาพหยุดนิ่ง (กดจุดเวลา กดการ์ด หยุดเล่น): ป้ายที่ถึงเวลาแล้วต้องเห็นเต็ม การค่อย ๆ ขึ้นมีไว้ตอนภาพเคลื่อนเท่านั้น */
+      if (!playing && !gliding && o.from != null && d >= f - 1e-6 && d <= t) return 1;
       if (d < f || d > t + r) return 0;
       return Math.min(1, o.from == null ? 1 : (d - f) / r + 0.001, d <= t ? 1 : 1 - (d - t) / r);
     }
@@ -33515,15 +33517,16 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
 
     /* ----- ดูทีละฉาก: ภาพวิ่งจากฉากหนึ่งไปอีกฉากในเวลาเท่ากันเสมอ การ์ดเปลี่ยนทันทีให้อ่านระหว่างภาพเคลื่อน ----- */
     function glide(d1) {
-      cancelAnimationFrame(glideRaf);
+      cancelAnimationFrame(glideRaf); gliding = false;
       if (REDUCED || !visible || d1 <= day) { go(d1); return; }
       const d0 = day, t0 = performance.now();
       const step = now => {
         const k = Math.min(1, (now - t0) / 1400);
         day = d0 + (d1 - d0) * (1 - (1 - k) * (1 - k));
         draw(); dateEl.textContent = T.stamp(day);
-        if (k < 1) glideRaf = requestAnimationFrame(step); else go(d1);
+        if (k < 1) glideRaf = requestAnimationFrame(step); else { gliding = false; go(d1); }
       };
+      gliding = true;
       glideRaf = requestAnimationFrame(step);
     }
     function scene(i) {
@@ -33550,7 +33553,7 @@ try { Object.assign(DEMOS, window.EODEMOS || {}); } catch (e) {}
       const modeTx = () => { modeBtn.textContent = story ? "กลับไปเล่นตามเวลา" : "ดูทีละฉาก · " + SC.length + " ฉาก"; };
       modeTx();
       modeBtn.addEventListener("click", () => {
-        cancelAnimationFrame(glideRaf); stop();
+        cancelAnimationFrame(glideRaf); gliding = false; stop();
         story = !story;
         box.classList.toggle("story", story);
         modeBtn.setAttribute("aria-pressed", story ? "true" : "false");
