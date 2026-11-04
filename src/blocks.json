@@ -23,7 +23,7 @@
    "end": "/* ВИ: DEEP END */",
    "source": "_work/vhist/",
    "build": "python _work/vhist/tools/integrate.py",
-   "sha1": "0555e3e1df19"
+   "sha1": "20f4ea0ddb37"
   },
   "hist-deep": {
    "file": "app.js",
@@ -31,7 +31,7 @@
    "end": "/* История: DEEP END */",
    "source": "ต้นทาง История (zip) → _work/hist/",
    "build": "python _work/hist/integrate_hist.py",
-   "sha1": "aab3f3e14d94"
+   "sha1": "8ef22c63c479"
   },
   "vhist-demos": {
    "file": "app.js",
@@ -47,7 +47,7 @@
    "end": "/* История: IHDEMOS END */",
    "source": "ต้นทาง История shared/hist.js + hist-data.js",
    "build": "tools/pack.py แล้ว python _work/hist/integrate_hist.py",
-   "sha1": "85f502d82871"
+   "sha1": "17e41c89ffb4"
   },
   "std2-js": {
    "file": "app.js",
