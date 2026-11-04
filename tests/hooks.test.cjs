@@ -11,7 +11,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.resolve(__dirname, '..');
 const app = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'app.css'), 'utf8');
-const SLOTS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
+const SLOTS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S10'];
 
 function section(startMarker, endMarker) {
   const start = app.indexOf(startMarker);
